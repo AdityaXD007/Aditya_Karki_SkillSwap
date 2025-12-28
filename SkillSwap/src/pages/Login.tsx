@@ -1,9 +1,10 @@
-import { useState, FormEvent } from 'react';
+import type {FormEvent} from 'react';
+import { useState,} from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/Components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Input } from '@/Components/ui/input';
+import { Label } from '@/Components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/Components/ui/card';
 import { BookOpen } from 'lucide-react';
 import { toast } from 'sonner';
