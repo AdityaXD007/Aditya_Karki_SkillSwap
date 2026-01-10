@@ -58,8 +58,8 @@ export default function Index() {
           </h1>
 
           <p className="text-xl text-muted-foreground mb-8 leading-relaxed">
-            Join our community where everyone is both a teacher and a student.
-            Exchange skills, share knowledge, and grow together.
+            Join our peer to peer community where everyone is both a teacher and
+            a student. Exchange skills, share knowledge, and grow together.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
