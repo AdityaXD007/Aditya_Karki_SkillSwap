@@ -10,23 +10,20 @@ const api = axios.create({
 });
 
 // Add token to every request
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('auth_token');
-  if (token) {
-    config.headers.Authorization = `Token ${token}`;
-  }
-  return config;
-});
-
-// Handle errors globally
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Token expired or invalid, log user out
-      localStorage.removeItem('auth_token');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
+      // Don't redirect if this is a login or register attempt - let the form handle it
+      const isAuthEndpoint = error.config?.url?.includes('/auth/login/') || 
+                             error.config?.url?.includes('/auth/register/');
+      
+      if (!isAuthEndpoint) {
+        // Token expired or invalid, log user out
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }

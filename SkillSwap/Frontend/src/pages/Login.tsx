@@ -37,8 +37,10 @@ export default function Login() {
       toast.success("Welcome back!");
       // Redirect immediately after successful login
       navigate("/dashboard");
-    } catch (error) {
-      toast.error("Login failed. Please try again.");
+    } catch (error: any) {
+      // Display the specific error message from the backend
+      const errorMessage = error.response?.data?.error || "Login failed. Please try again.";
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }

@@ -28,17 +28,26 @@ class AuthViewSet(viewsets.ViewSet):
         """Login user and return token"""
         serializer = LoginSerializer(data=request.data)
         if serializer.is_valid():
-            user = authenticate(
-                username=serializer.validated_data['username'],
-                password=serializer.validated_data['password']
-            )
+            username = serializer.validated_data['username']
+            password = serializer.validated_data['password']
+            
+            # Check if user exists
+            try:
+                user_obj = User.objects.get(username=username)
+            except User.DoesNotExist:
+                return Response({'error': 'Username not found'}, status=status.HTTP_401_UNAUTHORIZED)
+            
+            # Authenticate with password
+            user = authenticate(username=username, password=password)
             if user:
                 token, _ = Token.objects.get_or_create(user=user)
                 return Response({
                     'user': UserSerializer(user).data,
                     'token': token.key
                 })
-            return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+            else:
+                # User exists but password is wrong
+                return Response({'error': 'Incorrect password'}, status=status.HTTP_401_UNAUTHORIZED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=['post'], authentication_classes=[TokenAuthentication], permission_classes=[IsAuthenticated])
