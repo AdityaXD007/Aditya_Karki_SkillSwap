@@ -77,7 +77,7 @@ DATABASES = {
         "NAME": "skillswap",
         "USER": "aditya",
         "PASSWORD": "aditya",
-        "HOST": "127.0.0.1",
+        'HOST': 'db',  # This is the service name in docker-compose
         "PORT": "5432",
     }
 }
