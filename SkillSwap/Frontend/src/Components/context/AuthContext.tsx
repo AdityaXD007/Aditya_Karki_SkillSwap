@@ -1,119 +1,127 @@
-import type { ReactNode } from "react";
-import { createContext, useState, useEffect } from "react";
-import { authAPI } from "../../services/api";
+import React, { createContext, useState, useContext, useEffect } from 'react';
 
-// User interface
+// Define User interface
 export interface User {
-  id: number;
-  username: string;
+  id: string;
   email: string;
-  first_name: string;
-  last_name: string;
+  name: string;
   avatar?: string;
-  role?: "user" | "admin";
-  skillsTeaching?: string[];
-  skillsLearning?: string[];
+  bio?: string;
+  skillsTeaching: string[];
+  skillsLearning: string[];
+  rating: number;
+  availability?: string[];
 }
 
-// Auth context interface
+// Auth context type
 interface AuthContextType {
   user: User | null;
-  isLoading: boolean;
-  error: string | null;
+  isAuthenticated: boolean;
+  loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, name: string) => Promise<void>;
-  logout: () => Promise<void>;
-  isAuthenticated: boolean;
-  clearError: () => void;
+  logout: () => void;
+  updateUser: (userData: Partial<User>) => void;
 }
 
-// Create context
-export const AuthContext = createContext<AuthContextType | undefined>(
-  undefined
-);
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Provider component
-export const AuthProvider = ({ children }: { children: ReactNode }) => {
+// Mock user data for demonstration
+const mockUser: User = {
+  id: '1',
+  email: 'john.doe@example.com',
+  name: 'John Doe',
+  avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop',
+  bio: 'Full-stack developer passionate about teaching web development and learning design.',
+  skillsTeaching: ['React', 'Node.js', 'TypeScript', 'MongoDB'],
+  skillsLearning: ['UI/UX Design', 'Figma', 'Product Management'],
+  rating: 4.8,
+  availability: ['Monday 6pm-8pm', 'Wednesday 7pm-9pm', 'Saturday 10am-2pm']
+};
+
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Check for existing session on mount
+  // Check for stored user on mount
   useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    const token = localStorage.getItem("auth_token");
-    if (storedUser && token) {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
       setUser(JSON.parse(storedUser));
     }
-    setIsLoading(false);
+    setLoading(false);
   }, []);
 
-  // Login function - calls Django backend
-  const login = async (email: string, password: string) => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      // Django expects username, not email - but we'll use email as username
-      const response = await authAPI.login(email, password);
-      const { token, user } = response.data;
-
-      setUser(user);
-      localStorage.setItem("auth_token", token);
-      localStorage.setItem("user", JSON.stringify(user));
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.error || "Login failed";
-      setError(errorMessage);
-      throw err;
-    } finally {
-      setIsLoading(false);
+  // Login function - mocked for demo
+  const login = async (email: string, password: string): Promise<void> => {
+    setLoading(true);
+    // Simulate API call
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // Mock validation
+    if (email && password) {
+      const userData = { ...mockUser, email };
+      setUser(userData);
+      localStorage.setItem('user', JSON.stringify(userData));
+    } else {
+      throw new Error('Invalid credentials');
     }
+    setLoading(false);
   };
 
-  // Signup function - calls Django backend
-  const signup = async (email: string, password: string, name: string) => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const response = await authAPI.register(email, email, password, password);
-      const { token, user } = response.data;
-
-      setUser(user);
-      localStorage.setItem("auth_token", token);
-      localStorage.setItem("user", JSON.stringify(user));
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.error || "Signup failed";
-      setError(errorMessage);
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
+  // Signup function - mocked for demo
+  const signup = async (email: string, password: string, name: string): Promise<void> => {
+    setLoading(true);
+    // Simulate API call
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    const newUser: User = {
+      ...mockUser,
+      id: Date.now().toString(),
+      email,
+      name,
+      skillsTeaching: [],
+      skillsLearning: [],
+    };
+    
+    setUser(newUser);
+    localStorage.setItem('user', JSON.stringify(newUser));
+    setLoading(false);
   };
 
-  // Logout function - calls Django backend
-  const logout = async () => {
-    setIsLoading(true);
-    try {
-      await authAPI.logout();
-    } finally {
-      setUser(null);
-      localStorage.removeItem("auth_token");
-      localStorage.removeItem("user");
-      setIsLoading(false);
-    }
+  // Logout function
+  const logout = () => {
+    setUser(null);
+    localStorage.removeItem('user');
   };
 
-  const clearError = () => setError(null);
+  // Update user profile
+  const updateUser = (userData: Partial<User>) => {
+    if (user) {
+      const updatedUser = { ...user, ...userData };
+      setUser(updatedUser);
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+    }
+  };
 
   const value = {
     user,
-    isLoading,
-    error,
+    isAuthenticated: !!user,
+    loading,
     login,
     signup,
     logout,
-    isAuthenticated: !!user,
-    clearError,
+    updateUser
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+};
+
+// Custom hook to use auth context
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
 };

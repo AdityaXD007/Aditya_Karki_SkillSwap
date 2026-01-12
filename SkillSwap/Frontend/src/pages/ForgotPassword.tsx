@@ -1,98 +1,98 @@
-import type {FormEvent} from 'react';
-import { useState} from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Button } from '@/Components/ui/button';
-import { Input } from '@/Components/ui/input';
-import { Label } from '@/Components/ui/label';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/Components/ui/card';
-import { BookOpen, ArrowLeft } from 'lucide-react';
-import { toast } from 'sonner';
+import { Mail, ArrowLeft, CheckCircle } from 'lucide-react';
 
-export default function ForgotPassword() {
+export const ForgotPassword: React.FC = () => {
   const [email, setEmail] = useState('');
+  const [isSubmitted, setIsSubmitted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [emailSent, setEmailSent] = useState(false);
 
-  const handleSubmit = async (e: FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!email) {
-      toast.error('Please enter your email address');
-      return;
-    }
-
     setIsLoading(true);
+    
     // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
-      setEmailSent(true);
-      toast.success('Password reset email sent!');
-    }, 1500);
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    setIsLoading(false);
+    setIsSubmitted(true);
   };
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-accent/5 via-background to-primary/5 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1 text-center">
-          <div className="flex justify-center mb-2">
-            <div className="p-3 bg-accent/10 rounded-full">
-              <BookOpen className="h-8 w-8 text-accent" />
+  if (isSubmitted) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center p-4">
+        <div className="max-w-md w-full">
+          <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <CheckCircle className="w-8 h-8 text-green-600" />
             </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Check Your Email</h2>
+            <p className="text-gray-600 mb-6">
+              We've sent password reset instructions to <strong>{email}</strong>
+            </p>
+            <Link
+              to="/login"
+              className="inline-flex items-center space-x-2 text-blue-600 hover:text-blue-700 font-medium"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Back to Login</span>
+            </Link>
           </div>
-          <CardTitle className="text-2xl font-bold">Reset Password</CardTitle>
-          <CardDescription>
-            {emailSent
-              ? "We've sent you a password reset link"
-              : "Enter your email to receive a reset link"}
-          </CardDescription>
-        </CardHeader>
-        {!emailSent ? (
-          <form onSubmit={handleSubmit}>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center p-4">
+      <div className="max-w-md w-full">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Reset Password</h1>
+          <p className="text-gray-600">Enter your email to receive reset instructions</p>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-xl p-8">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                Email Address
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Mail className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
                   id="email"
                   type="email"
-                  placeholder="your.email@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
+                  className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="you@example.com"
                 />
               </div>
-            </CardContent>
-            <CardFooter className="flex flex-col gap-4">
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? 'Sending...' : 'Send Reset Link'}
-              </Button>
-              <Link
-                to="/login"
-                className="flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Back to login
-              </Link>
-            </CardFooter>
-          </form>
-        ) : (
-          <CardContent className="space-y-4">
-            <p className="text-sm text-center text-muted-foreground">
-              Check your email inbox for a password reset link. If you don't see it, check your spam folder.
-            </p>
-            <div className="flex flex-col gap-2">
-              <Button onClick={() => setEmailSent(false)} variant="outline">
-                Resend Email
-              </Button>
-              <Link to="/login">
-                <Button variant="ghost" className="w-full">
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Back to Login
-                </Button>
-              </Link>
             </div>
-          </CardContent>
-        )}
-      </Card>
+
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full py-3 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            >
+              {isLoading ? 'Sending...' : 'Send Reset Link'}
+            </button>
+          </form>
+
+          <div className="mt-6 text-center">
+            <Link
+              to="/login"
+              className="inline-flex items-center space-x-2 text-sm text-gray-600 hover:text-gray-900"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Back to Login</span>
+            </Link>
+          </div>
+        </div>
+      </div>
     </div>
   );
-}
+};

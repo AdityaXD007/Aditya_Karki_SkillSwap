@@ -5,8 +5,8 @@ services:
     image: postgres:15
     environment:
       POSTGRES_DB: skillswap
-      POSTGRES_USER: aditya        # Changed from 'postgres' to 'aditya'
-      POSTGRES_PASSWORD: aditya    # Changed to 'aditya'
+      POSTGRES_USER: aditya
+      POSTGRES_PASSWORD: aditya
     ports:
       - "5432:5432"
     volumes:
@@ -31,6 +31,9 @@ services:
     volumes:
       - ./Frontend:/app
       - /app/node_modules
+    environment:
+      - CHOKIDAR_USEPOLLING=true    # ← Add this for file watching
+      - VITE_HOST=0.0.0.0            # ← Add this for Vite
     depends_on:
       - backend
     stdin_open: true
