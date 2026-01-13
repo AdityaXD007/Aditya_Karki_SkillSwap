@@ -59,6 +59,10 @@ export default {
           ring: "var(--sidebar-ring)",
         },
       },
+      fontFamily: {
+        sans: ["var(--font-family-sans)"],
+        heading: ["var(--font-family-heading)"],
+      },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",

@@ -1,4 +1,6 @@
 :root {
+  --font-family-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-family-heading: 'Outfit', sans-serif;
   --font-size: 16px;
   --background: #ffffff;
   --foreground: #000000;
@@ -71,6 +73,9 @@
 
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-family-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   /**
@@ -82,28 +87,30 @@
     font-size: var(--font-size);
   }
 
+  h1, h2, h3, h4 {
+    font-family: var(--font-family-heading);
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+  }
+
   h1 {
-    font-size: var(--text-2xl);
-    font-weight: var(--font-weight-medium);
-    line-height: 1.5;
+    font-size: 2.5rem;
+    font-weight: 700;
   }
 
   h2 {
-    font-size: var(--text-xl);
-    font-weight: var(--font-weight-medium);
-    line-height: 1.5;
+    font-size: 2rem;
+    font-weight: 600;
   }
 
   h3 {
-    font-size: var(--text-lg);
-    font-weight: var(--font-weight-medium);
-    line-height: 1.5;
+    font-size: 1.5rem;
+    font-weight: 600;
   }
 
   h4 {
-    font-size: var(--text-base);
-    font-weight: var(--font-weight-medium);
-    line-height: 1.5;
+    font-size: 1.25rem;
+    font-weight: 600;
   }
 
   label {

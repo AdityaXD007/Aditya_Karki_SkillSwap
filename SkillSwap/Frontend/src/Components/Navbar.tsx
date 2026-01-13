@@ -54,11 +54,9 @@ export const Navbar: React.FC = () => {
               className="flex items-center space-x-2"
             >
               <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold">SE</span>
+                <span className="text-white font-bold">SS</span>
               </div>
-              <span className="font-bold text-xl text-gray-900">
-                SkillExchange
-              </span>
+              <span className="font-bold text-xl text-gray-900">SkillSwap</span>
             </Link>
           </div>
 
