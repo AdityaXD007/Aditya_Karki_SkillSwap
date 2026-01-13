@@ -1,4 +1,3 @@
-import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/components/Context/AuthContext';
 import { Navbar } from '@/components/Navbar';
@@ -12,7 +11,6 @@ import { Profile } from '@/pages/Profile';
 import { Matches } from '@/pages/Matches';
 import { Bookings } from '@/pages/Bookings';
 import { Messages } from '@/pages/Messages';
-import { Admin } from '@/pages/Admin';
 import { ForgotPassword } from '@/pages/ForgotPassword';
 import { Landing } from '@/pages/Landing';
 
@@ -73,14 +71,6 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <Messages />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin"
-              element={
-                <ProtectedRoute>
-                  <Admin />
                 </ProtectedRoute>
               }
             />

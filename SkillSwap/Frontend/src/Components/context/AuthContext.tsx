@@ -1,4 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
+import { authAPI } from '@/services/api';
 
 // Define User interface
 export interface User {
@@ -20,79 +21,117 @@ interface AuthContextType {
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, name: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   updateUser: (userData: Partial<User>) => void;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Mock user data for demonstration
-const mockUser: User = {
-  id: '1',
-  email: 'john.doe@example.com',
-  name: 'John Doe',
-  avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop',
-  bio: 'Full-stack developer passionate about teaching web development and learning design.',
-  skillsTeaching: ['React', 'Node.js', 'TypeScript', 'MongoDB'],
-  skillsLearning: ['UI/UX Design', 'Figma', 'Product Management'],
-  rating: 4.8,
-  availability: ['Monday 6pm-8pm', 'Wednesday 7pm-9pm', 'Saturday 10am-2pm']
-};
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Check for stored user on mount
+  // Check for stored user and token on mount
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    setLoading(false);
+    const initAuth = async () => {
+      const storedUser = localStorage.getItem('user');
+      const token = localStorage.getItem('auth_token');
+      
+      if (storedUser && token) {
+        setUser(JSON.parse(storedUser));
+        // Optionally verify token with profile call
+        try {
+          const response = await authAPI.getProfile();
+          const userData = response.data;
+          
+          const mappedUser: User = {
+            id: userData.id.toString(),
+            email: userData.email,
+            name: userData.name || userData.username,
+            skillsTeaching: [], // Default as backend doesn't have these yet
+            skillsLearning: [],
+            rating: 5.0,
+          };
+          
+          setUser(mappedUser);
+          localStorage.setItem('user', JSON.stringify(mappedUser));
+        } catch (error) {
+          console.error("Token verification failed", error);
+          logout();
+        }
+      }
+      setLoading(false);
+    };
+
+    initAuth();
   }, []);
 
-  // Login function - mocked for demo
+  // Login function
   const login = async (email: string, password: string): Promise<void> => {
     setLoading(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Mock validation
-    if (email && password) {
-      const userData = { ...mockUser, email };
-      setUser(userData);
-      localStorage.setItem('user', JSON.stringify(userData));
-    } else {
-      throw new Error('Invalid credentials');
+    try {
+      const response = await authAPI.login(email, password);
+      const { user: userData, token } = response.data;
+      
+      const mappedUser: User = {
+        id: userData.id.toString(),
+        email: userData.email,
+        name: userData.name || userData.username,
+        skillsTeaching: [],
+        skillsLearning: [],
+        rating: 5.0,
+      };
+
+      setUser(mappedUser);
+      localStorage.setItem('auth_token', token);
+      localStorage.setItem('user', JSON.stringify(mappedUser));
+    } catch (error: any) {
+      throw new Error(error.response?.data?.error || 'Invalid credentials');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
-  // Signup function - mocked for demo
+  // Signup function
   const signup = async (email: string, password: string, name: string): Promise<void> => {
     setLoading(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    const newUser: User = {
-      ...mockUser,
-      id: Date.now().toString(),
-      email,
-      name,
-      skillsTeaching: [],
-      skillsLearning: [],
-    };
-    
-    setUser(newUser);
-    localStorage.setItem('user', JSON.stringify(newUser));
-    setLoading(false);
+    try {
+      const response = await authAPI.register(email, password, name);
+      const { user: userData, token } = response.data;
+      
+      const mappedUser: User = {
+        id: userData.id.toString(),
+        email: userData.email,
+        name: userData.name || userData.username,
+        skillsTeaching: [],
+        skillsLearning: [],
+        rating: 5.0,
+      };
+      
+      setUser(mappedUser);
+      localStorage.setItem('auth_token', token);
+      localStorage.setItem('user', JSON.stringify(mappedUser));
+    } catch (error: any) {
+      const errorMsg = error.response?.data?.email?.[0] || 
+                       error.response?.data?.password?.[0] || 
+                       'Failed to create account';
+      throw new Error(errorMsg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Logout function
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('user');
+  const logout = async () => {
+    try {
+      await authAPI.logout();
+    } catch (error) {
+      console.error("Logout error", error);
+    } finally {
+      setUser(null);
+      localStorage.removeItem('user');
+      localStorage.removeItem('auth_token');
+    }
   };
 
   // Update user profile
@@ -113,6 +152,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     logout,
     updateUser
   };
+
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

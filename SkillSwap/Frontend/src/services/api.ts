@@ -10,6 +10,17 @@ const api = axios.create({
 });
 
 // Add token to every request
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      config.headers.Authorization = `Token ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -66,16 +77,22 @@ export interface Conversation {
 
 // Auth API calls
 export const authAPI = {
-  register: (username: string, email: string, password: string, password_confirm: string) =>
-    api.post('/auth/register/', { username, email, password, password_confirm }),
+  register: (email: string, password: string, name: string) =>
+    api.post('/auth/register/', {
+      email,
+      password,
+      password_confirm: password, // Frontend only has one password field usually, or we pass it twice
+      name
+    }),
 
-  login: (username: string, password: string) =>
-    api.post('/auth/login/', { username, password }),
+  login: (email: string, password: string) =>
+    api.post('/auth/login/', { email, password }),
 
   logout: () => api.post('/auth/logout/'),
 
   getProfile: () => api.get('/auth/profile/'),
 };
+
 
 // Matches API (Mock implementation - replace with real API calls)
 export const matchesApi = {

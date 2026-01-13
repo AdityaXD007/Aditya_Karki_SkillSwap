@@ -28,17 +28,17 @@ class AuthViewSet(viewsets.ViewSet):
         """Login user and return token"""
         serializer = LoginSerializer(data=request.data)
         if serializer.is_valid():
-            username = serializer.validated_data['username']
+            email = serializer.validated_data['email']
             password = serializer.validated_data['password']
             
-            # Check if user exists
+            # Check if user exists (using email as username)
             try:
-                user_obj = User.objects.get(username=username)
+                user_obj = User.objects.get(email=email)
             except User.DoesNotExist:
-                return Response({'error': 'Username not found'}, status=status.HTTP_401_UNAUTHORIZED)
+                return Response({'error': 'User with this email not found'}, status=status.HTTP_401_UNAUTHORIZED)
             
-            # Authenticate with password
-            user = authenticate(username=username, password=password)
+            # Authenticate using the username (which is the email)
+            user = authenticate(username=user_obj.username, password=password)
             if user:
                 token, _ = Token.objects.get_or_create(user=user)
                 return Response({
@@ -46,9 +46,9 @@ class AuthViewSet(viewsets.ViewSet):
                     'token': token.key
                 })
             else:
-                # User exists but password is wrong
                 return Response({'error': 'Incorrect password'}, status=status.HTTP_401_UNAUTHORIZED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
     @action(detail=False, methods=['post'], authentication_classes=[TokenAuthentication], permission_classes=[IsAuthenticated])
     def logout(self, request):

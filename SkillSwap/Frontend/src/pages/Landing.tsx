@@ -6,7 +6,6 @@ import {
   BookOpen, 
   Users, 
   Calendar, 
-  MessageCircle, 
   Star, 
   TrendingUp,
   Check,

@@ -10,7 +10,6 @@ import {
   Users,
   Calendar,
   MessageCircle,
-  Shield,
 } from "lucide-react";
 
 export const Navbar: React.FC = () => {
@@ -78,18 +77,6 @@ export const Navbar: React.FC = () => {
                 </Link>
               ))}
 
-              {/* Admin Link - Only show for demo */}
-              <Link
-                to="/admin"
-                className={`flex items-center space-x-1 px-3 py-2 rounded-md transition-colors ${
-                  isActive("/admin")
-                    ? "bg-blue-50 text-blue-600"
-                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                }`}
-              >
-                <Shield className="w-4 h-4" />
-                <span>Admin</span>
-              </Link>
             </div>
           )}
 
@@ -177,18 +164,6 @@ export const Navbar: React.FC = () => {
                     <span>{label}</span>
                   </Link>
                 ))}
-                <Link
-                  to="/admin"
-                  onClick={() => setIsMenuOpen(false)}
-                  className={`flex items-center space-x-2 px-3 py-2 rounded-md ${
-                    isActive("/admin")
-                      ? "bg-blue-50 text-blue-600"
-                      : "text-gray-600 hover:bg-gray-50"
-                  }`}
-                >
-                  <Shield className="w-5 h-5" />
-                  <span>Admin</span>
-                </Link>
                 <Link
                   to="/profile"
                   onClick={() => setIsMenuOpen(false)}
