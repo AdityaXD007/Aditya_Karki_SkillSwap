@@ -33,7 +33,10 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework.authtoken',
     'corsheaders',
-    'api',
+    # 'api',  <-- Removing old app
+    'users',
+    'skills',
+    'learning',
 ]
 
 MIDDLEWARE = [
@@ -77,7 +80,7 @@ DATABASES = {
         "NAME": "skillswap",
         "USER": "aditya",
         "PASSWORD": "aditya",
-        'HOST': 'db',  # This is the service name in docker-compose
+        'HOST': '127.0.0.1',  # Use '127.0.0.1' for local dev, 'db' for docker-compose internal
         "PORT": "5432",
     }
 }

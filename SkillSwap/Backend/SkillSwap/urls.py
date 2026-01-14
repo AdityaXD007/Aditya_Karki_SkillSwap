@@ -19,5 +19,8 @@ from django.urls import path, include
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/', include('api.urls')),
+    # path('api/', include('api.urls')), <-- Removing old route
+    path('api/', include('users.urls')),
+    path('api/', include('skills.urls')),
+    path('api/', include('learning.urls')),
 ]
