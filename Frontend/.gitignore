@@ -24,7 +24,7 @@ dist-ssr
 *.sw?
 
 # Virtual environments
-SkillSwap/Backend/.venv/
+Backend/.venv/
 Frontend/node_modules/
 
 # Django
