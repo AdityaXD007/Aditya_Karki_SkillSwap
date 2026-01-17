@@ -45,8 +45,17 @@ class LoginSerializer(serializers.Serializer):
 class UserProfileSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='user.username', read_only=True)
     email = serializers.EmailField(source='user.email', read_only=True)
+    profile_image_url = serializers.SerializerMethodField()
 
     class Meta:
         model = UserProfile
-        fields = ['id', 'username', 'email', 'full_name', 'profile_image', 'location', 'bio', 'languages', 'availability']
+        fields = ['id', 'username', 'email', 'full_name', 'profile_image', 'profile_image_url', 
+                  'location', 'bio', 'languages', 'availability']
         read_only_fields = ['id', 'username', 'email']
+    
+    def get_profile_image_url(self, obj):
+        if obj.profile_image:
+            request = self.context.get('request')
+            if request is not None:
+                return request.build_absolute_uri(obj.profile_image.url)
+        return None

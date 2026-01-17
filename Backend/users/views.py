@@ -69,11 +69,32 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         """Get or update current user's profile"""
         profile, created = UserProfile.objects.get_or_create(user=request.user)
         if request.method == 'GET':
-            serializer = self.get_serializer(profile)
+            serializer = self.get_serializer(profile, context={'request': request})
             return Response(serializer.data)
         elif request.method in ['PUT', 'PATCH']:
-            serializer = self.get_serializer(profile, data=request.data, partial=True)
+            serializer = self.get_serializer(profile, data=request.data, partial=True, context={'request': request})
             if serializer.is_valid():
                 serializer.save()
                 return Response(serializer.data)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    @action(detail=False, methods=['post'], url_path='upload-image', permission_classes=[IsAuthenticated])
+    def upload_image(self, request):
+        """Upload profile image"""
+        profile, created = UserProfile.objects.get_or_create(user=request.user)
+        
+        if 'profile_image' not in request.FILES:
+            return Response(
+                {'error': 'No image file provided'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Delete old image if exists
+        if profile.profile_image:
+            profile.profile_image.delete(save=False)
+        
+        profile.profile_image = request.FILES['profile_image']
+        profile.save()
+        
+        serializer = self.get_serializer(profile, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)

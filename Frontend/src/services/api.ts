@@ -128,6 +128,12 @@ export const authAPI = {
 
   getProfile: () => api.get<UserProfile>('/profiles/me/'),
   updateProfile: (data: Partial<UserProfile>) => api.patch<UserProfile>('/profiles/me/', data),
+  uploadProfileImage: (formData: FormData) =>
+    api.post("/profiles/upload-image/", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    }),
 };
 
 // Skills API

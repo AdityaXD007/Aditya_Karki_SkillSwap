@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/components/Context/AuthContext";
 import {
   Camera,
@@ -25,6 +25,8 @@ export const Profile: React.FC = () => {
   const [isAddingAvailability, setIsAddingAvailability] = useState(false);
   const [newAvailabilityTime, setNewAvailabilityTime] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
     name: user?.name || "",
@@ -39,13 +41,13 @@ export const Profile: React.FC = () => {
       try {
         console.log(
           "Attempting to fetch skills... isAuthenticated:",
-          isAuthenticated
+          isAuthenticated,
         );
         const response = await skillsAPI.getAllSkills();
         console.log(
           "Skills response received:",
           response.status,
-          response.data
+          response.data,
         );
 
         if (Array.isArray(response.data)) {
@@ -59,18 +61,18 @@ export const Profile: React.FC = () => {
         console.error(
           "Fetch skills error:",
           err.response?.status,
-          err.response?.data || err.message
+          err.response?.data || err.message,
         );
 
         if (err.response?.status === 401 && retryCount < maxRetries) {
           retryCount++;
           console.log(`Retrying fetch skills (${retryCount}/${maxRetries})...`);
-          setTimeout(fetchSkills, 1000); // Wait 1s and retry
+          setTimeout(fetchSkills, 1000);
         } else if (isAuthenticated) {
           setError(
             `Database connection issue (${
               err.response?.status || "Network Error"
-            }). Please check if the backend is running.`
+            }). Please check if the backend is running.`,
           );
         }
       }
@@ -91,6 +93,51 @@ export const Profile: React.FC = () => {
       });
     }
   }, [user]);
+
+  const handleImageClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleImageChange = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file");
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image size should be less than 5MB");
+      return;
+    }
+
+    setIsUploadingImage(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("profile_image", file);
+
+      const response = await authAPI.uploadProfileImage(formData);
+
+      // Update user with new image URL
+      updateUser({ avatar: response.data.profile_image_url });
+      toast.success("Profile picture updated successfully");
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      toast.error("Failed to upload image. Please try again.");
+    } finally {
+      setIsUploadingImage(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
 
   const handleSaveProfile = async () => {
     setIsLoading(true);
@@ -166,7 +213,7 @@ export const Profile: React.FC = () => {
   const handleRemoveAvailability = async (index: number) => {
     if (!user) return;
     const newAvailability = (user.availability || []).filter(
-      (_, i) => i !== index
+      (_, i) => i !== index,
     );
 
     try {
@@ -204,13 +251,30 @@ export const Profile: React.FC = () => {
                 <img
                   src={
                     user?.avatar ||
-                    "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&h=200&fit=crop"
+                    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAJgAAACUCAMAAABY3hBoAAAAMFBMVEXk5ueutLersbTn6eq0ubzh4+S3vL/Gysy+w8W6v8HJzc/c3+DDx8nU19na3N7M0NKx/X9MAAAD+ElEQVR4nO2cSZLDIAxFAYHjAcz9b9vg2ImTeAIkoKr9V1n04pUQ4huJZuzWrVu3bt26devWrX8oAGBMKTX/qkQAg+l12zm1re6NqoENmDItF1wIwb2E/8m1UawoHICneiKtJYTUplzcgBm5QfViM4WiBqbZo5rZGlOADNQJ1oTWDbnRoD+lmsh43qCB6s7DNaO1ObkGeZXLZ5rKxmUuUz2VKdFgvB6unGQwhmK55RwycKngeDlJ+jxTTQQXF5KaCy7XiS8yTcxl47gcmSXdABGJ/yKjTDO4cD7ugrV0IQMTz+XIDBmYkglcrmaQgfUpAaPM/yQsupDFl4qXiMxZWoZxb2gpwILNzhYZyWH+SF5JLh4UIUsPGE36D+kBcxrRuSCxiD1FUMogyof9gOG7n8TjaBF+kiUYnrXQzQ9GFZvAsC0GTu5TZL9GAkMvsS0OGEf3sZFfRz9qsMES3P6H5A12g+2o2uSvtlzUWmARPpGeYNhHEhoYuoWt1fawAQcM3ygiWWv8dgQgfFbS3KuE3+5vCf/zrd4PXowSS3JFUO+lCkvflx0JV/qHkrAkYIylglHdDqeWMrrL4dTrdLIORJrFIMswlnZg0twML6q1yZVQMojbgtH9N0FTW1eK3Jl0O3IRxN1e5xgjiNkAeUZCwtupmSaPah2hmVYzYOhIjhkntQLGtLq8s4pXKy3lAblDNtQ5CuhnOu1JpgmePVyL+sNxU1twElaZbhNNiLbUFOybzTbSTzQvI83uh+xstrnEAwGo0T7appFOXdvbsYop8KeAzSzACq/gSrChwkDuBBjGaZR/ZdJk0+remsE/O8hPuOTVlOw/+1LMW0D3ZsgXPh8no+X0uOCs8Ps/6OyQ4dWBi5TRzW+MjvFka0fKwAFTtuMBjmcdOqkHori5StoGReo3cD1+3ICNm49DAtm4tKj55o+dZKqFTeMZWvWIyat9tG7EiBoMqFgTmrMeqWSAG603Wpe2oGAD3mAEoul41w0jFdaE5ox3FBpgNXX30aK+OMFQhmsm449wMKTppzO00E1w5f0YElpI5cCaYrtGpi+TYTXmr5J1Fz+pcHq5IWTyWkmjrhJbZFe2ANasTBAZPycrweV0FjMoxOVidphn2fN+paPncVjDrlESzT4XzmhFNNlupUUa34kn2+uDlUr8N9lmY6dogs3a7OaXXkgv0W8sZvGF9PodyEt7CIimjcZ5aaRZ374xswU70FeLGumpCoK+QlZHhk36mHmGagL2uTELH5KfWk/lQX43faCV/4l7xk+l1dOlmlZy/aC8pG/d1Ausoj3p9XI/UFnAXoaxrhR7e+xKjMVK8wh7Ddb1U/M/1KmrvHpJl/1/yVE3eJEGKbUAAAAASUVORK5CYII="
                   }
                   alt={user?.name}
                   className="w-full h-full object-cover transition-transform group-hover:scale-110"
                 />
+                {isUploadingImage && (
+                  <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-full">
+                    <Loader2 className="w-5 h-5 text-white animate-spin" />
+                  </div>
+                )}
               </div>
-              <button className="absolute bottom-1 right-1 bg-blue-600 text-white p-2.5 rounded-full hover:bg-blue-700 shadow-md transition-all hover:scale-110">
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleImageChange}
+                accept="image/*"
+                className="hidden"
+                disabled={isUploadingImage}
+              />
+              <button
+                onClick={handleImageClick}
+                disabled={isUploadingImage}
+                className="absolute bottom-1 right-1 bg-blue-600 text-white p-2.5 rounded-full hover:bg-blue-700 shadow-md transition-all hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
                 <Camera className="w-4 h-4" />
               </button>
             </div>
@@ -350,7 +414,7 @@ export const Profile: React.FC = () => {
                 <option value="">+ Add a skill to teach...</option>
                 {availableSkills
                   .filter(
-                    (s) => !teachingSkills.find((ts) => ts.skill_id === s.id)
+                    (s) => !teachingSkills.find((ts) => ts.skill_id === s.id),
                   )
                   .map((skill) => (
                     <option key={skill.id} value={skill.id}>
@@ -419,7 +483,7 @@ export const Profile: React.FC = () => {
                 <option value="">+ Add a skill to learn...</option>
                 {availableSkills
                   .filter(
-                    (s) => !learningSkills.find((ls) => ls.skill_id === s.id)
+                    (s) => !learningSkills.find((ls) => ls.skill_id === s.id),
                   )
                   .map((skill) => (
                     <option key={skill.id} value={skill.id}>
