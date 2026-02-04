@@ -253,7 +253,7 @@ export const Profile: React.FC = () => {
                     user?.avatar ||
                     "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAJgAAACUCAMAAABY3hBoAAAAMFBMVEXk5ueutLersbTn6eq0ubzh4+S3vL/Gysy+w8W6v8HJzc/c3+DDx8nU19na3N7M0NKx/X9MAAAD+ElEQVR4nO2cSZLDIAxFAYHjAcz9b9vg2ImTeAIkoKr9V1n04pUQ4huJZuzWrVu3bt26devWrX8oAGBMKTX/qkQAg+l12zm1re6NqoENmDItF1wIwb2E/8m1UawoHICneiKtJYTUplzcgBm5QfViM4WiBqbZo5rZGlOADNQJ1oTWDbnRoD+lmsh43qCB6s7DNaO1ObkGeZXLZ5rKxmUuUz2VKdFgvB6unGQwhmK55RwycKngeDlJ+jxTTQQXF5KaCy7XiS8yTcxl47gcmSXdABGJ/yKjTDO4cD7ugrV0IQMTz+XIDBmYkglcrmaQgfUpAaPM/yQsupDFl4qXiMxZWoZxb2gpwILNzhYZyWH+SF5JLh4UIUsPGE36D+kBcxrRuSCxiD1FUMogyof9gOG7n8TjaBF+kiUYnrXQzQ9GFZvAsC0GTu5TZL9GAkMvsS0OGEf3sZFfRz9qsMES3P6H5A12g+2o2uSvtlzUWmARPpGeYNhHEhoYuoWt1fawAQcM3ygiWWv8dgQgfFbS3KuE3+5vCf/zrd4PXowSS3JFUO+lCkvflx0JV/qHkrAkYIylglHdDqeWMrrL4dTrdLIORJrFIMswlnZg0twML6q1yZVQMojbgtH9N0FTW1eK3Jl0O3IRxN1e5xgjiNkAeUZCwtupmSaPah2hmVYzYOhIjhkntQLGtLq8s4pXKy3lAblDNtQ5CuhnOu1JpgmePVyL+sNxU1twElaZbhNNiLbUFOybzTbSTzQvI83uh+xstrnEAwGo0T7appFOXdvbsYop8KeAzSzACq/gSrChwkDuBBjGaZR/ZdJk0+remsE/O8hPuOTVlOw/+1LMW0D3ZsgXPh8no+X0uOCs8Ps/6OyQ4dWBi5TRzW+MjvFka0fKwAFTtuMBjmcdOqkHori5StoGReo3cD1+3ICNm49DAtm4tKj55o+dZKqFTeMZWvWIyat9tG7EiBoMqFgTmrMeqWSAG603Wpe2oGAD3mAEoul41w0jFdaE5ox3FBpgNXX30aK+OMFQhmsm449wMKTppzO00E1w5f0YElpI5cCaYrtGpi+TYTXmr5J1Fz+pcHq5IWTyWkmjrhJbZFe2ANasTBAZPycrweV0FjMoxOVidphn2fN+paPncVjDrlESzT4XzmhFNNlupUUa34kn2+uDlUr8N9lmY6dogs3a7OaXXkgv0W8sZvGF9PodyEt7CIimjcZ5aaRZ374xswU70FeLGumpCoK+QlZHhk36mHmGagL2uTELH5KfWk/lQX43faCV/4l7xk+l1dOlmlZy/aC8pG/d1Ausoj3p9XI/UFnAXoaxrhR7e+xKjMVK8wh7Ddb1U/M/1KmrvHpJl/1/yVE3eJEGKbUAAAAASUVORK5CYII="
                   }
-                  alt={user?.name}
+                  alt={user?.username || user?.name}
                   className="w-full h-full object-cover transition-transform group-hover:scale-110"
                 />
                 {isUploadingImage && (
@@ -293,12 +293,15 @@ export const Profile: React.FC = () => {
                     />
                   ) : (
                     <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
-                      {user?.name}
+                      {user?.username}
                     </h1>
                   )}
                   <p className="text-slate-500 font-medium mt-1">
-                    {user?.email}
+                    {user?.username || user?.email?.split("@")[0]}
                   </p>
+                  {user?.name && user.name !== user.username && (
+                    <p className="text-slate-400 text-sm mt-0.5">{user.name}</p>
+                  )}
                 </div>
 
                 <Button

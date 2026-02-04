@@ -76,7 +76,6 @@ export const Navbar: React.FC = () => {
                   <span>{label}</span>
                 </Link>
               ))}
-
             </div>
           )}
 
@@ -91,7 +90,7 @@ export const Navbar: React.FC = () => {
                   {user?.avatar ? (
                     <img
                       src={user.avatar}
-                      alt={user.name}
+                      alt={user?.username || user?.name}
                       className="w-8 h-8 rounded-full"
                     />
                   ) : (
@@ -100,7 +99,7 @@ export const Navbar: React.FC = () => {
                     </div>
                   )}
                   <span className="text-sm font-medium text-gray-700">
-                    {user?.name}
+                    {user?.username || user?.name?.split("@")[0]}
                   </span>
                 </Link>
                 <button

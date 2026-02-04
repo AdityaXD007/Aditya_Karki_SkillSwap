@@ -1,12 +1,12 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
-import { authAPI } from '@/services/api';
+import React, { createContext, useState, useContext, useEffect } from "react";
+import { authAPI } from "@/services/api";
 
 // Define User interface
 export interface UserSkillInfo {
   id: number;
   skill_id: number;
   name: string;
-  type: 'TEACH' | 'LEARN';
+  type: "TEACH" | "LEARN";
   proficiency: string;
 }
 
@@ -31,48 +31,55 @@ interface AuthContextType {
   isAuthenticated: boolean;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  signup: (email: string, password: string, name: string) => Promise<void>;
+  signup: (registrationData: any) => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (userData: Partial<User>) => void;
   refreshUserSkills: () => Promise<void>;
 }
 
-export const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const AuthContext = createContext<AuthContextType | undefined>(
+  undefined,
+);
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Check for stored user and token on mount
   useEffect(() => {
     const initAuth = async () => {
-      const storedUser = localStorage.getItem('user');
-      const token = localStorage.getItem('auth_token');
-      
+      const storedUser = localStorage.getItem("user");
+      const token = localStorage.getItem("auth_token");
+
       if (storedUser && token) {
         setUser(JSON.parse(storedUser));
         try {
           const response = await authAPI.getProfile();
           const userData = response.data;
-          
+
           const mappedUser: User = {
             id: userData.id.toString(),
             email: userData.email,
             name: userData.full_name || userData.username,
             username: userData.username,
-            avatar: userData.profile_image || undefined,
+            avatar:
+              userData.profile_image || userData.profile_image || undefined,
             bio: userData.bio,
             location: userData.location,
             skillsTeaching: [],
             skillsLearning: [],
             userSkills: [],
             rating: 5.0,
-            availability: userData.availability ? userData.availability.split(',').filter(Boolean) : [],
+            availability: userData.availability
+              ? userData.availability.split(",").filter(Boolean)
+              : [],
           };
-          
+
           setUser(mappedUser);
-          localStorage.setItem('user', JSON.stringify(mappedUser));
-          
+          localStorage.setItem("user", JSON.stringify(mappedUser));
+
           // Fetch skills after user is set
           await refreshUserSkills();
         } catch (error) {
@@ -88,29 +95,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const refreshUserSkills = async () => {
     try {
-      const response = await import('@/services/api').then(m => m.skillsAPI.getUserSkills());
+      const response = await import("@/services/api").then((m) =>
+        m.skillsAPI.getUserSkills(),
+      );
       const skills = response.data;
-      
-      setUser(prev => {
+
+      setUser((prev) => {
         if (!prev) return null;
-        const userSkills: UserSkillInfo[] = skills.map(s => ({
+        const userSkills: UserSkillInfo[] = skills.map((s) => ({
           id: s.id,
           skill_id: s.skill_id,
           name: s.skill_details.name,
           type: s.skill_type,
-          proficiency: s.proficiency_level
+          proficiency: s.proficiency_level,
         }));
-        
+
         const skillsTeaching = userSkills
-          .filter(s => s.type === 'TEACH')
-          .map(s => s.name);
+          .filter((s) => s.type === "TEACH")
+          .map((s) => s.name);
         const skillsLearning = userSkills
-          .filter(s => s.type === 'LEARN')
-          .map(s => s.name);
-        
+          .filter((s) => s.type === "LEARN")
+          .map((s) => s.name);
+
         const updated = { ...prev, userSkills, skillsTeaching, skillsLearning };
         // We don't overwrite user profile fields here, only skills
-        localStorage.setItem('user', JSON.stringify(updated));
+        localStorage.setItem("user", JSON.stringify(updated));
         return updated;
       });
     } catch (error) {
@@ -126,7 +135,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // The login response gives basic User info, but we likely want the full profile
       // For now we can map what we have, or fetch profile immediately
       const token = response.data.token;
-      localStorage.setItem('auth_token', token);
+      localStorage.setItem("auth_token", token);
 
       // Fetch full profile details
       const profileResponse = await authAPI.getProfile();
@@ -144,31 +153,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         skillsLearning: [],
         userSkills: [],
         rating: 5.0,
-        availability: userData.availability ? userData.availability.split(',').filter(Boolean) : [],
+        availability: userData.availability
+          ? userData.availability.split(",").filter(Boolean)
+          : [],
       };
 
       setUser(mappedUser);
-      localStorage.setItem('user', JSON.stringify(mappedUser));
+      localStorage.setItem("user", JSON.stringify(mappedUser));
       await refreshUserSkills();
     } catch (error: any) {
-      throw new Error(error.response?.data?.error || 'Invalid credentials');
+      throw new Error(error.response?.data?.error || "Invalid credentials");
     } finally {
       setLoading(false);
     }
   };
 
   // Signup function
-  const signup = async (email: string, password: string, name: string): Promise<void> => {
+  const signup = async (registrationData: any): Promise<void> => {
     setLoading(true);
     try {
-      const response = await authAPI.register(email, password, name);
+      const response = await authAPI.register(registrationData);
       const token = response.data.token;
-      localStorage.setItem('auth_token', token);
+      localStorage.setItem("auth_token", token);
 
       // Fetch the newly created profile (which should exist via signal)
       const profileResponse = await authAPI.getProfile();
       const userData = profileResponse.data;
-      
+
       const mappedUser: User = {
         id: userData.id.toString(),
         email: userData.email,
@@ -181,22 +192,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         skillsLearning: [],
         userSkills: [],
         rating: 5.0,
-        availability: userData.availability ? userData.availability.split(',').filter(Boolean) : [],
+        availability: userData.availability
+          ? userData.availability.split(",").filter(Boolean)
+          : [],
       };
-      
+
       setUser(mappedUser);
-      localStorage.setItem('user', JSON.stringify(mappedUser));
+      localStorage.setItem("user", JSON.stringify(mappedUser));
       await refreshUserSkills();
     } catch (error: any) {
-      const errorMsg = error.response?.data?.email?.[0] || 
-                       error.response?.data?.password?.[0] || 
-                       'Failed to create account';
+      const errorMsg =
+        error.response?.data?.username?.[0] ||
+        error.response?.data?.email?.[0] ||
+        error.response?.data?.password?.[0] ||
+        "Failed to create account";
       throw new Error(errorMsg);
     } finally {
       setLoading(false);
     }
   };
-   
+
   // Logout function
   const logout = async () => {
     try {
@@ -205,22 +220,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error("Logout error", error);
     } finally {
       setUser(null);
-      localStorage.removeItem('user');
-      localStorage.removeItem('auth_token');
+      localStorage.removeItem("user");
+      localStorage.removeItem("auth_token");
     }
   };
-  
+
   // Update user profile wrapper
   const updateUser = (userData: Partial<User>) => {
-      if (user) {
-        // Optimistic update
-        const updatedUser = { ...user, ...userData };
-        setUser(updatedUser);
-        localStorage.setItem('user', JSON.stringify(updatedUser));
-        
-        // TODO: Call authAPI.updateProfile here if we want to persist changes to backend automatically
-        // For now, we assume the component calling this also calls the API
-      }
+    if (user) {
+      // Optimistic update
+      const updatedUser = { ...user, ...userData };
+      setUser(updatedUser);
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+
+      // TODO: Call authAPI.updateProfile here if we want to persist changes to backend automatically
+      // For now, we assume the component calling this also calls the API
+    }
   };
 
   const value = {
@@ -231,9 +246,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     signup,
     logout,
     updateUser,
-    refreshUserSkills
+    refreshUserSkills,
   };
-
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
@@ -242,7 +256,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 };

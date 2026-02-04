@@ -54,7 +54,7 @@ export const Dashboard: React.FC = () => {
         {/* Welcome Section */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">
-            Welcome back, {user?.name}! 👋
+            Welcome back, {user?.username || user?.name?.split("@")[0]}! 👋
           </h1>
           <p className="mt-2 text-gray-600">
             Here's what's happening with your learning journey

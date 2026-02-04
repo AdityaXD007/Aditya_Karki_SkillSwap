@@ -11,31 +11,44 @@ class UserSerializer(serializers.ModelSerializer):
         read_only_fields = ['id']
 
 class RegisterSerializer(serializers.ModelSerializer):
-    name = serializers.CharField(write_only=True, required=False)
     password = serializers.CharField(write_only=True, min_length=8)
     password_confirm = serializers.CharField(write_only=True)
+    first_name = serializers.CharField(write_only=True)
+    last_name = serializers.CharField(write_only=True)
 
     class Meta:
         model = User
-        fields = ['email', 'password', 'password_confirm', 'name']
+        fields = ['username', 'email', 'password', 'password_confirm', 'first_name', 'last_name']
 
     def validate(self, data):
         if data['password'] != data['password_confirm']:
             raise serializers.ValidationError({'password': "Passwords don't match"})
         if User.objects.filter(email=data['email']).exists():
             raise serializers.ValidationError({'email': "User with this email already exists"})
+        if User.objects.filter(username=data['username']).exists():
+            raise serializers.ValidationError({'username': "This username is already taken"})
         return data
 
     def create(self, validated_data):
-        name = validated_data.pop('name', '')
-        first_name = name
+        validated_data.pop('password_confirm')
+        first_name = validated_data.pop('first_name', '')
+        last_name = validated_data.pop('last_name', '')
+        username = validated_data.pop('username')
+        email = validated_data.pop('email')
+        password = validated_data.pop('password')
         
         user = User.objects.create_user(
-            username=validated_data['email'],
-            email=validated_data['email'],
-            password=validated_data['password'],
-            first_name=first_name
+            username=username,
+            email=email,
+            password=password,
+            first_name=first_name,
+            last_name=last_name
         )
+        
+        # Save the full name to UserProfile
+        user.profile.full_name = f"{first_name} {last_name}".strip()
+        user.profile.save()
+        
         return user
 
 class LoginSerializer(serializers.Serializer):
@@ -46,12 +59,19 @@ class UserProfileSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='user.username', read_only=True)
     email = serializers.EmailField(source='user.email', read_only=True)
     profile_image_url = serializers.SerializerMethodField()
+    full_name = serializers.SerializerMethodField()
 
     class Meta:
         model = UserProfile
         fields = ['id', 'username', 'email', 'full_name', 'profile_image', 'profile_image_url', 
                   'location', 'bio', 'languages', 'availability']
-        read_only_fields = ['id', 'username', 'email']
+        read_only_fields = ['id', 'username', 'email', 'full_name']
+    
+    def get_full_name(self, obj):
+        # Return full_name from UserProfile if available, otherwise use Django User's first_name
+        if obj.full_name and obj.full_name.strip():
+            return obj.full_name
+        return obj.user.first_name or obj.user.username
     
     def get_profile_image_url(self, obj):
         if obj.profile_image:

@@ -113,13 +113,8 @@ export interface LearningSession {
 
 // Auth API calls
 export const authAPI = {
-  register: (email: string, password: string, name: string) =>
-    api.post('/auth/register/', {
-      email,
-      password,
-      password_confirm: password,
-      name
-    }),
+  register: (data: any) =>
+    api.post('/auth/register/', data),
 
   login: (email: string, password: string) =>
     api.post('/auth/login/', { email, password }),

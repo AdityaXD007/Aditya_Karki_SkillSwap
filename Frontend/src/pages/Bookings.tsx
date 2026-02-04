@@ -1,7 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import { sessionsAPI, requestsAPI } from '@/services/api';
-import { useAuth } from '@/components/Context/AuthContext';
-import { Calendar, Clock, MapPin, User, CheckCircle, XCircle } from 'lucide-react';
+import React, { useState, useEffect } from "react";
+import { sessionsAPI, requestsAPI } from "@/services/api";
+import { useAuth } from "@/components/Context/AuthContext";
+import {
+  Calendar,
+  Clock,
+  MapPin,
+  User,
+  CheckCircle,
+  XCircle,
+} from "lucide-react";
 
 // Unified type for display
 interface DisplayBooking {
@@ -14,8 +21,8 @@ interface DisplayBooking {
   time: string;
   duration: number;
   location: string;
-  type: 'teaching' | 'learning' | 'unknown';
-  status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
+  type: "teaching" | "learning" | "unknown";
+  status: "pending" | "confirmed" | "completed" | "cancelled";
   rawStatus: string;
 }
 
@@ -23,54 +30,56 @@ export const Bookings: React.FC = () => {
   const { user } = useAuth();
   const [items, setItems] = useState<DisplayBooking[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming');
+  const [activeTab, setActiveTab] = useState<"upcoming" | "past">("upcoming");
 
   const fetchData = async () => {
     try {
       setLoading(true);
       const [sessionsRes, requestsRes] = await Promise.all([
         sessionsAPI.getSessions(),
-        requestsAPI.getRequests()
+        requestsAPI.getRequests(),
       ]);
 
       const displayItems: DisplayBooking[] = [];
 
       // Map Requests (Pending stuff mostly)
-      requestsRes.data.forEach(req => {
+      requestsRes.data.forEach((req) => {
         const isRequester = req.requester_details.username === user?.username;
-        const partner = isRequester ? req.partner_details : req.requester_details;
-        
+        const partner = isRequester
+          ? req.partner_details
+          : req.requester_details;
+
         displayItems.push({
           id: req.id,
           isRequest: true,
-          skill: req.skill_learn_details?.name || 'Skill Exchange',
+          skill: req.skill_learn_details?.name || "Skill Exchange",
           partnerName: partner.full_name || partner.username,
           partnerAvatar: partner.profile_image || undefined,
           date: new Date(req.created_at).toLocaleDateString(), // Requests don't have scheduled time yet usually
-          time: 'TBD',
+          time: "TBD",
           duration: req.session_length,
-          location: 'Online',
-          type: isRequester ? 'learning' : 'teaching', // If I requested, I want to learn (usually)
+          location: "Online",
+          type: isRequester ? "learning" : "teaching", // If I requested, I want to learn (usually)
           status: req.status.toLowerCase() as any, // PENDING, ACCEPTED, REJECTED
-          rawStatus: req.status
+          rawStatus: req.status,
         });
       });
 
       // Map Sessions (Confirmed/Scheduled)
-      sessionsRes.data.forEach(sess => {
+      sessionsRes.data.forEach((sess) => {
         // We need to deduce if we are teacher or student.
-        // The API returns student_name and teacher_name. 
+        // The API returns student_name and teacher_name.
         // We can compare with user.name or user.username if available.
         // Ideally the API should return normalized "partner" info, but let's guess.
-        const headerName = user?.name || user?.username || '';
-        const isTeacher = sess.teacher_name === headerName; 
-        
+        const headerName = user?.username || user?.name?.split("@")[0] || "";
+        const isTeacher = sess.teacher_name === headerName;
+
         const partnerName = isTeacher ? sess.student_name : sess.teacher_name;
 
         // Status mapping
-        let status: 'confirmed' | 'completed' | 'cancelled' = 'confirmed';
-        if (sess.status === 'COMPLETED') status = 'completed';
-        if (sess.status === 'CANCELLED') status = 'cancelled';
+        let status: "confirmed" | "completed" | "cancelled" = "confirmed";
+        if (sess.status === "COMPLETED") status = "completed";
+        if (sess.status === "CANCELLED") status = "cancelled";
 
         displayItems.push({
           id: sess.id,
@@ -79,18 +88,21 @@ export const Bookings: React.FC = () => {
           partnerName: partnerName,
           partnerAvatar: undefined, // Session doesn't include avatar yet
           date: new Date(sess.scheduled_time).toLocaleDateString(),
-          time: new Date(sess.scheduled_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          time: new Date(sess.scheduled_time).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
           duration: sess.duration,
-          location: sess.meeting_link || 'Online',
-          type: isTeacher ? 'teaching' : 'learning',
+          location: sess.meeting_link || "Online",
+          type: isTeacher ? "teaching" : "learning",
           status: status,
-          rawStatus: sess.status
+          rawStatus: sess.status,
         });
       });
 
       setItems(displayItems);
     } catch (error) {
-      console.error('Error fetching bookings:', error);
+      console.error("Error fetching bookings:", error);
     } finally {
       setLoading(false);
     }
@@ -119,34 +131,40 @@ export const Bookings: React.FC = () => {
   };
 
   // Filtering
-  const upcomingItems = items.filter(b => 
-    b.status === 'confirmed' || b.status === 'pending' || b.rawStatus === 'ACCEPTED' 
+  const upcomingItems = items.filter(
+    (b) =>
+      b.status === "confirmed" ||
+      b.status === "pending" ||
+      b.rawStatus === "ACCEPTED",
   );
   // Past items
-  const pastItems = items.filter(b => 
-    b.status === 'completed' || b.status === 'cancelled' || b.rawStatus === 'REJECTED'
+  const pastItems = items.filter(
+    (b) =>
+      b.status === "completed" ||
+      b.status === "cancelled" ||
+      b.rawStatus === "REJECTED",
   );
 
-  const displayedItems = activeTab === 'upcoming' ? upcomingItems : pastItems;
+  const displayedItems = activeTab === "upcoming" ? upcomingItems : pastItems;
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'confirmed':
-      case 'ACCEPTED':
-        return 'bg-green-100 text-green-700';
-      case 'pending':
-      case 'PENDING':
-        return 'bg-yellow-100 text-yellow-700';
-      case 'completed':
-      case 'COMPLETED':
-        return 'bg-blue-100 text-blue-700';
-      case 'cancelled':
-      case 'rejected':
-      case 'CANCELLED':
-      case 'REJECTED':
-        return 'bg-red-100 text-red-700';
+      case "confirmed":
+      case "ACCEPTED":
+        return "bg-green-100 text-green-700";
+      case "pending":
+      case "PENDING":
+        return "bg-yellow-100 text-yellow-700";
+      case "completed":
+      case "COMPLETED":
+        return "bg-blue-100 text-blue-700";
+      case "cancelled":
+      case "rejected":
+      case "CANCELLED":
+      case "REJECTED":
+        return "bg-red-100 text-red-700";
       default:
-        return 'bg-gray-100 text-gray-700';
+        return "bg-gray-100 text-gray-700";
     }
   };
 
@@ -155,28 +173,30 @@ export const Bookings: React.FC = () => {
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">My Sessions</h1>
-          <p className="mt-2 text-gray-600">Manage your learning and teaching sessions</p>
+          <p className="mt-2 text-gray-600">
+            Manage your learning and teaching sessions
+          </p>
         </div>
 
         {/* Tabs */}
         <div className="mb-6 border-b border-gray-200">
           <div className="flex space-x-8">
             <button
-              onClick={() => setActiveTab('upcoming')}
+              onClick={() => setActiveTab("upcoming")}
               className={`pb-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'upcoming'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
+                activeTab === "upcoming"
+                  ? "border-blue-600 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
               }`}
             >
               Upcoming ({upcomingItems.length})
             </button>
             <button
-              onClick={() => setActiveTab('past')}
+              onClick={() => setActiveTab("past")}
               className={`pb-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'past'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
+                activeTab === "past"
+                  ? "border-blue-600 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
               }`}
             >
               Past ({pastItems.length})
@@ -193,28 +213,38 @@ export const Bookings: React.FC = () => {
           <div className="space-y-4">
             {displayedItems.map((item) => (
               <div
-                key={`${item.isRequest ? 'req' : 'sess'}-${item.id}`}
+                key={`${item.isRequest ? "req" : "sess"}-${item.id}`}
                 className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex items-start space-x-4 flex-1">
                     <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold shrink-0">
-                        {item.partnerAvatar ? (
-                           <img src={item.partnerAvatar} alt="" className="w-full h-full rounded-full object-cover"/> 
-                        ) : (
-                           (item.partnerName || 'U')[0]
-                        )}
+                      {item.partnerAvatar ? (
+                        <img
+                          src={item.partnerAvatar}
+                          alt=""
+                          className="w-full h-full rounded-full object-cover"
+                        />
+                      ) : (
+                        (item.partnerName || "U")[0]
+                      )}
                     </div>
                     <div className="flex-1">
-                      <h3 className="font-semibold text-lg text-gray-900">{item.skill}</h3>
+                      <h3 className="font-semibold text-lg text-gray-900">
+                        {item.skill}
+                      </h3>
                       <div className="flex items-center space-x-2 mt-1 text-sm text-gray-600">
                         <User className="w-4 h-4" />
                         <span>with {item.partnerName}</span>
                         <span className="text-gray-400">•</span>
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                          item.type === 'teaching' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'
-                        }`}>
-                          {item.type === 'teaching' ? 'Teaching' : 'Learning'}
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                            item.type === "teaching"
+                              ? "bg-blue-100 text-blue-700"
+                              : "bg-purple-100 text-purple-700"
+                          }`}
+                        >
+                          {item.type === "teaching" ? "Teaching" : "Learning"}
                         </span>
                       </div>
                       <div className="mt-3 grid grid-cols-2 gap-4 text-sm text-gray-600">
@@ -224,7 +254,9 @@ export const Bookings: React.FC = () => {
                         </div>
                         <div className="flex items-center space-x-2">
                           <Clock className="w-4 h-4" />
-                          <span>{item.time} ({item.duration} min)</span>
+                          <span>
+                            {item.time} ({item.duration} min)
+                          </span>
                         </div>
                         <div className="flex items-center space-x-2 col-span-2">
                           <MapPin className="w-4 h-4" />
@@ -234,28 +266,32 @@ export const Bookings: React.FC = () => {
                     </div>
                   </div>
                   <div className="flex flex-col items-end space-y-2">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(item.rawStatus)}`}>
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(item.rawStatus)}`}
+                    >
                       {item.rawStatus}
                     </span>
                     {/* Show Accept/Reject only for pending requests where I am the recipient (teaching) */}
-                    {item.isRequest && item.rawStatus === 'PENDING' && item.type === 'teaching' && (
-                      <div className="flex space-x-2">
-                        <button 
-                          onClick={() => handleAccept(item.id)}
-                          className="p-2 text-green-600 hover:bg-green-50 rounded"
-                          title="Accept Request"
-                        >
-                          <CheckCircle className="w-5 h-5" />
-                        </button>
-                        <button 
-                          onClick={() => handleReject(item.id)}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded"
-                          title="Reject Request"
-                        >
-                          <XCircle className="w-5 h-5" />
-                        </button>
-                      </div>
-                    )}
+                    {item.isRequest &&
+                      item.rawStatus === "PENDING" &&
+                      item.type === "teaching" && (
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => handleAccept(item.id)}
+                            className="p-2 text-green-600 hover:bg-green-50 rounded"
+                            title="Accept Request"
+                          >
+                            <CheckCircle className="w-5 h-5" />
+                          </button>
+                          <button
+                            onClick={() => handleReject(item.id)}
+                            className="p-2 text-red-600 hover:bg-red-50 rounded"
+                            title="Reject Request"
+                          >
+                            <XCircle className="w-5 h-5" />
+                          </button>
+                        </div>
+                      )}
                   </div>
                 </div>
               </div>
