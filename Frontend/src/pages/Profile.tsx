@@ -16,6 +16,7 @@ import { skillsAPI, authAPI, type Skill } from "@/services";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { motion } from "framer-motion";
 
 export const Profile: React.FC = () => {
   const { user, updateUser, refreshUserSkills, isAuthenticated } = useAuth();
@@ -139,6 +140,31 @@ export const Profile: React.FC = () => {
     }
   };
 
+  const [pendingSkill, setPendingSkill] = useState<{ id: number; name: string; type: "TEACH" | "LEARN" } | null>(null);
+
+  const PROFICIENCY_LEVELS = [
+    { 
+      value: "BEGINNER", 
+      label: "Beginner", 
+      color: "bg-blue-50 text-blue-700 border-blue-100 hover:bg-blue-100/80"
+    },
+    { 
+      value: "INTERMEDIATE", 
+      label: "Intermediate", 
+      color: "bg-green-50 text-green-700 border-green-100 hover:bg-green-100/80"
+    },
+    { 
+      value: "ADVANCED", 
+      label: "Advanced", 
+      color: "bg-purple-50 text-purple-700 border-purple-100 hover:bg-purple-100/80"
+    },
+    { 
+      value: "EXPERT", 
+      label: "Expert", 
+      color: "bg-amber-50 text-amber-700 border-amber-100 hover:bg-amber-100/80"
+    },
+  ];
+
   const handleSaveProfile = async () => {
     setIsLoading(true);
     try {
@@ -160,21 +186,45 @@ export const Profile: React.FC = () => {
     }
   };
 
-  const handleAddSkill = async (skillId: number, type: "TEACH" | "LEARN") => {
-    if (!skillId) return;
+  const handleAddSkill = async (level: string) => {
+    if (!pendingSkill) return;
     try {
       await skillsAPI.addUserSkill({
-        skill_id: skillId,
-        skill_type: type,
-        proficiency_level: "INTERMEDIATE",
+        skill_id: pendingSkill.id,
+        skill_type: pendingSkill.type,
+        proficiency_level: level,
         description: "",
       });
       await refreshUserSkills();
-      toast.success("Skill added successfully");
+      toast.success(`${pendingSkill.name} added`);
+      setPendingSkill(null);
     } catch (error: any) {
       const errorMsg =
         error.response?.data?.non_field_errors?.[0] || "Failed to add skill";
       toast.error(errorMsg);
+    }
+  };
+
+  const onSkillSelect = async (skillId: number, type: "TEACH" | "LEARN") => {
+    const skill = availableSkills.find(s => s.id === skillId);
+    if (!skill) return;
+
+    if (type === "LEARN") {
+      try {
+        await skillsAPI.addUserSkill({
+          skill_id: skill.id,
+          skill_type: "LEARN",
+          proficiency_level: "BEGINNER",
+          description: "",
+        });
+        await refreshUserSkills();
+        toast.success(`${skill.name} added to interests`);
+      } catch (error: any) {
+        const errorMsg = error.response?.data?.non_field_errors?.[0] || "Failed to add skill";
+        toast.error(errorMsg);
+      }
+    } else {
+      setPendingSkill({ id: skill.id, name: skill.name, type });
     }
   };
 
@@ -251,7 +301,7 @@ export const Profile: React.FC = () => {
                 <img
                   src={
                     user?.avatar ||
-                    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAJgAAACUCAMAAABY3hBoAAAAMFBMVEXk5ueutLersbTn6eq0ubzh4+S3vL/Gysy+w8W6v8HJzc/c3+DDx8nU19na3N7M0NKx/X9MAAAD+ElEQVR4nO2cSZLDIAxFAYHjAcz9b9vg2ImTeAIkoKr9V1n04pUQ4huJZuzWrVu3bt26devWrX8oAGBMKTX/qkQAg+l12zm1re6NqoENmDItF1wIwb2E/8m1UawoHICneiKtJYTUplzcgBm5QfViM4WiBqbZo5rZGlOADNQJ1oTWDbnRoD+lmsh43qCB6s7DNaO1ObkGeZXLZ5rKxmUuUz2VKdFgvB6unGQwhmK55RwycKngeDlJ+jxTTQQXF5KaCy7XiS8yTcxl47gcmSXdABGJ/yKjTDO4cD7ugrV0IQMTz+XIDBmYkglcrmaQgfUpAaPM/yQsupDFl4qXiMxZWoZxb2gpwILNzhYZyWH+SF5JLh4UIUsPGE36D+kBcxrRuSCxiD1FUMogyof9gOG7n8TjaBF+kiUYnrXQzQ9GFZvAsC0GTu5TZL9GAkMvsS0OGEf3sZFfRz9qsMES3P6H5A12g+2o2uSvtlzUWmARPpGeYNhHEhoYuoWt1fawAQcM3ygiWWv8dgQgfFbS3KuE3+5vCf/zrd4PXowSS3JFUO+lCkvflx0JV/qHkrAkYIylglHdDqeWMrrL4dTrdLIORJrFIMswlnZg0twML6q1yZVQMojbgtH9N0FTW1eK3Jl0O3IRxN1e5xgjiNkAeUZCwtupmSaPah2hmVYzYOhIjhkntQLGtLq8s4pXKy3lAblDNtQ5CuhnOu1JpgmePVyL+sNxU1twElaZbhNNiLbUFOybzTbSTzQvI83uh+xstrnEAwGo0T7appFOXdvbsYop8KeAzSzACq/gSrChwkDuBBjGaZR/ZdJk0+remsE/O8hPuOTVlOw/+1LMW0D3ZsgXPh8no+X0uOCs8Ps/6OyQ4dWBi5TRzW+MjvFka0fKwAFTtuMBjmcdOqkHori5StoGReo3cD1+3ICNm49DAtm4tKj55o+dZKqFTeMZWvWIyat9tG7EiBoMqFgTmrMeqWSAG603Wpe2oGAD3mAEoul41w0jFdaE5ox3FBpgNXX30aK+OMFQhmsm449wMKTppzO00E1w5f0YElpI5cCaYrtGpi+TYTXmr5J1Fz+pcHq5IWTyWkmjrhJbZFe2ANasTBAZPycrweV0FjMoxOVidphn2fN+paPncVjDrlESzT4XzmhFNNlupUUa34kn2+uDlUr8N9lmY6dogs3a7OaXXkgv0W8sZvGF9PodyEt7CIimjcZ5aaRZ374xswU70FeLGumpCoK+QlZHhk36mHmGagL2uTELH5KfWk/lQX43faCV/4l7xk+l1dOlmlZy/aC8pG/d1Ausoj3p9XI/UFnAXoaxrhR7e+xKjMVK8wh7Ddb1U/M/1KmrvHpJl/1/yVE3eJEGKbUAAAAASUVORK5CYII="
+                    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAJgAAACUCAMAAABY3hBoAAAAMFBMVEXk5ueutLersbTn6eq0ubzh4+S3vL/Gysy+w8W6v8HJzc/c3+DDx8nU19na3N7M0NKx/X9MAAAD+ElEQVR4nO2cSZLDIAxFAYHjAcz9b9vg2ImTeAIkoKr9V1n04pUQ4huJZuzWrVu3bt26devWrX8oAGBMKTX/qkQAg+l12zm1re6NqoENmDItF1wIwb2E/8m1UawoHICneiKtJYTUplzcgBm5QfViM4WiBqbZo5rZGlOADNQJ1oTWDbnRoD+lmsh43qCB6s7DNaO1ObkGeZXLZ5rKxmUuUz2VKdFgvB6unGQwhmK55RwycKngeDlJ+jxTTQQXF5KaCy7XiS8yTcxl47gcmSXdABGJ/yKjTDO4cD7ugrV0IQMTz+XIDBmYkglcrmaQgfUpAaPM/yQsupDFl4qXiMxZWoZxb2gpwILNzhYZyWH+SF5JLh4UIUsPGE36D+kBcxrRuSCxiD1FUMogyof9gOG7n8TjaBF+kiUYnrXQzQ9GFZvAsC0GTu5TZL9GAkMvsS0OGEf3sZFfRz9qsMES3P6H5A12g+2o2uSvtlzUWmARPpGeYNhHEhoYuoWt1fawAQcM3ygiWWv8dgQgfFbS3KuE3+5vCf/zrd4PXowSS3JFUO+lCkvflx0JV/qHkrAkYIylglHdDqeWMrrL4dTrdLIORJrFIMswlnZg0twML6q1yZVQMojbgtH9N0FTW1eK3Jl0O3IRxN1e5xgjiNkAeUZCwtupmSaPah2hmVYzYOhIjhkntQLGtLq8s4pXKy3lAblDNtQ5CuhnOu1JpgmePVyL+sNxU1twElaZbhNNiLbUFOybzTbSTzQvI83uh+xstrnEAwGo0T7appFOXdvbsYop8KeAzSzACq/gSrChwkDuBBjGaZR/ZdJk0+remsE/O8hPuOTVlOw/+1LMW0D3ZsgXPh8no+X0uOCs8Ps/6OyQ4dWBi5TRzW+MjvFka0fKwAFTtuMBjmcdOqkHori5StoGReo3cD1+3ICNm49DAtm4tKj55o+dZKqFTeMZWvWIyat9tG7EiBoMqFgTmrMeqWSAG603Wpe2oGAD3mAEoul41w0jFdaE5ox3FBpgNXX30aK+OMFQhmsm449wMKTppzO00E1w5f0YElpI5cCaYrtGpi+TYTXmr5J1Fz+pcHq5IWTyWkmjrhJbZFe2ANasTBAZPycrweV0FjMoxOVidphn2fN+paPncVjDrlESzT4XzmhFNNlupUUa34kn2+uDlUr8N9lmY6dogs3a7OaXXkgv0W8sZvGF9PodyEt7CIimjcZ5aaRZ374xswU70FeLGumpCoK+QlZHhk36mHmGagL2uTELH5KfWk/lQX43faCV/4l7xk+l1dOlmlZy/aC8G+pG/d1Ausoj3p9XI/UFnAXoaxrhR7e+xKjMVK8wh7Ddb1U/M/1KmrvHpJl/1/yVE3eJEGKbUAAAAASUVORK5CYII="
                   }
                   alt={user?.username || user?.name}
                   className="w-full h-full object-cover transition-transform group-hover:scale-110"
@@ -330,7 +380,7 @@ export const Profile: React.FC = () => {
                 <div className="flex items-center space-x-1.5 bg-yellow-50 px-3 py-1 rounded-full border border-yellow-100">
                   <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
                   <span className="text-sm font-bold text-yellow-700">
-                    {user?.rating.toFixed(1)}
+                    {user?.rating?.toFixed(1) || "0.0"}
                   </span>
                 </div>
                 <div className="flex items-center space-x-1.5 text-slate-600">
@@ -386,19 +436,24 @@ export const Profile: React.FC = () => {
                 <Badge
                   key={skill.id}
                   variant="secondary"
-                  className="px-3 py-1.5 bg-blue-50 text-blue-700 border-blue-100 hover:bg-blue-100 transition-colors gap-2 text-sm font-semibold group flex items-center"
+                  className="px-3 py-1.5 bg-blue-50 border-blue-100 hover:bg-blue-100 transition-colors gap-2 text-sm font-semibold group flex items-center"
                 >
                   {skill.icon_class && (
                     <i
                       className={`${skill.icon_class} ${
-                        skill.color_class || "text-blue-500"
-                      } mr-1`}
+                        skill.color_class || (skill.icon_class.includes("devicon") ? "colored" : "text-slate-400")
+                      }`}
                     ></i>
                   )}
-                  {skill.name}
+                  <span className="text-blue-700">
+                    {skill.name}
+                    <span className="text-[10px] opacity-60 font-normal ml-1 capitalize">
+                      ({skill.proficiency.toLowerCase()})
+                    </span>
+                  </span>
                   <button
                     onClick={() => handleRemoveSkill(skill.id)}
-                    className="ml-1 hover:text-red-500 transition-colors"
+                    className="ml-1 text-blue-400 hover:text-red-500 transition-colors"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
@@ -411,39 +466,59 @@ export const Profile: React.FC = () => {
               )}
             </div>
 
-            <div className="mt-6 pt-6 border-t border-slate-100">
-              <select
-                onChange={(e) => {
-                  if (e.target.value) {
-                    handleAddSkill(Number(e.target.value), "TEACH");
-                    e.target.value = "";
-                  }
-                }}
-                className="w-full p-3 border border-slate-200 rounded-xl bg-slate-50 text-slate-700 text-sm focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer"
-              >
-                <option value="">+ Add a skill to teach...</option>
-                {availableSkills
-                  .filter(
-                    (s) => !teachingSkills.find((ts) => ts.skill_id === s.id),
-                  )
-                  .map((skill) => (
-                    <option key={skill.id} value={skill.id}>
-                      {skill.name}
-                    </option>
-                  ))}
-              </select>
-              {availableSkills.length === 0 && !error && (
-                <div className="mt-2 flex items-center justify-between">
-                  <p className="text-xs text-amber-600 italic">
-                    No skills loaded.
-                  </p>
-                  <button
-                    onClick={() => window.location.reload()}
-                    className="text-xs text-blue-600 hover:underline font-medium"
+            <div className="mt-8 pt-6 border-t border-slate-100">
+              {pendingSkill?.type === "TEACH" ? (
+                <motion.div 
+                  initial={{ opacity: 0, y: 10 }} 
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-slate-50 p-4 rounded-xl border border-slate-200"
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-xs font-bold text-slate-500">
+                      LEVEL FOR <span className="text-blue-600 font-extrabold">{pendingSkill.name.toUpperCase()}</span>
+                    </p>
+                    <button onClick={() => setPendingSkill(null)} className="text-slate-400 hover:text-slate-600 p-1">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {PROFICIENCY_LEVELS.map((level) => (
+                      <button
+                        key={level.value}
+                        onClick={() => handleAddSkill(level.value)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${level.color} border-slate-200 hover:border-blue-300`}
+                      >
+                        {level.label}
+                      </button>
+                    ))}
+                  </div>
+                </motion.div>
+              ) : (
+                <>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 block ml-1">
+                    Add New Skill
+                  </label>
+                  <select
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        onSkillSelect(Number(e.target.value), "TEACH");
+                        e.target.value = "";
+                      }
+                    }}
+                    className="w-full p-3 border border-slate-200 rounded-xl bg-slate-50 text-slate-700 text-sm focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer hover:bg-white"
                   >
-                    Refresh List
-                  </button>
-                </div>
+                    <option value="">+ Find a skill to teach...</option>
+                    {availableSkills
+                      .filter(
+                        (s) => !teachingSkills.find((ts) => ts.skill_id === s.id),
+                      )
+                      .map((skill) => (
+                        <option key={skill.id} value={skill.id}>
+                          {skill.name}
+                        </option>
+                      ))}
+                  </select>
+                </>
               )}
             </div>
           </div>
@@ -462,19 +537,19 @@ export const Profile: React.FC = () => {
                 <Badge
                   key={skill.id}
                   variant="secondary"
-                  className="px-3 py-1.5 bg-purple-50 text-purple-700 border-purple-100 hover:bg-purple-100 transition-colors gap-2 text-sm font-semibold group flex items-center"
+                  className="px-3 py-1.5 bg-purple-50 border-purple-100 hover:bg-purple-100 transition-colors gap-2 text-sm font-semibold group flex items-center"
                 >
                   {skill.icon_class && (
                     <i
                       className={`${skill.icon_class} ${
-                        skill.color_class || "text-purple-500"
-                      } mr-1`}
+                        skill.color_class || (skill.icon_class.includes("devicon") ? "colored" : "text-slate-400")
+                      }`}
                     ></i>
                   )}
-                  {skill.name}
+                  <span className="text-purple-700">{skill.name}</span>
                   <button
                     onClick={() => handleRemoveSkill(skill.id)}
-                    className="ml-1 hover:text-red-500 transition-colors"
+                    className="ml-1 text-purple-400 hover:text-red-500 transition-colors"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
@@ -487,17 +562,20 @@ export const Profile: React.FC = () => {
               )}
             </div>
 
-            <div className="mt-6 pt-6 border-t border-slate-100">
+            <div className="mt-8 pt-6 border-t border-slate-100">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 block ml-1">
+                Add New Interest
+              </label>
               <select
                 onChange={(e) => {
                   if (e.target.value) {
-                    handleAddSkill(Number(e.target.value), "LEARN");
+                    onSkillSelect(Number(e.target.value), "LEARN");
                     e.target.value = "";
                   }
                 }}
-                className="w-full p-3 border border-slate-200 rounded-xl bg-slate-50 text-slate-700 text-sm focus:ring-2 focus:ring-purple-500/20 transition-all cursor-pointer"
+                className="w-full p-3 border border-slate-200 rounded-xl bg-slate-50 text-slate-700 text-sm focus:ring-2 focus:ring-purple-500/20 transition-all cursor-pointer hover:bg-white"
               >
-                <option value="">+ Add a skill to learn...</option>
+                <option value="">+ Find a skill to learn...</option>
                 {availableSkills
                   .filter(
                     (s) => !learningSkills.find((ls) => ls.skill_id === s.id),
@@ -508,14 +586,6 @@ export const Profile: React.FC = () => {
                     </option>
                   ))}
               </select>
-              {availableSkills.length === 0 && !error && (
-                <button
-                  onClick={() => window.location.reload()}
-                  className="mt-2 text-xs text-blue-600 hover:underline block"
-                >
-                  Retry loading skills
-                </button>
-              )}
             </div>
           </div>
         </div>
@@ -607,6 +677,7 @@ export const Profile: React.FC = () => {
           </div>
         </div>
       </div>
+
     </div>
   );
 };
