@@ -386,12 +386,19 @@ export const Profile: React.FC = () => {
                 <Badge
                   key={skill.id}
                   variant="secondary"
-                  className="px-3 py-1.5 bg-blue-50 text-blue-700 border-blue-100 hover:bg-blue-100 transition-colors gap-2 text-sm font-semibold group"
+                  className="px-3 py-1.5 bg-blue-50 text-blue-700 border-blue-100 hover:bg-blue-100 transition-colors gap-2 text-sm font-semibold group flex items-center"
                 >
+                  {skill.icon_class && (
+                    <i
+                      className={`${skill.icon_class} ${
+                        skill.color_class || "text-blue-500"
+                      } mr-1`}
+                    ></i>
+                  )}
                   {skill.name}
                   <button
                     onClick={() => handleRemoveSkill(skill.id)}
-                    className="hover:text-red-500 transition-colors"
+                    className="ml-1 hover:text-red-500 transition-colors"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
@@ -455,12 +462,19 @@ export const Profile: React.FC = () => {
                 <Badge
                   key={skill.id}
                   variant="secondary"
-                  className="px-3 py-1.5 bg-purple-50 text-purple-700 border-purple-100 hover:bg-purple-100 transition-colors gap-2 text-sm font-semibold group"
+                  className="px-3 py-1.5 bg-purple-50 text-purple-700 border-purple-100 hover:bg-purple-100 transition-colors gap-2 text-sm font-semibold group flex items-center"
                 >
+                  {skill.icon_class && (
+                    <i
+                      className={`${skill.icon_class} ${
+                        skill.color_class || "text-purple-500"
+                      } mr-1`}
+                    ></i>
+                  )}
                   {skill.name}
                   <button
                     onClick={() => handleRemoveSkill(skill.id)}
-                    className="hover:text-red-500 transition-colors"
+                    className="ml-1 hover:text-red-500 transition-colors"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>

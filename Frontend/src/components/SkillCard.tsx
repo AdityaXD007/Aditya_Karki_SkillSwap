@@ -62,14 +62,31 @@ export const SkillCard: React.FC<SkillCardProps> = ({
                 <BookOpen className="w-3 h-3" /> Can Teach:
               </span>
               <div className="flex flex-wrap gap-2 mt-1">
-                {skillList.map((skill: any, idx: number) => (
-                  <span
-                    key={idx}
-                    className="inline-flex items-center px-2 py-1 rounded-md bg-blue-50 text-blue-700 text-xs font-medium"
-                  >
-                    {skill.name} ({skill.proficiency_level})
-                  </span>
-                ))}
+                {skillList.map((skill: any, idx: number) => {
+                  const name = skill.name || skill.skill_details?.name;
+                  const iconClass =
+                    skill.icon_class || skill.skill_details?.icon_class;
+                  const colorClass =
+                    skill.color_class || skill.skill_details?.color_class;
+                  const proficiency =
+                    skill.proficiency_level || skill.proficiency;
+
+                  return (
+                    <span
+                      key={idx}
+                      className="inline-flex items-center px-2 py-1 rounded-md bg-blue-50 text-blue-700 text-xs font-medium"
+                    >
+                      {iconClass && (
+                        <i
+                          className={`${iconClass} ${
+                            colorClass || "text-blue-500"
+                          } mr-1.5`}
+                        ></i>
+                      )}
+                      {name} {proficiency && `(${proficiency})`}
+                    </span>
+                  );
+                })}
               </div>
             </div>
           </div>

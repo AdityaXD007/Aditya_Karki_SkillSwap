@@ -8,6 +8,8 @@ export interface UserSkillInfo {
   name: string;
   type: "TEACH" | "LEARN";
   proficiency: string;
+  icon_class?: string;
+  color_class?: string;
 }
 
 export interface User {
@@ -108,6 +110,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           name: s.skill_details.name,
           type: s.skill_type,
           proficiency: s.proficiency_level,
+          icon_class: s.skill_details.icon_class,
+          color_class: s.skill_details.color_class,
         }));
 
         const skillsTeaching = userSkills

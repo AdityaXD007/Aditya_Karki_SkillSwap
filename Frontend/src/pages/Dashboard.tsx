@@ -208,30 +208,47 @@ export const Dashboard: React.FC = () => {
 
               <div className="space-y-4">
                 {matches
-                  .filter((match) => match.skill)
-                  .map((match) => (
-                    <div key={match.id} className="flex items-center space-x-3">
-                      <img
-                        src={
-                          match.teacher.profile_image ||
-                          `https://ui-avatars.com/api/?name=${match.teacher.full_name}&background=random`
-                        }
-                        alt={match.teacher.full_name}
-                        className="w-10 h-10 rounded-full"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-gray-900 text-sm truncate">
-                          {match.teacher.full_name}
-                        </p>
-                        <p className="text-xs text-gray-500 truncate">
-                          Teaches {match.skill?.name || "Unknown skill"}
-                        </p>
+                  .map((match: any) => {
+                    const skills = match.skills || (match.skill ? [match.skill] : []);
+                    if (skills.length === 0) return null;
+                    
+                    const firstSkill = skills[0];
+                    const skillName = firstSkill.name || firstSkill.skill_details?.name;
+                    const iconClass = firstSkill.icon_class || firstSkill.skill_details?.icon_class;
+                    const colorClass = firstSkill.color_class || firstSkill.skill_details?.color_class;
+                    const proficiency = match.proficiency_level || firstSkill.proficiency_level || firstSkill.proficiency;
+
+                    return (
+                      <div key={match.id} className="flex items-center space-x-3">
+                        <img
+                          src={
+                            match.teacher.profile_image ||
+                            `https://ui-avatars.com/api/?name=${match.teacher.full_name}&background=random`
+                          }
+                          alt={match.teacher.full_name}
+                          className="w-10 h-10 rounded-full"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-gray-900 text-sm truncate">
+                            {match.teacher.full_name}
+                          </p>
+                          <p className="text-xs text-gray-500 truncate flex items-center">
+                            {iconClass && (
+                              <i
+                                className={`${iconClass} ${
+                                  colorClass || "text-blue-500"
+                                } mr-1.5`}
+                              ></i>
+                            )}
+                            Teaches {skillName || "Unknown skill"}
+                          </p>
+                        </div>
+                        <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded-full">
+                          {proficiency}
+                        </span>
                       </div>
-                      <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded-full">
-                        {match.proficiency_level}
-                      </span>
-                    </div>
-                  ))}
+                    );
+                  })}
               </div>
             </div>
 

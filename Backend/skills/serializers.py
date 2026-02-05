@@ -53,5 +53,7 @@ class AggregatedMatchSerializer(serializers.Serializer):
             'name': us.skill.name,
             'proficiency_level': us.proficiency_level,
             'category': us.skill.category,
+            'icon_class': us.skill.icon_class,
+            'color_class': us.skill.color_class,
             'description': us.description,
         } for us in teaching_skills]
