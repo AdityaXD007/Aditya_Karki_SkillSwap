@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from "react";
-import { authAPI } from "@/services/api";
+import { authAPI, skillsAPI } from "@/services";
 
 // Define User interface
 export interface UserSkillInfo {
@@ -97,9 +97,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const refreshUserSkills = async () => {
     try {
-      const response = await import("@/services/api").then((m) =>
-        m.skillsAPI.getUserSkills(),
-      );
+      const response = await skillsAPI.getUserSkills();
       const skills = response.data;
 
       setUser((prev) => {

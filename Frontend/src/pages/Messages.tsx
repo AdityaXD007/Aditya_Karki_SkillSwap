@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { messagesApi, type Conversation } from "@/services/api";
+import { messagesApi, type Conversation } from "@/services";
 import { Send, Search } from "lucide-react";
 
 export const Messages: React.FC = () => {

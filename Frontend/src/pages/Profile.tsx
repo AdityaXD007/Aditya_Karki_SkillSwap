@@ -12,7 +12,7 @@ import {
   Loader2,
   AlertCircle,
 } from "lucide-react";
-import { skillsAPI, authAPI, type Skill } from "@/services/api";
+import { skillsAPI, authAPI, type Skill } from "@/services";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";

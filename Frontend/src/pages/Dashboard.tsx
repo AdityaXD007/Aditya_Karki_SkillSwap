@@ -6,7 +6,7 @@ import {
   sessionsAPI,
   type Match,
   type LearningSession,
-} from "@/services/api";
+} from "@/services";
 import { Calendar, Users, BookOpen, TrendingUp, Clock } from "lucide-react";
 
 export const Dashboard: React.FC = () => {

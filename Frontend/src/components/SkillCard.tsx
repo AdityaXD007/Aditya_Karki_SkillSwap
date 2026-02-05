@@ -1,6 +1,6 @@
 import React from "react";
 import { Star, Calendar, MessageCircle, BookOpen } from "lucide-react";
-import type { Match } from "@/services/api";
+import type { Match } from "@/services";
 
 interface SkillCardProps {
   match: Match;

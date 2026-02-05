@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { sessionsAPI, requestsAPI } from "@/services/api";
+import { sessionsAPI, requestsAPI } from "@/services";
 import { useAuth } from "@/components/Context/AuthContext";
 import {
   Calendar,

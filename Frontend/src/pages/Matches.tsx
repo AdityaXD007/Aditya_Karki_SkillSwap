@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { matchesApi, type Match } from "@/services/api";
+import { matchesApi, type Match } from "@/services";
 import { SkillCard } from "@/components/SkillCard";
 import { Search, Filter } from "lucide-react";
 import { useDebounce } from "@/hooks/useDebounce";
