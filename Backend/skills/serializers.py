@@ -38,7 +38,7 @@ class AggregatedMatchSerializer(serializers.Serializer):
 
     def get_teacher(self, obj):
         """Get teacher profile from the user"""
-        return UserProfileSerializer(obj.user.profile).data
+        return UserProfileSerializer(obj.user.profile, context=self.context).data
 
     def get_skills(self, obj):
         """Get all teaching skills for this user"""

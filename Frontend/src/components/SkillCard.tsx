@@ -25,10 +25,11 @@ export const SkillCard: React.FC<SkillCardProps> = ({
         {/* Avatar */}
         <img
           src={
+            teacher.profile_image_url ||
             teacher.profile_image ||
-            `https://ui-avatars.com/api/?name=${teacher.full_name}&background=random`
+            `https://ui-avatars.com/api/?name=${teacher.username}&background=random`
           }
-          alt={teacher.full_name || teacher.username}
+          alt={teacher.username}
           className="w-16 h-16 rounded-full object-cover"
         />
 
@@ -36,7 +37,7 @@ export const SkillCard: React.FC<SkillCardProps> = ({
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between mb-2">
             <h3 className="font-semibold text-lg text-gray-900 truncate">
-              {teacher.full_name || teacher.username}
+              {teacher.username}
             </h3>
             <div className="flex items-center space-x-1 text-sm bg-green-50 text-green-700 px-2 py-1 rounded-full">
               <span className="font-medium text-xs">Active</span>

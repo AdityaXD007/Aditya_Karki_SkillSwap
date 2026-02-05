@@ -222,15 +222,16 @@ export const Dashboard: React.FC = () => {
                       <div key={match.id} className="flex items-center space-x-3">
                         <img
                           src={
+                            match.teacher.profile_image_url ||
                             match.teacher.profile_image ||
-                            `https://ui-avatars.com/api/?name=${match.teacher.full_name}&background=random`
+                            `https://ui-avatars.com/api/?name=${match.teacher.username}&background=random`
                           }
-                          alt={match.teacher.full_name}
-                          className="w-10 h-10 rounded-full"
+                          alt={match.teacher.username}
+                          className="w-10 h-10 rounded-full object-cover"
                         />
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-gray-900 text-sm truncate">
-                            {match.teacher.full_name}
+                            @{match.teacher.username}
                           </p>
                           <p className="text-xs text-gray-500 truncate flex items-center">
                             {iconClass && (
