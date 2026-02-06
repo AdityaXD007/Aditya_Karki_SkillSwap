@@ -148,26 +148,26 @@ export const Dashboard: React.FC = () => {
                   upcomingSessions.map((session) => (
                     <div
                       key={session.id}
-                      className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                      className="flex items-center space-x-4 p-4 bg-gray-50 dark:bg-slate-800/50 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
                     >
                       <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
                         {(session.teacher_name || "U")[0]}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-gray-900 truncate">
+                        <p className="font-medium text-gray-900 dark:text-white truncate">
                           {session.skill_name}
                         </p>
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
                           with {session.teacher_name}
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-medium text-gray-900">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white">
                           {new Date(
                             session.scheduled_time,
                           ).toLocaleDateString()}
                         </p>
-                        <p className="text-sm text-gray-500 flex items-center justify-end">
+                        <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center justify-end">
                           <Clock className="w-3 h-3 mr-1" />
                           {new Date(session.scheduled_time).toLocaleTimeString(
                             [],
@@ -230,10 +230,10 @@ export const Dashboard: React.FC = () => {
                           className="w-10 h-10 rounded-full object-cover"
                         />
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium text-gray-900 text-sm truncate">
+                          <p className="font-medium text-gray-900 dark:text-white text-sm truncate">
                             {match.teacher.username}
                           </p>
-                          <p className="text-xs text-gray-500 truncate flex items-center">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 truncate flex items-center">
                             {iconClass && (
                               <i
                                 className={`${iconClass} ${
@@ -244,7 +244,7 @@ export const Dashboard: React.FC = () => {
                             Teaches {skillName || "Unknown skill"}
                           </p>
                         </div>
-                        <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded-full">
+                        <span className="text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded-full">
                           {proficiency}
                         </span>
                       </div>
