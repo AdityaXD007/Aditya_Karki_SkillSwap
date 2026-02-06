@@ -126,7 +126,7 @@ export const Landing: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white dark:bg-slate-950 text-gray-900 dark:text-gray-100 transition-colors duration-300">
       {/* Hero Section */}
       <section className="relative overflow-hidden pt-20 pb-32 px-4 sm:px-6 lg:px-8 min-h-[90vh] flex items-center">
         {/* Background Image Slider */}
@@ -164,10 +164,10 @@ export const Landing: React.FC = () => {
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-white/95 backdrop-blur-md rounded-full shadow-lg mb-8"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-full shadow-lg mb-8"
             >
               <Sparkles className="w-4 h-4 text-blue-600" />
-              <span className="text-sm text-gray-700">
+              <span className="text-sm text-gray-700 dark:text-gray-300">
                 Join 10,000+ learners worldwide
               </span>
             </motion.div>
@@ -195,7 +195,7 @@ export const Landing: React.FC = () => {
               </Link>
               <Link
                 to="/login"
-                className="px-8 py-4 bg-white/95 backdrop-blur-md text-gray-700 rounded-xl border-2 border-white/50 hover:border-blue-400 hover:text-blue-600 transform hover:scale-105 transition-all duration-300 shadow-xl"
+                className="px-8 py-4 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md text-gray-700 dark:text-gray-300 rounded-xl border-2 border-white/50 dark:border-slate-700/50 hover:border-blue-400 hover:text-blue-600 transform hover:scale-105 transition-all duration-300 shadow-xl"
               >
                 Sign In
               </Link>
@@ -226,7 +226,7 @@ export const Landing: React.FC = () => {
       </section>
 
       {/* Stats Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gray-50">
+      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gray-50 dark:bg-slate-900/50">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
             {stats.map((stat, index) => (
@@ -238,13 +238,13 @@ export const Landing: React.FC = () => {
                 transition={{ delay: index * 0.1 }}
                 className="text-center"
               >
-                <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-100 rounded-xl mb-4">
-                  <stat.icon className="w-6 h-6 text-blue-600" />
+                <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl mb-4">
+                  <stat.icon className="w-6 h-6 text-blue-600 dark:text-blue-400" />
                 </div>
-                <div className="text-4xl font-extrabold text-gray-900 mb-2">
+                <div className="text-4xl font-extrabold text-gray-900 dark:text-white mb-2">
                   {stat.value}
                 </div>
-                <div className="text-gray-600">{stat.label}</div>
+                <div className="text-gray-600 dark:text-gray-400">{stat.label}</div>
               </motion.div>
             ))}
           </div>
@@ -252,7 +252,7 @@ export const Landing: React.FC = () => {
       </section>
 
       {/* Features Section */}
-      <section className="py-24 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-gray-50 to-white">
+      <section className="py-24 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-gray-50 to-white dark:from-slate-900/50 dark:to-slate-950">
         <div className="max-w-7xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -260,10 +260,10 @@ export const Landing: React.FC = () => {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <h2 className="text-4xl sm:text-5xl font-extrabold text-gray-900 mb-4">
+            <h2 className="text-4xl sm:text-5xl font-extrabold text-gray-900 dark:text-white mb-4">
               Everything You Need to Exchange Skills
             </h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
               Powerful features designed to make skill exchange seamless and
               effective.
             </p>
@@ -281,7 +281,7 @@ export const Landing: React.FC = () => {
                 onHoverEnd={() => setHoveredFeature(null)}
                 className="group relative"
               >
-                <div className="relative bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2">
+                <div className="relative bg-white dark:bg-slate-900 rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 border border-transparent dark:border-slate-800">
                   {/* Image */}
                   <div className="relative h-64 overflow-hidden">
                     <motion.div
@@ -306,10 +306,10 @@ export const Landing: React.FC = () => {
                     >
                       <feature.icon className="w-6 h-6 text-white" />
                     </div>
-                    <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
                       {feature.title}
                     </h3>
-                    <p className="text-gray-600">{feature.description}</p>
+                    <p className="text-gray-600 dark:text-gray-400">{feature.description}</p>
                   </div>
                 </div>
               </motion.div>
@@ -319,7 +319,7 @@ export const Landing: React.FC = () => {
       </section>
 
       {/* How It Works Section */}
-      <section className="py-24 px-4 sm:px-6 lg:px-8 bg-white">
+      <section className="py-24 px-4 sm:px-6 lg:px-8 bg-white dark:bg-slate-950">
         <div className="max-w-7xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -327,10 +327,10 @@ export const Landing: React.FC = () => {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <h2 className="text-4xl sm:text-5xl font-extrabold text-gray-900 mb-4">
+            <h2 className="text-4xl sm:text-5xl font-extrabold text-gray-900 dark:text-white mb-4">
               How It Works
             </h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
               Get started in three simple steps
             </p>
           </motion.div>
@@ -349,17 +349,17 @@ export const Landing: React.FC = () => {
                   transition={{ delay: index * 0.2 }}
                   className="relative"
                 >
-                  <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-shadow duration-300 border-2 border-gray-100">
+                  <div className="bg-white dark:bg-slate-900 rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-shadow duration-300 border-2 border-gray-100 dark:border-slate-800">
                     <div className="flex items-center justify-center w-16 h-16 bg-blue-600 rounded-full mb-6 mx-auto">
                       <step.icon className="w-8 h-8 text-white" />
                     </div>
-                    <div className="text-sm font-bold text-blue-600 mb-2 text-center">
+                    <div className="text-sm font-bold text-blue-600 dark:text-blue-400 mb-2 text-center">
                       {step.step}
                     </div>
-                    <h3 className="text-2xl font-bold text-gray-900 mb-3 text-center">
+                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3 text-center">
                       {step.title}
                     </h3>
-                    <p className="text-gray-600 text-center">
+                    <p className="text-gray-600 dark:text-gray-400 text-center">
                       {step.description}
                     </p>
                   </div>
@@ -371,7 +371,7 @@ export const Landing: React.FC = () => {
       </section>
 
       {/* Testimonials Section */}
-      <section className="py-24 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-gray-50 to-white">
+      <section className="py-24 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-gray-50 to-white dark:from-slate-900/50 dark:to-slate-950">
         <div className="max-w-7xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -379,10 +379,10 @@ export const Landing: React.FC = () => {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <h2 className="text-4xl sm:text-5xl font-extrabold text-gray-900 mb-4">
+            <h2 className="text-4xl sm:text-5xl font-extrabold text-gray-900 dark:text-white mb-4">
               Loved by Learners Worldwide
             </h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
               See what our community has to say about their experience
             </p>
           </motion.div>
@@ -395,7 +395,7 @@ export const Landing: React.FC = () => {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.15 }}
-                className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1"
+                className="bg-white dark:bg-slate-900 rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 border border-transparent dark:border-slate-800"
               >
                 <div className="flex items-center gap-1 mb-4">
                   {[...Array(testimonial.rating)].map((_, i) => (
@@ -405,7 +405,7 @@ export const Landing: React.FC = () => {
                     />
                   ))}
                 </div>
-                <p className="text-gray-700 mb-6 italic">
+                <p className="text-gray-700 dark:text-gray-300 mb-6 italic">
                   "{testimonial.content}"
                 </p>
                 <div className="flex items-center gap-3">
@@ -415,10 +415,10 @@ export const Landing: React.FC = () => {
                     className="w-12 h-12 rounded-full object-cover"
                   />
                   <div>
-                    <div className="font-bold text-gray-900">
+                    <div className="font-bold text-gray-900 dark:text-white">
                       {testimonial.name}
                     </div>
-                    <div className="text-sm text-gray-600">
+                    <div className="text-sm text-gray-600 dark:text-gray-400">
                       {testimonial.role}
                     </div>
                   </div>
@@ -491,9 +491,9 @@ export const Landing: React.FC = () => {
             <div>
               <div className="flex items-center gap-2 mb-4">
                 <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                  <span className="text-white font-bold">SE</span>
+                  <span className="text-white font-bold">SS</span>
                 </div>
-                <span className="font-bold text-white">SkillExchange</span>
+                <span className="font-bold text-white">SkillSwap</span>
               </div>
               <p className="text-sm">
                 The future of peer-to-peer learning. Exchange skills, grow
@@ -576,7 +576,7 @@ export const Landing: React.FC = () => {
 
           <div className="border-t border-gray-800 pt-8 text-center text-sm">
             <p>
-              &copy; 2026 SkillExchange. All rights reserved. Built for
+              &copy; 2026 SkillSwap. All rights reserved. Built for
               learning, powered by community.
             </p>
           </div>

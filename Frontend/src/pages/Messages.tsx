@@ -43,26 +43,26 @@ export const Messages: React.FC = () => {
   const selected = conversations.find((c) => c.id === selectedConversation);
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-950 py-8 transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div
-          className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden"
+          className="bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-gray-200 dark:border-slate-800 overflow-hidden"
           style={{ height: "calc(100vh - 200px)" }}
         >
           <div className="grid grid-cols-1 md:grid-cols-3 h-full">
             {/* Conversations List */}
-            <div className="border-r border-gray-200 overflow-y-auto">
-              <div className="p-4 border-b border-gray-200">
+            <div className="border-r border-gray-200 dark:border-slate-800 overflow-y-auto">
+              <div className="p-4 border-b border-gray-200 dark:border-slate-800">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 w-5 h-5" />
                   <input
                     type="text"
                     placeholder="Search conversations..."
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-white transition-colors"
                   />
                 </div>
               </div>
-              <div className="divide-y divide-gray-200">
+               <div className="divide-y divide-gray-200 dark:divide-slate-800">
                 {loading ? (
                   <div className="p-8 text-center">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
@@ -72,8 +72,8 @@ export const Messages: React.FC = () => {
                     <button
                       key={conv.id}
                       onClick={() => setSelectedConversation(conv.id)}
-                      className={`w-full p-4 text-left hover:bg-gray-50 transition-colors ${
-                        selectedConversation === conv.id ? "bg-blue-50" : ""
+                      className={`w-full p-4 text-left hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors ${
+                        selectedConversation === conv.id ? "bg-blue-50 dark:bg-blue-900/20" : ""
                       }`}
                     >
                       <div className="flex items-center space-x-3">
@@ -90,21 +90,21 @@ export const Messages: React.FC = () => {
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium text-gray-900 truncate">
+                          <p className="font-medium text-gray-900 dark:text-white truncate">
                             {conv.userName}
                           </p>
-                          <p className="text-sm text-gray-600 truncate">
+                          <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
                             {conv.lastMessage}
                           </p>
                         </div>
-                        <div className="text-xs text-gray-500">
+                        <div className="text-xs text-gray-500 dark:text-gray-500">
                           {new Date(conv.lastMessageTime).toLocaleDateString()}
                         </div>
                       </div>
                     </button>
                   ))
                 ) : (
-                  <div className="p-8 text-center text-gray-500">
+                  <div className="p-8 text-center text-gray-500 dark:text-gray-400">
                     No conversations yet
                   </div>
                 )}
@@ -115,8 +115,8 @@ export const Messages: React.FC = () => {
             <div className="md:col-span-2 flex flex-col">
               {selected ? (
                 <>
-                  {/* Chat Header */}
-                  <div className="p-4 border-b border-gray-200 bg-white">
+                   {/* Chat Header */}
+                  <div className="p-4 border-b border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 transition-colors">
                     <div className="flex items-center space-x-3">
                       <img
                         src={selected.userAvatar}
@@ -124,17 +124,17 @@ export const Messages: React.FC = () => {
                         className="w-10 h-10 rounded-full"
                       />
                       <div>
-                        <h3 className="font-medium text-gray-900">
+                        <h3 className="font-medium text-gray-900 dark:text-white">
                           {selected.userName}
                         </h3>
-                        <p className="text-sm text-gray-500">Active now</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Active now</p>
                       </div>
                     </div>
                   </div>
 
                   {/* Messages */}
-                  <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
-                    <div className="text-center text-gray-500 py-8">
+                  <div className="flex-1 overflow-y-auto p-4 bg-gray-50 dark:bg-slate-950 transition-colors">
+                    <div className="text-center text-gray-500 dark:text-gray-500 py-8">
                       <p>Start of conversation with {selected.userName}</p>
                     </div>
                   </div>
@@ -142,7 +142,7 @@ export const Messages: React.FC = () => {
                   {/* Message Input */}
                   <form
                     onSubmit={handleSendMessage}
-                    className="p-4 border-t border-gray-200 bg-white"
+                    className="p-4 border-t border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 transition-colors"
                   >
                     <div className="flex space-x-2">
                       <input
@@ -150,12 +150,12 @@ export const Messages: React.FC = () => {
                         value={messageText}
                         onChange={(e) => setMessageText(e.target.value)}
                         placeholder="Type a message..."
-                        className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="flex-1 px-4 py-2 border border-gray-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-white transition-colors"
                       />
                       <button
                         type="submit"
                         disabled={!messageText.trim()}
-                        className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                        className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 transition-all active:scale-95"
                       >
                         <Send className="w-4 h-4" />
                         <span>Send</span>
@@ -164,7 +164,7 @@ export const Messages: React.FC = () => {
                   </form>
                 </>
               ) : (
-                <div className="flex items-center justify-center h-full text-gray-500">
+                <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-slate-950 transition-colors">
                   Select a conversation to start messaging
                 </div>
               )}

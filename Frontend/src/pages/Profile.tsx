@@ -283,18 +283,18 @@ export const Profile: React.FC = () => {
     user?.userSkills.filter((s) => s.type === "LEARN") || [];
 
   return (
-    <div className="min-h-screen bg-slate-50/50 py-12">
+    <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950 py-12 transition-colors duration-300">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Error Banner */}
         {error && (
-          <div className="mb-6 bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3 text-red-700">
+          <div className="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 flex items-center gap-3 text-red-700 dark:text-red-400">
             <AlertCircle className="w-5 h-5 flex-shrink-0" />
             <p className="text-sm font-medium">{error}</p>
           </div>
         )}
 
         {/* Profile Header */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 mb-8 backdrop-blur-sm bg-white/80">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-8 mb-8 backdrop-blur-sm bg-white/80 dark:bg-slate-900/80">
           <div className="flex flex-col md:flex-row items-center md:items-start space-y-6 md:space-y-0 md:space-x-8">
             <div className="relative group">
               <div className="w-32 h-32 rounded-full overflow-hidden ring-4 ring-white shadow-lg">
@@ -339,18 +339,18 @@ export const Profile: React.FC = () => {
                       onChange={(e) =>
                         setFormData({ ...formData, name: e.target.value })
                       }
-                      className="text-3xl font-bold text-slate-900 border-b-2 border-blue-500 focus:outline-none bg-transparent"
+                      className="text-3xl font-bold text-slate-900 dark:text-white border-b-2 border-blue-500 focus:outline-none bg-transparent"
                     />
                   ) : (
-                    <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
+                    <h1 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">
                       {user?.username}
                     </h1>
                   )}
-                  <p className="text-slate-500 font-medium mt-1">
+                  <p className="text-slate-500 dark:text-slate-400 font-medium mt-1">
                     {user?.username || user?.email?.split("@")[0]}
                   </p>
                   {user?.name && user.name !== user.username && (
-                    <p className="text-slate-400 text-sm mt-0.5">{user.name}</p>
+                    <p className="text-slate-400 dark:text-slate-500 text-sm mt-0.5">{user.name}</p>
                   )}
                 </div>
 
@@ -376,20 +376,20 @@ export const Profile: React.FC = () => {
                 </Button>
               </div>
 
-              <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 mt-6">
-                <div className="flex items-center space-x-1.5 bg-yellow-50 px-3 py-1 rounded-full border border-yellow-100">
+               <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 mt-6">
+                <div className="flex items-center space-x-1.5 bg-yellow-50 dark:bg-yellow-900/20 px-3 py-1 rounded-full border border-yellow-100 dark:border-yellow-900/30">
                   <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                  <span className="text-sm font-bold text-yellow-700">
+                  <span className="text-sm font-bold text-yellow-700 dark:text-yellow-500">
                     {user?.rating?.toFixed(1) || "0.0"}
                   </span>
                 </div>
-                <div className="flex items-center space-x-1.5 text-slate-600">
+                <div className="flex items-center space-x-1.5 text-slate-600 dark:text-slate-400">
                   <MapPin className="w-4 h-4 text-blue-500" />
                   <span className="text-sm font-medium">
                     {user?.location || "Remote"}
                   </span>
                 </div>
-                <div className="flex items-center space-x-1.5 text-slate-600">
+                <div className="flex items-center space-x-1.5 text-slate-600 dark:text-slate-400">
                   <Clock className="w-4 h-4 text-purple-500" />
                   <span className="text-sm font-medium">Joined Jan 2026</span>
                 </div>
@@ -398,8 +398,8 @@ export const Profile: React.FC = () => {
           </div>
 
           {/* Bio Section */}
-          <div className="mt-10 pt-10 border-t border-slate-100">
-            <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-3">
+          <div className="mt-10 pt-10 border-t border-slate-100 dark:border-slate-800">
+            <h3 className="text-sm font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">
               About Me
             </h3>
             {isEditing ? (
@@ -409,11 +409,11 @@ export const Profile: React.FC = () => {
                   setFormData({ ...formData, bio: e.target.value })
                 }
                 rows={4}
-                className="w-full p-4 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all bg-slate-50/50"
+                className="w-full p-4 border border-slate-200 dark:border-slate-800 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all bg-slate-50/50 dark:bg-slate-800 dark:text-white"
                 placeholder="Tell us about yourself..."
               />
             ) : (
-              <p className="text-slate-600 leading-relaxed text-lg italic">
+              <p className="text-slate-600 dark:text-slate-400 leading-relaxed text-lg italic">
                 {user?.bio || "No bio added yet."}
               </p>
             )}
@@ -423,9 +423,9 @@ export const Profile: React.FC = () => {
         {/* Skills Section */}
         <div className="grid md:grid-cols-2 gap-8">
           {/* Teaching Skills */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-8">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <div className="w-2 h-8 bg-blue-500 rounded-full" />
                 Skills I Teach
               </h2>
@@ -436,7 +436,7 @@ export const Profile: React.FC = () => {
                 <Badge
                   key={skill.id}
                   variant="secondary"
-                  className="px-3 py-1.5 bg-blue-50 border-blue-100 hover:bg-blue-100 transition-colors gap-2 text-sm font-semibold group flex items-center"
+                  className="px-3 py-1.5 bg-blue-50 dark:bg-blue-900/30 border-blue-100 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors gap-2 text-sm font-semibold group flex items-center"
                 >
                   {skill.icon_class && (
                     <i
@@ -445,7 +445,7 @@ export const Profile: React.FC = () => {
                       }`}
                     ></i>
                   )}
-                  <span className="text-blue-700">
+                  <span className="text-blue-700 dark:text-blue-400">
                     {skill.name}
                     <span className="text-[10px] opacity-60 font-normal ml-1 capitalize">
                       ({skill.proficiency.toLowerCase()})
@@ -460,22 +460,22 @@ export const Profile: React.FC = () => {
                 </Badge>
               ))}
               {teachingSkills.length === 0 && (
-                <p className="text-slate-400 italic">
+                <p className="text-slate-400 dark:text-slate-500 italic">
                   No teaching skills listed
                 </p>
               )}
             </div>
 
-            <div className="mt-8 pt-6 border-t border-slate-100">
+            <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800">
               {pendingSkill?.type === "TEACH" ? (
                 <motion.div 
                   initial={{ opacity: 0, y: 10 }} 
                   animate={{ opacity: 1, y: 0 }}
-                  className="bg-slate-50 p-4 rounded-xl border border-slate-200"
+                  className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200 dark:border-slate-800"
                 >
                   <div className="flex items-center justify-between mb-3">
-                    <p className="text-xs font-bold text-slate-500">
-                      LEVEL FOR <span className="text-blue-600 font-extrabold">{pendingSkill.name.toUpperCase()}</span>
+                    <p className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                      LEVEL FOR <span className="text-blue-600 dark:text-blue-400 font-extrabold">{pendingSkill.name.toUpperCase()}</span>
                     </p>
                     <button onClick={() => setPendingSkill(null)} className="text-slate-400 hover:text-slate-600 p-1">
                       <X className="w-4 h-4" />
@@ -486,7 +486,7 @@ export const Profile: React.FC = () => {
                       <button
                         key={level.value}
                         onClick={() => handleAddSkill(level.value)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${level.color} border-slate-200 hover:border-blue-300`}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${level.color} border-slate-200 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-600`}
                       >
                         {level.label}
                       </button>
@@ -495,7 +495,7 @@ export const Profile: React.FC = () => {
                 </motion.div>
               ) : (
                 <>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 block ml-1">
+                  <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2 block ml-1">
                     Add New Skill
                   </label>
                   <select
@@ -505,7 +505,7 @@ export const Profile: React.FC = () => {
                         e.target.value = "";
                       }
                     }}
-                    className="w-full p-3 border border-slate-200 rounded-xl bg-slate-50 text-slate-700 text-sm focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer hover:bg-white"
+                    className="w-full p-3 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-sm focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer hover:bg-white dark:hover:bg-slate-700"
                   >
                     <option value="">+ Find a skill to teach...</option>
                     {availableSkills
@@ -524,9 +524,9 @@ export const Profile: React.FC = () => {
           </div>
 
           {/* Learning Skills */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-8">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <div className="w-2 h-8 bg-purple-500 rounded-full" />
                 Skills I want to learn
               </h2>
@@ -537,7 +537,7 @@ export const Profile: React.FC = () => {
                 <Badge
                   key={skill.id}
                   variant="secondary"
-                  className="px-3 py-1.5 bg-purple-50 border-purple-100 hover:bg-purple-100 transition-colors gap-2 text-sm font-semibold group flex items-center"
+                  className="px-3 py-1.5 bg-purple-50 dark:bg-purple-900/30 border-purple-100 dark:border-purple-800 hover:bg-purple-100 dark:hover:bg-purple-900/50 transition-colors gap-2 text-sm font-semibold group flex items-center"
                 >
                   {skill.icon_class && (
                     <i
@@ -546,7 +546,7 @@ export const Profile: React.FC = () => {
                       }`}
                     ></i>
                   )}
-                  <span className="text-purple-700">{skill.name}</span>
+                  <span className="text-purple-700 dark:text-purple-400">{skill.name}</span>
                   <button
                     onClick={() => handleRemoveSkill(skill.id)}
                     className="ml-1 text-purple-400 hover:text-red-500 transition-colors"
@@ -556,14 +556,14 @@ export const Profile: React.FC = () => {
                 </Badge>
               ))}
               {learningSkills.length === 0 && (
-                <p className="text-slate-400 italic">
+                <p className="text-slate-400 dark:text-slate-500 italic">
                   No learning skills listed
                 </p>
               )}
             </div>
 
-            <div className="mt-8 pt-6 border-t border-slate-100">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 block ml-1">
+            <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800">
+              <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2 block ml-1">
                 Add New Interest
               </label>
               <select
@@ -573,7 +573,7 @@ export const Profile: React.FC = () => {
                     e.target.value = "";
                   }
                 }}
-                className="w-full p-3 border border-slate-200 rounded-xl bg-slate-50 text-slate-700 text-sm focus:ring-2 focus:ring-purple-500/20 transition-all cursor-pointer hover:bg-white"
+                className="w-full p-3 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-sm focus:ring-2 focus:ring-purple-500/20 transition-all cursor-pointer hover:bg-white dark:hover:bg-slate-700"
               >
                 <option value="">+ Find a skill to learn...</option>
                 {availableSkills
@@ -591,13 +591,13 @@ export const Profile: React.FC = () => {
         </div>
 
         {/* Availability Section */}
-        <div className="mt-8 bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
+        <div className="mt-8 bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-8">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center space-x-3">
-              <div className="p-2.5 bg-green-50 rounded-xl">
-                <Clock className="w-6 h-6 text-green-600" />
+              <div className="p-2.5 bg-green-50 dark:bg-green-900/30 rounded-xl">
+                <Clock className="w-6 h-6 text-green-600 dark:text-green-400" />
               </div>
-              <h2 className="text-xl font-bold text-slate-900">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white">
                 Weekly Availability
               </h2>
             </div>
@@ -606,7 +606,7 @@ export const Profile: React.FC = () => {
                 onClick={() => setIsAddingAvailability(true)}
                 variant="outline"
                 size="sm"
-                className="border-green-200 text-green-700 hover:bg-green-50"
+                className="border-green-200 dark:border-green-900/50 text-green-700 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors"
               >
                 <Plus className="w-4 h-4 mr-2" /> Add Time
               </Button>
@@ -614,7 +614,7 @@ export const Profile: React.FC = () => {
           </div>
 
           {isAddingAvailability && (
-            <div className="mb-6 p-4 bg-green-50 rounded-xl border border-green-100 flex flex-col sm:flex-row gap-3">
+            <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-100 dark:border-green-800/50 flex flex-col sm:flex-row gap-3">
               <input
                 type="text"
                 autoFocus
@@ -622,7 +622,7 @@ export const Profile: React.FC = () => {
                 value={newAvailabilityTime}
                 onChange={(e) => setNewAvailabilityTime(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleSaveAvailability()}
-                className="flex-1 p-2.5 border border-green-200 rounded-lg focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none"
+                className="flex-1 p-2.5 border border-green-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none bg-white dark:bg-slate-800 text-slate-700 dark:text-white transition-colors"
               />
               <div className="flex gap-2">
                 <Button
@@ -640,7 +640,7 @@ export const Profile: React.FC = () => {
                   }}
                   variant="ghost"
                   size="sm"
-                  className="text-slate-500 flex-1 sm:flex-none"
+                  className="text-slate-500 dark:text-slate-400 flex-1 sm:flex-none"
                 >
                   Cancel
                 </Button>
@@ -653,15 +653,15 @@ export const Profile: React.FC = () => {
               user.availability.map((time, idx) => (
                 <div
                   key={idx}
-                  className="flex items-center justify-between p-4 rounded-xl bg-slate-50 border border-slate-100 hover:border-green-200 transition-all group"
+                  className="flex items-center justify-between p-4 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 hover:border-green-200 dark:hover:border-green-800 transition-all group"
                 >
                   <div className="flex items-center space-x-3">
                     <div className="w-2.5 h-2.5 bg-green-500 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.4)]" />
-                    <span className="text-slate-700 font-medium">{time}</span>
+                    <span className="text-slate-700 dark:text-slate-300 font-medium">{time}</span>
                   </div>
                   <button
                     onClick={() => handleRemoveAvailability(idx)}
-                    className="text-slate-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                    className="text-slate-300 dark:text-slate-600 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
                     title="Remove availability"
                   >
                     <X className="w-4 h-4" />
@@ -669,7 +669,7 @@ export const Profile: React.FC = () => {
                 </div>
               ))
             ) : (
-              <p className="text-slate-400 col-span-full italic py-4">
+              <p className="text-slate-400 dark:text-slate-500 col-span-full italic py-4">
                 No availability set yet. Add your preferred times for learning
                 sessions.
               </p>

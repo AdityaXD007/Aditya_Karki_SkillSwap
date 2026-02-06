@@ -151,52 +151,52 @@ export const Bookings: React.FC = () => {
     switch (status) {
       case "confirmed":
       case "ACCEPTED":
-        return "bg-green-100 text-green-700";
+        return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400";
       case "pending":
       case "PENDING":
-        return "bg-yellow-100 text-yellow-700";
+        return "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400";
       case "completed":
       case "COMPLETED":
-        return "bg-blue-100 text-blue-700";
+        return "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400";
       case "cancelled":
       case "rejected":
       case "CANCELLED":
       case "REJECTED":
-        return "bg-red-100 text-red-700";
+        return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400";
       default:
-        return "bg-gray-100 text-gray-700";
+        return "bg-gray-100 text-gray-700 dark:bg-slate-800 dark:text-slate-400";
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-950 py-8 transition-colors duration-300">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">My Sessions</h1>
-          <p className="mt-2 text-gray-600">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">My Sessions</h1>
+          <p className="mt-2 text-gray-600 dark:text-gray-400">
             Manage your learning and teaching sessions
           </p>
         </div>
 
         {/* Tabs */}
-        <div className="mb-6 border-b border-gray-200">
+        <div className="mb-6 border-b border-gray-200 dark:border-slate-800">
           <div className="flex space-x-8">
             <button
               onClick={() => setActiveTab("upcoming")}
-              className={`pb-4 px-1 border-b-2 font-medium text-sm ${
+              className={`pb-4 px-1 border-b-2 font-medium text-sm transition-colors ${
                 activeTab === "upcoming"
                   ? "border-blue-600 text-blue-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700"
+                  : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
               }`}
             >
               Upcoming ({upcomingItems.length})
             </button>
             <button
               onClick={() => setActiveTab("past")}
-              className={`pb-4 px-1 border-b-2 font-medium text-sm ${
+              className={`pb-4 px-1 border-b-2 font-medium text-sm transition-colors ${
                 activeTab === "past"
                   ? "border-blue-600 text-blue-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700"
+                  : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
               }`}
             >
               Past ({pastItems.length})
@@ -214,11 +214,11 @@ export const Bookings: React.FC = () => {
             {displayedItems.map((item) => (
               <div
                 key={`${item.isRequest ? "req" : "sess"}-${item.id}`}
-                className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow"
+                className="bg-white dark:bg-slate-900 rounded-lg border border-gray-200 dark:border-slate-800 p-6 hover:shadow-md transition-shadow"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex items-start space-x-4 flex-1">
-                    <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold shrink-0">
+                    <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold shrink-0">
                       {item.partnerAvatar ? (
                         <img
                           src={item.partnerAvatar}
@@ -230,24 +230,24 @@ export const Bookings: React.FC = () => {
                       )}
                     </div>
                     <div className="flex-1">
-                      <h3 className="font-semibold text-lg text-gray-900">
+                      <h3 className="font-semibold text-lg text-gray-900 dark:text-white">
                         {item.skill}
                       </h3>
-                      <div className="flex items-center space-x-2 mt-1 text-sm text-gray-600">
+                      <div className="flex items-center space-x-2 mt-1 text-sm text-gray-600 dark:text-gray-400">
                         <User className="w-4 h-4" />
                         <span>with {item.partnerName}</span>
-                        <span className="text-gray-400">•</span>
+                        <span className="text-gray-400 dark:text-gray-600">•</span>
                         <span
                           className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                             item.type === "teaching"
-                              ? "bg-blue-100 text-blue-700"
-                              : "bg-purple-100 text-purple-700"
+                              ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                              : "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
                           }`}
                         >
                           {item.type === "teaching" ? "Teaching" : "Learning"}
                         </span>
                       </div>
-                      <div className="mt-3 grid grid-cols-2 gap-4 text-sm text-gray-600">
+                      <div className="mt-3 grid grid-cols-2 gap-4 text-sm text-gray-600 dark:text-gray-400">
                         <div className="flex items-center space-x-2">
                           <Calendar className="w-4 h-4" />
                           <span>{item.date}</span>
@@ -278,14 +278,14 @@ export const Bookings: React.FC = () => {
                         <div className="flex space-x-2">
                           <button
                             onClick={() => handleAccept(item.id)}
-                            className="p-2 text-green-600 hover:bg-green-50 rounded"
+                            className="p-2 text-green-600 dark:text-green-500 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors"
                             title="Accept Request"
                           >
                             <CheckCircle className="w-5 h-5" />
                           </button>
                           <button
                             onClick={() => handleReject(item.id)}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded"
+                            className="p-2 text-red-600 dark:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
                             title="Reject Request"
                           >
                             <XCircle className="w-5 h-5" />
@@ -298,9 +298,9 @@ export const Bookings: React.FC = () => {
             ))}
           </div>
         ) : (
-          <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
-            <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-            <p className="text-gray-600">No {activeTab} sessions</p>
+          <div className="text-center py-12 bg-white dark:bg-slate-900 rounded-lg border border-gray-200 dark:border-slate-800">
+            <Calendar className="w-12 h-12 text-gray-400 dark:text-gray-600 mx-auto mb-3" />
+            <p className="text-gray-600 dark:text-gray-400">No {activeTab} sessions</p>
           </div>
         )}
       </div>
