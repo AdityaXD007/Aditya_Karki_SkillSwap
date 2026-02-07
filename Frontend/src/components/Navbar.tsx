@@ -193,7 +193,7 @@ export const Navbar: React.FC = () => {
                                 {user?.name || user?.username}
                               </p>
                               <p className="text-xs text-gray-500 dark:text-gray-400 truncate mb-1">
-                                @{user?.username}
+                                {user?.username}
                               </p>
                             </div>
                           </div>
@@ -241,14 +241,14 @@ export const Navbar: React.FC = () => {
 
                           {/* Section 3: Help */}
                           <div className="border-t border-gray-100 dark:border-slate-800 py-1.5">
-                            <button className="w-full flex items-center px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors group">
-                              <HelpCircle className="w-5 h-5 mr-3 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-200" />
-                              <span className="flex-1 text-left">Help</span>
-                            </button>
-                            <button className="w-full flex items-center px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors group">
+                            <Link
+                              to="/feedback"
+                              onClick={() => setIsUserMenuOpen(false)}
+                              className="w-full flex items-center px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors group"
+                            >
                               <MessageCircle className="w-5 h-5 mr-3 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-200" />
                               <span className="flex-1 text-left">Send feedback</span>
-                            </button>
+                            </Link>
                           </div>
                         </>
                       ) : (

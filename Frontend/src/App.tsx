@@ -13,6 +13,8 @@ import { Bookings } from '@/pages/Bookings';
 import { Messages } from '@/pages/Messages';
 import { ForgotPassword } from '@/pages/ForgotPassword';
 import { Landing } from '@/pages/Landing';
+import { Settings } from '@/pages/Settings';
+import { Feedback } from '@/pages/Feedback';
 
 // Home redirect component
 const HomeRedirect = () => {
@@ -71,6 +73,22 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <Messages />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/settings"
+              element={
+                <ProtectedRoute>
+                  <Settings />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/feedback"
+              element={
+                <ProtectedRoute>
+                  <Feedback />
                 </ProtectedRoute>
               }
             />
