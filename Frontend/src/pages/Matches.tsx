@@ -3,6 +3,7 @@ import { matchesApi, type Match } from "@/services";
 import { SkillCard } from "@/components/SkillCard";
 import { Search, Filter } from "lucide-react";
 import { useDebounce } from "@/hooks/useDebounce";
+import { SessionRequestModal } from "@/components/SessionRequestModal";
 
 export const Matches: React.FC = () => {
   const [matches, setMatches] = useState<Match[]>([]);
@@ -13,6 +14,8 @@ export const Matches: React.FC = () => {
   const [selectedAvailability, setSelectedAvailability] = useState<string[]>(
     []
   );
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const debouncedSearch = useDebounce(searchTerm, 500);
 
   const proficiencyLevels = ["BEGINNER", "INTERMEDIATE", "ADVANCED", "EXPERT"];
@@ -92,7 +95,7 @@ export const Matches: React.FC = () => {
 
     const availabilityMatch =
       selectedAvailability.length === 0 ||
-      match.teacher.availability
+      (match.teacher.availability || "")
         .split(",")
         .map((slot: string) => slot.trim())
         .some((slot: string) => {
@@ -141,18 +144,21 @@ export const Matches: React.FC = () => {
     fetchMatches();
   }, [debouncedSearch]);
 
-  const handleConnect = (matchId: number) => {
-    // TODO: Use requestsAPI to send a request
-    alert(
-      `Connect functionality would open messaging with match ID: ${matchId}`
-    );
-  };
+
+
+
 
   const handleBookSession = (matchId: number) => {
-    // TODO: Navigate to boolean page
-    alert(
-      `Booking functionality would open session booking for match ID: ${matchId}`
-    );
+    const match = matches.find((m) => m.id === matchId);
+    if (match) {
+      setSelectedMatch(match);
+      setIsModalOpen(true);
+    }
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedMatch(null);
   };
 
   return (
@@ -333,7 +339,6 @@ export const Matches: React.FC = () => {
               <SkillCard
                 key={match.id}
                 match={match}
-                onConnect={handleConnect}
                 onBookSession={handleBookSession}
               />
             ))}
@@ -348,6 +353,11 @@ export const Matches: React.FC = () => {
           </div>
         )}
       </div>
+      <SessionRequestModal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        match={selectedMatch}
+      />
     </div>
   );
 };

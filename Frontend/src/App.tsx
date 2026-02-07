@@ -53,6 +53,14 @@ export default function App() {
               }
             />
             <Route
+              path="/profile/:userId"
+              element={
+                <ProtectedRoute>
+                  <Profile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/matches"
               element={
                 <ProtectedRoute>

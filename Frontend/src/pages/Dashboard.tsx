@@ -4,32 +4,53 @@ import { useAuth } from "@/components/Context/AuthContext";
 import {
   matchesApi,
   sessionsAPI,
+  requestsAPI,
   type Match,
   type LearningSession,
+  type SessionRequest,
 } from "@/services";
-import { Calendar, Users, BookOpen, TrendingUp, Clock } from "lucide-react";
+import { 
+  Calendar, 
+  Users, 
+  BookOpen, 
+  TrendingUp, 
+  Clock,
+  ArrowRight,
+  AlertCircle
+} from "lucide-react";
 
 export const Dashboard: React.FC = () => {
   const { user } = useAuth();
   const [matches, setMatches] = useState<Match[]>([]);
-  const [upcomingSessions, setUpcomingSessions] = useState<LearningSession[]>(
-    [],
-  );
+  const [upcomingSessions, setUpcomingSessions] = useState<LearningSession[]>([]);
+  const [pendingRequests, setPendingRequests] = useState<SessionRequest[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [matchesResponse, sessionsResponse] = await Promise.all([
+        const [matchesResponse, sessionsResponse, requestsResponse] = await Promise.all([
           matchesApi.getRecommended(),
           sessionsAPI.getSessions(),
+          requestsAPI.getRequests(),
         ]);
+        
         setMatches(matchesResponse.data.slice(0, 3));
         setUpcomingSessions(
           sessionsResponse.data
             .filter((s) => s.status === "SCHEDULED")
             .slice(0, 3),
         );
+
+        // Filter for requests where the current user is the partner (recipient)
+        if (Array.isArray(requestsResponse.data)) {
+          const pending = requestsResponse.data.filter(
+            (req: any) => req.status === "PENDING" && req.partner_details?.username === user?.username
+          );
+          setPendingRequests(pending);
+        } else {
+          setPendingRequests([]);
+        }
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
       } finally {
@@ -37,8 +58,10 @@ export const Dashboard: React.FC = () => {
       }
     };
 
-    fetchData();
-  }, []);
+    if (user) {
+      fetchData();
+    }
+  }, [user]);
 
   if (loading) {
     return (
@@ -128,8 +151,32 @@ export const Dashboard: React.FC = () => {
 
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Upcoming Sessions */}
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2 space-y-8">
+            {/* Pending Requests Alert */}
+            {pendingRequests.length > 0 && (
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-6 shadow-sm flex items-start space-x-4">
+                <div className="w-12 h-12 bg-blue-100 dark:bg-blue-800 rounded-full flex items-center justify-center shrink-0">
+                  <AlertCircle className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div className="flex-1">
+                  <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                    You have {pendingRequests.length} new session {pendingRequests.length === 1 ? 'request' : 'requests'}!
+                  </h2>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                    Other users want to learn from you. Head over to the sessions page to accept or decline.
+                  </p>
+                  <Link
+                    to="/bookings"
+                    className="inline-flex items-center space-x-2 mt-4 text-sm font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors group"
+                  >
+                    <span>Manage Requests</span>
+                    <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                  </Link>
+                </div>
+              </div>
+            )}
+
+            {/* Upcoming Sessions */}
             <div className="bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-gray-200 dark:border-slate-800 p-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-bold text-gray-900 dark:text-white">
@@ -222,9 +269,9 @@ export const Dashboard: React.FC = () => {
                       <div key={match.id} className="flex items-center space-x-3">
                         <img
                           src={
-                            match.teacher.profile_image_url ||
-                            match.teacher.profile_image ||
-                            `https://ui-avatars.com/api/?name=${match.teacher.username}&background=random`
+                            match.teacher?.profile_image_url ||
+                            match.teacher?.profile_image ||
+                            `https://ui-avatars.com/api/?name=${match.teacher?.username || 'user'}&background=random`
                           }
                           alt={match.teacher.username}
                           className="w-10 h-10 rounded-full object-cover"

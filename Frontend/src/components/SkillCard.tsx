@@ -1,16 +1,15 @@
 import React from "react";
-import { Star, Calendar, MessageCircle, BookOpen } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Star, Calendar, BookOpen, User } from "lucide-react";
 import type { Match } from "@/services";
 
 interface SkillCardProps {
   match: Match;
-  onConnect?: (matchId: number) => void;
   onBookSession?: (matchId: number) => void;
 }
 
 export const SkillCard: React.FC<SkillCardProps> = ({
   match,
-  onConnect,
   onBookSession,
 }) => {
   const { teacher, skills } = match as any;
@@ -20,27 +19,31 @@ export const SkillCard: React.FC<SkillCardProps> = ({
   const matchId = match.id || 0;
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-lg border border-gray-200 dark:border-slate-800 p-6 hover:shadow-lg transition-shadow duration-300">
+    <div className="bg-white dark:bg-slate-900 rounded-lg border border-gray-200 dark:border-slate-800 p-6 hover:shadow-lg transition-all duration-300">
       <div className="flex items-start space-x-4">
         {/* Avatar */}
-        <img
-          src={
-            teacher.profile_image_url ||
-            teacher.profile_image ||
-            `https://ui-avatars.com/api/?name=${teacher.username}&background=random`
-          }
-          alt={teacher.username}
-          className="w-16 h-16 rounded-full object-cover"
-        />
+        <Link to={`/profile/${teacher.id}`} className="flex-shrink-0 transition-transform hover:scale-110">
+          <img
+            src={
+              teacher.profile_image_url ||
+              teacher.profile_image ||
+              `https://ui-avatars.com/api/?name=${teacher.username}&background=random`
+            }
+            alt={teacher.username}
+            className="w-16 h-16 rounded-full object-cover ring-2 ring-transparent hover:ring-blue-500 transition-all shadow-sm"
+          />
+        </Link>
 
         {/* Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="font-semibold text-lg text-gray-900 dark:text-white truncate">
-              {teacher.username}
-            </h3>
-            <div className="flex items-center space-x-1 text-sm bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-1 rounded-full">
-              <span className="font-medium text-xs">Active</span>
+            <Link to={`/profile/${teacher.id}`} className="group">
+              <h3 className="font-semibold text-lg text-gray-900 dark:text-white truncate group-hover:text-blue-600 transition-colors">
+                {teacher.username}
+              </h3>
+            </Link>
+            <div className="flex items-center space-x-1 text-sm bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-1 rounded-full border border-green-100 dark:border-green-800">
+              <span className="font-medium text-[10px] uppercase tracking-wider">Active</span>
             </div>
           </div>
 
@@ -94,13 +97,13 @@ export const SkillCard: React.FC<SkillCardProps> = ({
 
           {/* Actions */}
           <div className="flex space-x-2">
-            <button
-              onClick={() => onConnect?.(matchId)}
+            <Link
+              to={`/profile/${teacher.id}`}
               className="flex-1 flex items-center justify-center space-x-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
-              <MessageCircle className="w-4 h-4" />
-              <span>Connect</span>
-            </button>
+              <User className="w-4 h-4" />
+              <span>View Profile</span>
+            </Link>
             <button
               onClick={() => onBookSession?.(matchId)}
               className="flex-1 flex items-center justify-center space-x-1 px-4 py-2 border border-blue-600 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"

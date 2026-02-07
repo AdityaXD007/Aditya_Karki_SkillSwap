@@ -17,6 +17,20 @@ class SessionRequestSerializer(serializers.ModelSerializer):
             'session_length', 'message', 'status', 'created_at'
         ]
         read_only_fields = ['id', 'requester', 'status', 'created_at']
+    
+    def to_representation(self, instance):
+        # Ensure profiles exist before serializing
+        from users.models import UserProfile
+        
+        # Create profile for requester if it doesn't exist
+        if not hasattr(instance.requester, 'profile'):
+            UserProfile.objects.create(user=instance.requester)
+        
+        # Create profile for partner if it doesn't exist
+        if not hasattr(instance.partner, 'profile'):
+            UserProfile.objects.create(user=instance.partner)
+        
+        return super().to_representation(instance)
 
     def validate(self, data):
         # Prevent self-request

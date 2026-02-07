@@ -56,16 +56,19 @@ class LoginSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True)
 
 class UserProfileSerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField(source='user.id', read_only=True)
     username = serializers.CharField(source='user.username', read_only=True)
     email = serializers.EmailField(source='user.email', read_only=True)
     profile_image_url = serializers.SerializerMethodField()
     full_name = serializers.SerializerMethodField()
+    user_skills = serializers.SerializerMethodField()
+    rating = serializers.FloatField(default=5.0, read_only=True)
 
     class Meta:
         model = UserProfile
         fields = ['id', 'username', 'email', 'full_name', 'profile_image', 'profile_image_url', 
-                  'location', 'bio', 'languages', 'availability']
-        read_only_fields = ['id', 'username', 'email', 'full_name']
+                  'location', 'bio', 'languages', 'availability', 'user_skills', 'rating']
+        read_only_fields = ['id', 'username', 'email', 'full_name', 'rating']
     
     def get_full_name(self, obj):
         # Return full_name from UserProfile if available, otherwise use Django User's first_name
@@ -79,3 +82,9 @@ class UserProfileSerializer(serializers.ModelSerializer):
             if request is not None:
                 return request.build_absolute_uri(obj.profile_image.url)
         return None
+
+    def get_user_skills(self, obj):
+        from skills.models import UserSkill
+        from skills.serializers import UserSkillSerializer
+        skills = UserSkill.objects.filter(user=obj.user)
+        return UserSkillSerializer(skills, many=True).data

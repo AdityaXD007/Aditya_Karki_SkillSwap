@@ -9,6 +9,8 @@ export interface UserProfile {
     bio: string;
     languages: string;
     availability: string;
+    user_skills?: UserSkill[];
+    rating?: number;
 }
 
 export interface Skill {

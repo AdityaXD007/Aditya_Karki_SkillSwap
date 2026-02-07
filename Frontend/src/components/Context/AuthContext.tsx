@@ -102,14 +102,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
       setUser((prev) => {
         if (!prev) return null;
-        const userSkills: UserSkillInfo[] = skills.map((s) => ({
+        const userSkills: UserSkillInfo[] = skills.map((s: any) => ({
           id: s.id,
           skill_id: s.skill_id,
-          name: s.skill_details.name,
+          name: s.skill_details?.name || "Unknown Skill",
           type: s.skill_type,
           proficiency: s.proficiency_level,
-          icon_class: s.skill_details.icon_class,
-          color_class: s.skill_details.color_class,
+          icon_class: s.skill_details?.icon_class || "",
+          color_class: s.skill_details?.color_class || "",
         }));
 
         const skillsTeaching = userSkills

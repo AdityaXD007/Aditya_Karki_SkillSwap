@@ -44,7 +44,7 @@ export const Bookings: React.FC = () => {
 
       // Map Requests (Pending stuff mostly)
       requestsRes.data.forEach((req) => {
-        const isRequester = req.requester_details.username === user?.username;
+        const isRequester = req.requester_details?.username === user?.username;
         const partner = isRequester
           ? req.partner_details
           : req.requester_details;
@@ -53,8 +53,8 @@ export const Bookings: React.FC = () => {
           id: req.id,
           isRequest: true,
           skill: req.skill_learn_details?.name || "Skill Exchange",
-          partnerName: partner.full_name || partner.username,
-          partnerAvatar: partner.profile_image || undefined,
+          partnerName: partner?.full_name || partner?.username || "Unknown User",
+          partnerAvatar: partner?.profile_image || undefined,
           date: new Date(req.created_at).toLocaleDateString(), // Requests don't have scheduled time yet usually
           time: "TBD",
           duration: req.session_length,

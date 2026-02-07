@@ -50,6 +50,7 @@ class AggregatedMatchSerializer(serializers.Serializer):
         )
         return [{
             'id': us.skill.id,
+            'skill_id': us.skill.id,
             'name': us.skill.name,
             'proficiency_level': us.proficiency_level,
             'category': us.skill.category,

@@ -12,6 +12,8 @@ export const authAPI = {
 
     getProfile: () => apiClient.get<UserProfile>('/profiles/me/'),
 
+    getProfileById: (id: string | number) => apiClient.get<UserProfile>(`/profiles/${id}/`),
+
     updateProfile: (data: Partial<UserProfile>) =>
         apiClient.patch<UserProfile>('/profiles/me/', data),
 
