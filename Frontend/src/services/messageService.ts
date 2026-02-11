@@ -1,31 +1,36 @@
-import type { Conversation } from './types';
+import apiClient from './apiClient';
+import type { Conversation, Message } from './types';
 
 export const messagesApi = {
     getConversations: async (): Promise<Conversation[]> => {
-        // Mock data - replace with real API call
-        return Promise.resolve([
-            {
-                id: '1',
-                userName: 'Alice Johnson',
-                userAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop',
-                lastMessage: 'Looking forward to our session!',
-                lastMessageTime: '2026-01-12T10:30:00Z',
-                unreadCount: 2,
-            },
-            {
-                id: '2',
-                userName: 'Bob Smith',
-                userAvatar: 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=100&h=100&fit=crop',
-                lastMessage: 'Thanks for the help with TypeScript!',
-                lastMessageTime: '2026-01-11T15:45:00Z',
-                unreadCount: 0,
-            },
-        ]);
+        const response = await apiClient.get<any[]>('/chat/conversations/');
+        return response.data.map((c: any) => ({
+            id: c.id,
+            userName: c.partner_name,
+            userAvatar: c.partner_avatar || `https://ui-avatars.com/api/?name=${c.partner_name}&background=random`,
+            lastMessage: c.last_message || 'Start a conversation',
+            lastMessageTime: c.updated_at,
+            unreadCount: c.unread_count || 0,
+        }));
     },
 
-    send: async (conversationId: string, message: string): Promise<void> => {
-        // Mock implementation - replace with real API call
-        console.log(`Sending message to ${conversationId}: ${message}`);
-        return Promise.resolve();
+    getMessages: async (conversationId: number): Promise<Message[]> => {
+        const response = await apiClient.get<any[]>(`/chat/messages/?conversation_id=${conversationId}`);
+        return response.data.map((m: any) => ({
+            id: m.id,
+            text: m.content,
+            senderId: m.sender,
+            userName: m.sender_name,
+            userAvatar: m.sender_avatar || `https://ui-avatars.com/api/?name=${m.sender_name}&background=random`,
+            timestamp: m.timestamp,
+            isRead: m.is_read
+        }));
+    },
+
+    send: async (conversationId: number, message: string): Promise<void> => {
+        await apiClient.post('/chat/messages/', {
+            conversation: conversationId,
+            content: message
+        });
     },
 };

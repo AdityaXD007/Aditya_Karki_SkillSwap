@@ -50,6 +50,24 @@ class SessionRequestViewSet(viewsets.ModelViewSet):
             status='SCHEDULED'
         )
 
+        # 3. Create/Get Chat Conversation
+        from chat.models import Conversation
+        
+        # Check if conversation already exists between these two users
+        # Find conversations where both users are participants
+        # We need to filter for conversations that have BOTH users
+        # 1. Get conversations for requester
+        requester_convs = Conversation.objects.filter(participants=session_request.requester)
+        # 2. Filter those to find one that also has partner
+        existing_conversations = requester_convs.filter(participants=session_request.partner)
+        
+        if not existing_conversations.exists():
+            print(f"Creating new conversation between {session_request.requester} and {session_request.partner}")
+            chat = Conversation.objects.create()
+            chat.participants.add(session_request.requester, session_request.partner)
+        else:
+            print(f"Conversation already exists between {session_request.requester} and {session_request.partner}")
+
         return Response({'status': 'Request accepted, session created'}, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['post'])

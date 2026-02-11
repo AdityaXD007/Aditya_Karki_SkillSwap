@@ -1,21 +1,51 @@
-import React, { useState, useEffect } from "react";
-import { messagesApi, type Conversation } from "@/services";
-import { Send, Search } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { messagesApi, type Conversation, type Message } from "@/services";
+import { useAuth } from "@/components/Context/AuthContext";
+import { Send, Search, Video, Phone, X, Mic, MicOff, Video as VideoIcon, VideoOff } from "lucide-react";
+
+const ICE_SERVERS = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+  ],
+};
 
 export const Messages: React.FC = () => {
+  const { user } = useAuth();
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [selectedConversation, setSelectedConversation] = useState<
-    string | null
-  >(null);
+  const [selectedConversation, setSelectedConversation] = useState<number | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [messageText, setMessageText] = useState("");
   const [loading, setLoading] = useState(true);
+  
+  // Video Call State
+  const [isInCall, setIsInCall] = useState(false);
+  const [isIncomingCall, setIsIncomingCall] = useState(false);
+  const [callStatus, setCallStatus] = useState<string>("");
+  const [micOn, setMicOn] = useState(true);
+  const [cameraOn, setCameraOn] = useState(true);
+
+  const socketRef = useRef<WebSocket | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
+  const localVideoRef = useRef<HTMLVideoElement>(null);
+  const remoteVideoRef = useRef<HTMLVideoElement>(null);
+  const localStreamRef = useRef<MediaStream | null>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   useEffect(() => {
     const fetchConversations = async () => {
       try {
         const data = await messagesApi.getConversations();
         setConversations(data);
-        if (data.length > 0) {
+        if (data.length > 0 && !selectedConversation) {
           setSelectedConversation(data[0].id);
         }
       } catch (error) {
@@ -25,18 +55,237 @@ export const Messages: React.FC = () => {
       }
     };
 
-    fetchConversations();
-  }, []);
+    if (user) {
+        fetchConversations();
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (selectedConversation) {
+        // Fetch history
+        setLoading(true);
+        messagesApi.getMessages(selectedConversation).then((data) => {
+            setMessages(data);
+            setLoading(false);
+        });
+
+        // Connect WebSocket
+    const token = localStorage.getItem('auth_token');
+    if (!token) return;
+
+    const wsUrl = `ws://localhost:8000/ws/chat/${selectedConversation}/?token=${token}`;
+    
+    if (socketRef.current) {
+        socketRef.current.close();
+    }
+
+    const socket = new WebSocket(wsUrl);
+
+    socket.onopen = () => {
+         console.log('Connected to chat');
+    };
+
+    socket.onmessage = async (e) => {
+         const data = JSON.parse(e.data);
+         
+         // Chat Message
+         if (data.type === 'chat_message' || data.message) { // Handle legacy/fallback
+             const newMsg: Message = {
+                 id: Date.now(), 
+                 text: data.message,
+                 senderId: data.sender_id,
+                 userName: data.sender || 'Unknown',
+                 userAvatar: '', 
+                 timestamp: data.timestamp || new Date().toISOString(),
+                 isRead: false
+             };
+             setMessages(prev => [...prev, newMsg]);
+         }
+         
+         // Signaling: Offer
+         else if (data.type === 'video_offer') {
+             if (data.sender_id === Number(user?.id)) return; // Ignore own offer if echoed
+             setIsIncomingCall(true);
+             // Store offer data temporarily? Or just set it when accepting
+             // For simplicity, we assume we can handle it now or wait
+             // Better: Store offer in a ref to use when user 'Accepts'
+             // For now, let's just log it. Real-world: show Accept/Reject UI
+             // We'll attach the offer data to a ref to use in 'acceptCall'
+             (window as any).pendingOffer = data.data; 
+         }
+         
+         // Signaling: Answer
+         else if (data.type === 'video_answer') {
+             if (peerConnectionRef.current) {
+                 await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(data.data));
+             }
+         }
+         
+         // Signaling: ICE Candidate
+         else if (data.type === 'new_ice_candidate') {
+             if (peerConnectionRef.current && data.data) {
+                 try {
+                     await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(data.data));
+                 } catch (e) {
+                     console.error("Error adding ice candidate", e);
+                 }
+             }
+         }
+    };
+
+    socketRef.current = socket;
+
+    return () => {
+        if (socketRef.current) {
+            socketRef.current.close();
+        }
+        if (localStreamRef.current) {
+            localStreamRef.current.getTracks().forEach(track => track.stop());
+        }
+        if (peerConnectionRef.current) {
+             peerConnectionRef.current.close();
+        }
+    };
+  }
+}, [selectedConversation]);
+
+// WebRTC Functions
+const createPeerConnection = () => {
+    const pc = new RTCPeerConnection(ICE_SERVERS);
+
+    pc.onicecandidate = (event) => {
+        if (event.candidate && socketRef.current) {
+            socketRef.current.send(JSON.stringify({
+                type: 'new_ice_candidate',
+                data: event.candidate
+            }));
+        }
+    };
+
+    pc.ontrack = (event) => {
+        if (remoteVideoRef.current) {
+            remoteVideoRef.current.srcObject = event.streams[0];
+        }
+    };
+
+    return pc;
+};
+
+const startCall = async () => {
+    setIsInCall(true);
+    setCallStatus("Calling...");
+    
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        localStreamRef.current = stream;
+        
+        if (localVideoRef.current) {
+            localVideoRef.current.srcObject = stream;
+        }
+
+        const pc = createPeerConnection();
+        stream.getTracks().forEach(track => pc.addTrack(track, stream));
+        peerConnectionRef.current = pc;
+
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+
+        if (socketRef.current) {
+            socketRef.current.send(JSON.stringify({
+                type: 'video_offer',
+                data: offer
+            }));
+        }
+
+    } catch (err) {
+        console.error("Error starting call:", err);
+        endCall();
+    }
+};
+
+const acceptCall = async () => {
+    setIsIncomingCall(false);
+    setIsInCall(true);
+    setCallStatus("Connected");
+
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        localStreamRef.current = stream;
+        
+        if (localVideoRef.current) {
+            localVideoRef.current.srcObject = stream;
+        }
+
+        const pc = createPeerConnection();
+        stream.getTracks().forEach(track => pc.addTrack(track, stream));
+        peerConnectionRef.current = pc;
+
+        const offer = (window as any).pendingOffer;
+        if (offer) {
+            await pc.setRemoteDescription(new RTCSessionDescription(offer));
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            
+            if (socketRef.current) {
+                socketRef.current.send(JSON.stringify({
+                    type: 'video_answer',
+                    data: answer
+                }));
+            }
+        }
+
+    } catch (err) {
+        console.error("Error accepting call:", err);
+        endCall();
+    }
+};
+
+const endCall = () => {
+    setIsInCall(false);
+    setIsIncomingCall(false);
+    setCallStatus("");
+    
+    if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach(track => track.stop());
+        localStreamRef.current = null;
+    }
+
+    if (peerConnectionRef.current) {
+        peerConnectionRef.current.close();
+        peerConnectionRef.current = null;
+    }
+};
+
+const toggleMic = () => {
+    if (localStreamRef.current) {
+        localStreamRef.current.getAudioTracks().forEach(track => track.enabled = !micOn);
+        setMicOn(!micOn);
+    }
+};
+
+const toggleCamera = () => {
+    if (localStreamRef.current) {
+        localStreamRef.current.getVideoTracks().forEach(track => track.enabled = !cameraOn);
+        setCameraOn(!cameraOn);
+    }
+};
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!messageText.trim() || !selectedConversation) return;
 
-    try {
-      await messagesApi.send(selectedConversation, messageText);
-      setMessageText("");
-    } catch (error) {
-      console.error("Error sending message:", error);
+    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+        try {
+            socketRef.current.send(JSON.stringify({
+                message: messageText
+            }));
+            setMessageText("");
+        } catch (err) {
+            console.error("WS Send Error", err);
+        }
+    } else {
+        // Fallback or reconnect logic
+        console.warn("WebSocket not connected");
     }
   };
 
@@ -63,11 +312,7 @@ export const Messages: React.FC = () => {
                 </div>
               </div>
                <div className="divide-y divide-gray-200 dark:divide-slate-800">
-                {loading ? (
-                  <div className="p-8 text-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                  </div>
-                ) : conversations.length > 0 ? (
+                {conversations.length > 0 ? (
                   conversations.map((conv) => (
                     <button
                       key={conv.id}
@@ -105,7 +350,7 @@ export const Messages: React.FC = () => {
                   ))
                 ) : (
                   <div className="p-8 text-center text-gray-500 dark:text-gray-400">
-                    No conversations yet
+                    {loading ? "Loading..." : "No conversations yet"}
                   </div>
                 )}
               </div>
@@ -116,7 +361,7 @@ export const Messages: React.FC = () => {
               {selected ? (
                 <>
                    {/* Chat Header */}
-                  <div className="p-4 border-b border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 transition-colors">
+                  <div className="p-4 border-b border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 transition-colors flex justify-between items-center">
                     <div className="flex items-center space-x-3">
                       <img
                         src={selected.userAvatar}
@@ -130,13 +375,118 @@ export const Messages: React.FC = () => {
                         <p className="text-sm text-gray-500 dark:text-gray-400">Active now</p>
                       </div>
                     </div>
+                    {/* Call Buttons */}
+                    <div className="flex space-x-3">
+                        <button onClick={startCall} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 text-blue-600 dark:text-blue-400 transition-colors">
+                            <VideoIcon className="w-5 h-5" />
+                        </button>
+                        <button className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 text-blue-600 dark:text-blue-400 transition-colors">
+                            <Phone className="w-5 h-5" />
+                        </button>
+                    </div>
                   </div>
 
-                  {/* Messages */}
-                  <div className="flex-1 overflow-y-auto p-4 bg-gray-50 dark:bg-slate-950 transition-colors">
-                    <div className="text-center text-gray-500 dark:text-gray-500 py-8">
-                      <p>Start of conversation with {selected.userName}</p>
-                    </div>
+                  {/* Video Call Overlay */}
+                  {isInCall && (
+                      <div className="absolute inset-0 bg-slate-900 z-50 flex flex-col">
+                          <div className="relative flex-1 bg-black">
+                              {/* Remote Video */}
+                              <video 
+                                  ref={remoteVideoRef} 
+                                  autoPlay 
+                                  playsInline 
+                                  className="w-full h-full object-cover"
+                              />
+                              
+                              {/* Local Video */}
+                              <div className="absolute bottom-4 right-4 w-48 h-36 bg-gray-800 rounded-lg overflow-hidden border-2 border-slate-700 shadow-xl">
+                                  <video 
+                                      ref={localVideoRef} 
+                                      autoPlay 
+                                      playsInline 
+                                      muted 
+                                      className="w-full h-full object-cover"
+                                  />
+                              </div>
+
+                              {/* Status Overlay */}
+                              <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-black/50 px-4 py-2 rounded-full backdrop-blur-sm">
+                                  <p className="text-white font-medium">{callStatus}</p>
+                              </div>
+                          </div>
+
+                          {/* Controls */}
+                          <div className="h-20 bg-slate-900 flex items-center justify-center space-x-6 border-t border-slate-800">
+                              <button 
+                                  onClick={toggleMic}
+                                  className={`p-4 rounded-full ${micOn ? 'bg-slate-800 text-white' : 'bg-red-500 text-white'} hover:opacity-90 transition-all`}
+                              >
+                                  {micOn ? <Mic className="w-6 h-6" /> : <MicOff className="w-6 h-6" />}
+                              </button>
+                              <button 
+                                  onClick={endCall}
+                                  className="p-4 rounded-full bg-red-600 text-white hover:bg-red-700 transition-all shadow-lg shadow-red-500/20"
+                              >
+                                  <Phone className="w-8 h-8 rotate-[135deg]" />
+                              </button>
+                              <button 
+                                  onClick={toggleCamera}
+                                  className={`p-4 rounded-full ${cameraOn ? 'bg-slate-800 text-white' : 'bg-red-500 text-white'} hover:opacity-90 transition-all`}
+                              >
+                                  {cameraOn ? <VideoIcon className="w-6 h-6" /> : <VideoOff className="w-6 h-6" />}
+                              </button>
+                          </div>
+                      </div>
+                  )}
+
+                  {/* Incoming Call Modal */}
+                  {isIncomingCall && !isInCall && (
+                      <div className="absolute top-4 right-4 z-50 animate-bounce-in">
+                          <div className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-2xl border border-gray-200 dark:border-slate-700 flex flex-col items-center w-64">
+                               <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center mb-3 animate-pulse">
+                                   <VideoIcon className="w-8 h-8 text-blue-600" />
+                               </div>
+                               <h3 className="font-bold text-gray-900 dark:text-white mb-1">Incoming Call...</h3>
+                               <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{selected?.userName}</p>
+                               <div className="flex space-x-3 w-full">
+                                   <button 
+                                       onClick={() => setIsIncomingCall(false)}
+                                       className="flex-1 py-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 font-medium transition-colors"
+                                   >
+                                       Decline
+                                   </button>
+                                   <button 
+                                       onClick={acceptCall}
+                                       className="flex-1 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 font-medium transition-colors shadow-lg shadow-green-500/20"
+                                   >
+                                       Accept
+                                   </button>
+                               </div>
+                          </div>
+                      </div>
+                  )}
+
+                  {/* Colors for my message */}
+                  <div className="flex-1 overflow-y-auto p-4 bg-gray-50 dark:bg-slate-950 transition-colors space-y-4">
+                    {messages.map((msg, index) => {
+                        const isMe = msg.userName === user?.username || Number(msg.senderId) === Number(user?.id); // Safe check
+                        
+                        return (
+                            <div key={msg.id || index} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+                                <div className={`max-w-[70%] rounded-lg p-3 ${
+                                    isMe 
+                                    ? 'bg-blue-600 text-white rounded-br-none' 
+                                    : 'bg-white dark:bg-slate-800 text-gray-900 dark:text-white rounded-bl-none shadow-sm border border-gray-200 dark:border-slate-700'
+                                }`}>
+                                    <p>{msg.text}</p>
+                                    <p className={`text-xs mt-1 ${isMe ? 'text-blue-100' : 'text-gray-500 dark:text-gray-400'}`}>
+                                        {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </p>
+                                </div>
+                            </div>
+                        );
+                    })}
+                    <div ref={messagesEndRef} />
                   </div>
 
                   {/* Message Input */}
@@ -145,7 +495,7 @@ export const Messages: React.FC = () => {
                     className="p-4 border-t border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 transition-colors"
                   >
                     <div className="flex space-x-2">
-                      <input
+                       <input
                         type="text"
                         value={messageText}
                         onChange={(e) => setMessageText(e.target.value)}

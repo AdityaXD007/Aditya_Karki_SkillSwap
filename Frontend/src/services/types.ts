@@ -42,12 +42,22 @@ export interface Match {
 }
 
 export interface Conversation {
-    id: string;
+    id: number;
     userName: string;
     userAvatar: string;
     lastMessage: string;
     lastMessageTime: string;
     unreadCount: number;
+}
+
+export interface Message {
+    id: number;
+    text: string;
+    senderId: number;
+    userName: string;
+    userAvatar: string;
+    timestamp: string;
+    isRead: boolean;
 }
 
 export interface SessionRequest {
