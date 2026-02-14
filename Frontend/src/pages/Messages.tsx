@@ -300,7 +300,7 @@ const toggleCamera = () => {
         >
           <div className="grid grid-cols-1 md:grid-cols-3 h-full">
             {/* Conversations List */}
-            <div className="border-r border-gray-200 dark:border-slate-800 overflow-y-auto">
+            <div className="border-r border-gray-200 dark:border-slate-800 overflow-y-auto h-full">
               <div className="p-4 border-b border-gray-200 dark:border-slate-800">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 w-5 h-5" />
@@ -357,7 +357,7 @@ const toggleCamera = () => {
             </div>
 
             {/* Chat Area */}
-            <div className="md:col-span-2 flex flex-col">
+            <div className="md:col-span-2 flex flex-col h-full overflow-hidden">
               {selected ? (
                 <>
                    {/* Chat Header */}
