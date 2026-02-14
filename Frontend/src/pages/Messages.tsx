@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { messagesApi, type Conversation, type Message } from "@/services";
 import { useAuth } from "@/components/Context/AuthContext";
-import { Send, Search, Video, Phone, X, Mic, MicOff, Video as VideoIcon, VideoOff } from "lucide-react";
+import { Send, Search, Video, Phone, X, Mic, MicOff, Video as VideoIcon, VideoOff, MoreVertical, Reply, Smile } from "lucide-react";
 
 const ICE_SERVERS = {
   iceServers: [
@@ -24,6 +24,7 @@ export const Messages: React.FC = () => {
   const [callStatus, setCallStatus] = useState<string>("");
   const [micOn, setMicOn] = useState(true);
   const [cameraOn, setCameraOn] = useState(true);
+  const [replyingTo, setReplyingTo] = useState<Message | null>(null);
 
   const socketRef = useRef<WebSocket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -91,13 +92,14 @@ export const Messages: React.FC = () => {
          // Chat Message
          if (data.type === 'chat_message' || data.message) { // Handle legacy/fallback
              const newMsg: Message = {
-                 id: Date.now(), 
+                 id: data.id || Date.now(), 
                  text: data.message,
                  senderId: data.sender_id,
                  userName: data.sender || 'Unknown',
                  userAvatar: '', 
                  timestamp: data.timestamp || new Date().toISOString(),
-                 isRead: false
+                 isRead: false,
+                 replyTo: data.reply_to_data
              };
              setMessages(prev => [...prev, newMsg]);
          }
@@ -277,9 +279,11 @@ const toggleCamera = () => {
     if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
         try {
             socketRef.current.send(JSON.stringify({
-                message: messageText
+                message: messageText,
+                reply_to_id: replyingTo?.id
             }));
             setMessageText("");
+            setReplyingTo(null);
         } catch (err) {
             console.error("WS Send Error", err);
         }
@@ -472,16 +476,48 @@ const toggleCamera = () => {
                         const isMe = msg.userName === user?.username || Number(msg.senderId) === Number(user?.id); // Safe check
                         
                         return (
-                            <div key={msg.id || index} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-                                <div className={`max-w-[70%] rounded-lg p-3 ${
-                                    isMe 
-                                    ? 'bg-blue-600 text-white rounded-br-none' 
-                                    : 'bg-white dark:bg-slate-800 text-gray-900 dark:text-white rounded-bl-none shadow-sm border border-gray-200 dark:border-slate-700'
-                                }`}>
-                                    <p>{msg.text}</p>
-                                    <p className={`text-xs mt-1 ${isMe ? 'text-blue-100' : 'text-gray-500 dark:text-gray-400'}`}>
-                                        {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                    </p>
+                            <div key={msg.id || index} className={`flex w-full group ${isMe ? 'justify-end' : 'justify-start'} mb-4`}>
+                                <div className={`flex items-end max-w-[80%] gap-2 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
+                                    {/* Message Bubble */}
+                                    <div className={`relative px-4 py-2 shadow-sm ${
+                                        isMe 
+                                        ? 'bg-blue-600 text-white rounded-2xl rounded-br-none' 
+                                        : 'bg-white dark:bg-slate-800 text-gray-900 dark:text-white rounded-2xl rounded-bl-none border border-gray-100 dark:border-slate-700'
+                                    }`}>
+                                        {msg.replyTo && (
+                                            <div className="mb-2 p-2 bg-black/10 dark:bg-white/10 rounded-md text-xs border-l-2 border-white/50">
+                                                <p className="font-bold opacity-90 mb-0.5">{msg.replyTo.sender}</p>
+                                                <p className="opacity-80 line-clamp-1">{msg.replyTo.text}</p>
+                                            </div>
+                                        )}
+                                        <p className="text-sm md:text-base leading-relaxed break-words">{msg.text}</p>
+                                        <p className={`text-[10px] mt-1 text-right ${isMe ? 'text-blue-100/70' : 'text-gray-400'}`}>
+                                            {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        </p>
+                                    </div>
+
+                                    {/* Action Buttons (Hidden by default, visible on hover) */}
+                                    <div className={`opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center gap-1 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
+                                        <button 
+                                            className="p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-500 dark:text-gray-400 transition-colors focus:outline-none"
+                                            title="More"
+                                        >
+                                            <MoreVertical className="w-4 h-4" />
+                                        </button>
+                                        <button 
+                                            onClick={() => setReplyingTo(msg)}
+                                            className="p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-500 dark:text-gray-400 transition-colors focus:outline-none"
+                                            title="Reply"
+                                        >
+                                            <Reply className="w-4 h-4" />
+                                        </button>
+                                        <button 
+                                            className="p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-500 dark:text-gray-400 transition-colors focus:outline-none"
+                                            title="React"
+                                        >
+                                            <Smile className="w-4 h-4" />
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         );
@@ -492,9 +528,24 @@ const toggleCamera = () => {
                   {/* Message Input */}
                   <form
                     onSubmit={handleSendMessage}
-                    className="p-4 border-t border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 transition-colors"
+                    className="border-t border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 transition-colors flex flex-col"
                   >
-                    <div className="flex space-x-2">
+                    {replyingTo && (
+                        <div className="px-4 py-2 bg-gray-50 dark:bg-slate-800/50 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center animate-slide-up">
+                            <div className="flex flex-col border-l-2 border-blue-500 pl-3">
+                                <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">Replying to {replyingTo.userName}</span>
+                                <span className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-xs">{replyingTo.text}</span>
+                            </div>
+                            <button 
+                                type="button"
+                                onClick={() => setReplyingTo(null)} 
+                                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-1"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+                    )}
+                    <div className="p-4 flex space-x-2">
                        <input
                         type="text"
                         value={messageText}

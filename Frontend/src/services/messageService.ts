@@ -23,14 +23,17 @@ export const messagesApi = {
             userName: m.sender_name,
             userAvatar: m.sender_avatar || `https://ui-avatars.com/api/?name=${m.sender_name}&background=random`,
             timestamp: m.timestamp,
-            isRead: m.is_read
+            isRead: m.is_read,
+            replyTo: m.reply_to_data,
+            reactions: m.reactions
         }));
     },
 
-    send: async (conversationId: number, message: string): Promise<void> => {
+    send: async (conversationId: number, message: string, replyToId?: number): Promise<void> => {
         await apiClient.post('/chat/messages/', {
             conversation: conversationId,
-            content: message
+            content: message,
+            reply_to: replyToId
         });
     },
 };

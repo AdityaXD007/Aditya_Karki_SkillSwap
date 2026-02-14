@@ -8,10 +8,23 @@ class MessageSerializer(serializers.ModelSerializer):
     sender_name = serializers.CharField(source='sender.username', read_only=True)
     sender_avatar = serializers.SerializerMethodField()
     
+    reply_to = serializers.PrimaryKeyRelatedField(queryset=Message.objects.all(), required=False, allow_null=True)
+    reply_to_data = serializers.SerializerMethodField()
+    reactions = serializers.JSONField(read_only=True)
+
     class Meta:
         model = Message
-        fields = ['id', 'conversation', 'sender', 'sender_name', 'sender_avatar', 'content', 'timestamp', 'is_read']
-        read_only_fields = ['sender', 'timestamp', 'is_read']
+        fields = ['id', 'conversation', 'sender', 'sender_name', 'sender_avatar', 'content', 'timestamp', 'is_read', 'reply_to', 'reply_to_data', 'reactions']
+        read_only_fields = ['sender', 'timestamp', 'is_read', 'reactions']
+
+    def get_reply_to_data(self, obj):
+        if obj.reply_to:
+            return {
+                "id": obj.reply_to.id,
+                "text": obj.reply_to.content,
+                "sender": obj.reply_to.sender.username
+            }
+        return None
 
     def get_sender_avatar(self, obj):
         if hasattr(obj.sender, 'profile') and obj.sender.profile.profile_image:

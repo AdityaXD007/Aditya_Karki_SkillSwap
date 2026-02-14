@@ -17,6 +17,8 @@ class Message(models.Model):
     content = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
     is_read = models.BooleanField(default=False)
+    reply_to = models.ForeignKey('self', null=True, blank=True, on_delete=models.SET_NULL, related_name='replies')
+    reactions = models.JSONField(default=dict, blank=True)
 
     class Meta:
         ordering = ['timestamp']

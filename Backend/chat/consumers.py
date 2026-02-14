@@ -44,20 +44,24 @@ class ChatConsumer(AsyncWebsocketConsumer):
         
         if message_type == 'chat_message':
             message_content = text_data_json.get('message')
+            reply_to_id = text_data_json.get('reply_to_id')
+            
             if message_content:
                 user = self.scope['user']
                 # Save to DB
-                saved_message = await self.save_message(self.room_name, user, message_content)
+                saved_message, reply_to_data = await self.save_message(self.room_name, user, message_content, reply_to_id)
                 
                 # Send message to room group
                 await self.channel_layer.group_send(
                     self.room_group_name,
                     {
                         'type': 'chat_message',
+                        'id': saved_message.id,
                         'message': message_content,
                         'sender': user.username,
                         'sender_id': user.id,
-                        'timestamp': str(saved_message.timestamp)
+                        'timestamp': str(saved_message.timestamp),
+                        'reply_to_data': reply_to_data
                     }
                 )
         elif message_type in ['video_offer', 'video_answer', 'new_ice_candidate']:
@@ -75,18 +79,15 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     # Receive message from room group
     async def chat_message(self, event):
-        message = event['message']
-        sender = event['sender']
-        sender_id = event['sender_id']
-        timestamp = event['timestamp']
-
         # Send message to WebSocket
         await self.send(text_data=json.dumps({
             'type': 'chat_message',
-            'message': message,
-            'sender': sender,
-            'sender_id': sender_id,
-            'timestamp': timestamp
+            'id': event.get('id'),
+            'message': event['message'],
+            'sender': event['sender'],
+            'sender_id': event['sender_id'],
+            'timestamp': event['timestamp'],
+            'reply_to_data': event.get('reply_to_data')
         }))
 
     async def signal_message(self, event):
@@ -106,10 +107,24 @@ class ChatConsumer(AsyncWebsocketConsumer):
             return False
 
     @database_sync_to_async
-    def save_message(self, room_id, user, content):
+    def save_message(self, room_id, user, content, reply_to_id=None):
         conversation = Conversation.objects.get(id=room_id)
-        return Message.objects.create(
+        reply_to_msg = None
+        reply_to_data = None
+        
+        if reply_to_id:
+            reply_to_msg = Message.objects.filter(id=reply_to_id).first()
+            if reply_to_msg:
+                reply_to_data = {
+                    "id": reply_to_msg.id,
+                    "text": reply_to_msg.content,
+                    "sender": reply_to_msg.sender.username
+                }
+
+        msg = Message.objects.create(
             conversation=conversation,
             sender=user,
-            content=content
+            content=content,
+            reply_to=reply_to_msg
         )
+        return msg, reply_to_data

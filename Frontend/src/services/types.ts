@@ -58,6 +58,12 @@ export interface Message {
     userAvatar: string;
     timestamp: string;
     isRead: boolean;
+    replyTo?: {
+        id: number;
+        text: string;
+        sender: string;
+    };
+    reactions?: Record<string, string>;
 }
 
 export interface SessionRequest {
