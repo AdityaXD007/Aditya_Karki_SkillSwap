@@ -170,11 +170,16 @@ class ChatConsumer(AsyncWebsocketConsumer):
         if reply_to_id:
             reply_to_msg = Message.objects.filter(id=reply_to_id).first()
             if reply_to_msg:
-                reply_to_data = {
-                    "id": reply_to_msg.id,
-                    "text": reply_to_msg.content,
-                    "sender": reply_to_msg.sender.username
-                }
+                # Prevent replying to an unsent message
+                if reply_to_msg.is_deleted:
+                    reply_to_msg = None
+                    reply_to_data = None
+                else:
+                    reply_to_data = {
+                        "id": reply_to_msg.id,
+                        "text": reply_to_msg.content,
+                        "sender": reply_to_msg.sender.username
+                    }
 
         msg = Message.objects.create(
             conversation=conversation,
@@ -188,6 +193,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
     def update_reactions(self, message_id, user, reaction):
         try:
             msg = Message.objects.get(id=message_id)
+            if msg.is_deleted:
+                return msg.reactions
+
             if not isinstance(msg.reactions, dict):
                 msg.reactions = {}
             
@@ -208,6 +216,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         try:
             msg = Message.objects.get(id=message_id, sender=user)
             msg.is_deleted = True
+            msg.reactions = {} # Clear reactions
             msg.save()
             return True
         except Message.DoesNotExist:

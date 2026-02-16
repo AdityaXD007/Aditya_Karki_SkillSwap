@@ -32,9 +32,12 @@ class MessageSerializer(serializers.ModelSerializer):
 
     def get_reply_to_data(self, obj):
         if obj.reply_to:
+            text = obj.reply_to.content
+            if obj.reply_to.is_deleted:
+                text = "Message unsent"
             return {
                 "id": obj.reply_to.id,
-                "text": obj.reply_to.content,
+                "text": text,
                 "sender": obj.reply_to.sender.username
             }
         return None
@@ -80,6 +83,8 @@ class ConversationSerializer(serializers.ModelSerializer):
     def get_last_message(self, obj):
         msg = obj.messages.order_by('-timestamp').first()
         if msg:
+            if msg.is_deleted:
+                return "Message unsent"
             return msg.content
         return ""
 
