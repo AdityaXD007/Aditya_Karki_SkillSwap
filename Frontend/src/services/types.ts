@@ -64,6 +64,7 @@ export interface Message {
         sender: string;
     };
     reactions?: Record<string, string>;
+    isDeleted?: boolean;
 }
 
 export interface SessionRequest {

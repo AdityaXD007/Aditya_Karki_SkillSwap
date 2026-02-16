@@ -25,7 +25,8 @@ export const messagesApi = {
             timestamp: m.timestamp,
             isRead: m.is_read,
             replyTo: m.reply_to_data,
-            reactions: m.reactions
+            reactions: m.reactions,
+            isDeleted: m.is_deleted
         }));
     },
 

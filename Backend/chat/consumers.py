@@ -64,6 +64,47 @@ class ChatConsumer(AsyncWebsocketConsumer):
                         'reply_to_data': reply_to_data
                     }
                 )
+        elif message_type == 'add_reaction':
+            message_id = text_data_json.get('message_id')
+            reaction = text_data_json.get('reaction')
+            
+            if message_id and reaction:
+                user = self.scope['user']
+                # Update reactions in DB
+                updated_reactions = await self.update_reactions(message_id, user, reaction)
+                
+                # Broad cast to group
+                await self.channel_layer.group_send(
+                    self.room_group_name,
+                    {
+                        'type': 'reaction_update',
+                        'message_id': message_id,
+                        'reactions': updated_reactions
+                    }
+                )
+        elif message_type == 'unsend_message':
+            message_id = text_data_json.get('message_id')
+            if message_id:
+                user = self.scope['user']
+                success = await self.unsend_message_db(message_id, user)
+                if success:
+                    await self.channel_layer.group_send(
+                        self.room_group_name,
+                        {
+                            'type': 'message_unsent',
+                            'message_id': message_id
+                        }
+                    )
+        elif message_type == 'remove_message':
+            message_id = text_data_json.get('message_id')
+            if message_id:
+                user = self.scope['user']
+                await self.remove_message_db(message_id, user)
+                # No need to broadcast as it is only for this user
+                await self.send(text_data=json.dumps({
+                    'type': 'message_removed_for_me',
+                    'message_id': message_id
+                }))
         elif message_type in ['video_offer', 'video_answer', 'new_ice_candidate']:
             # Forward signaling messages to the group
             # We add sender_id to avoid sending back to self in frontend
@@ -98,6 +139,20 @@ class ChatConsumer(AsyncWebsocketConsumer):
             'sender_id': event['sender_id']
         }))
 
+    async def reaction_update(self, event):
+        # Send reaction update to WebSocket
+        await self.send(text_data=json.dumps({
+            'type': 'reaction_update',
+            'message_id': event['message_id'],
+            'reactions': event['reactions']
+        }))
+
+    async def message_unsent(self, event):
+        await self.send(text_data=json.dumps({
+            'type': 'message_unsent',
+            'message_id': event['message_id']
+        }))
+
     @database_sync_to_async
     def is_participant(self, room_id, user):
         try:
@@ -128,3 +183,41 @@ class ChatConsumer(AsyncWebsocketConsumer):
             reply_to=reply_to_msg
         )
         return msg, reply_to_data
+
+    @database_sync_to_async
+    def update_reactions(self, message_id, user, reaction):
+        try:
+            msg = Message.objects.get(id=message_id)
+            if not isinstance(msg.reactions, dict):
+                msg.reactions = {}
+            
+            # If the same user reacts with the same emoji, remove it (toggle)
+            if msg.reactions.get(user.username) == reaction:
+                del msg.reactions[user.username]
+            else:
+                # Otherwise, set/replace their reaction
+                msg.reactions[user.username] = reaction
+                
+            msg.save()
+            return msg.reactions
+        except Message.DoesNotExist:
+            return {}
+
+    @database_sync_to_async
+    def unsend_message_db(self, message_id, user):
+        try:
+            msg = Message.objects.get(id=message_id, sender=user)
+            msg.is_deleted = True
+            msg.save()
+            return True
+        except Message.DoesNotExist:
+            return False
+
+    @database_sync_to_async
+    def remove_message_db(self, message_id, user):
+        try:
+            msg = Message.objects.get(id=message_id)
+            msg.removed_by.add(user)
+            return True
+        except Message.DoesNotExist:
+            return False

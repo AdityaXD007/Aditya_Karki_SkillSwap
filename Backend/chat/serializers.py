@@ -11,11 +11,24 @@ class MessageSerializer(serializers.ModelSerializer):
     reply_to = serializers.PrimaryKeyRelatedField(queryset=Message.objects.all(), required=False, allow_null=True)
     reply_to_data = serializers.SerializerMethodField()
     reactions = serializers.JSONField(read_only=True)
+    is_removed_by_me = serializers.SerializerMethodField()
 
     class Meta:
         model = Message
-        fields = ['id', 'conversation', 'sender', 'sender_name', 'sender_avatar', 'content', 'timestamp', 'is_read', 'reply_to', 'reply_to_data', 'reactions']
-        read_only_fields = ['sender', 'timestamp', 'is_read', 'reactions']
+        fields = ['id', 'conversation', 'sender', 'sender_name', 'sender_avatar', 'content', 'timestamp', 'is_read', 'reply_to', 'reply_to_data', 'reactions', 'is_deleted', 'is_removed_by_me']
+        read_only_fields = ['sender', 'timestamp', 'is_read', 'reactions', 'is_deleted']
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        if instance.is_deleted:
+            data['content'] = "Message unsent"
+        return data
+
+    def get_is_removed_by_me(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return obj.removed_by.filter(id=request.user.id).exists()
+        return False
 
     def get_reply_to_data(self, obj):
         if obj.reply_to:

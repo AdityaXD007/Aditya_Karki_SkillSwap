@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { messagesApi, type Conversation, type Message } from "@/services";
 import { useAuth } from "@/components/Context/AuthContext";
-import { Send, Search, Video, Phone, X, Mic, MicOff, Video as VideoIcon, VideoOff, MoreVertical, Reply, Smile } from "lucide-react";
+import { Send, Search, Phone, X, Mic, MicOff, Video as VideoIcon, VideoOff, MoreVertical, Reply, Smile, Trash2 } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 const ICE_SERVERS = {
   iceServers: [
@@ -25,6 +26,7 @@ export const Messages: React.FC = () => {
   const [micOn, setMicOn] = useState(true);
   const [cameraOn, setCameraOn] = useState(true);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState<number | null>(null); // Message ID
 
   const socketRef = useRef<WebSocket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -133,6 +135,25 @@ export const Messages: React.FC = () => {
                  }
              }
          }
+
+          // Reactions Update
+          else if (data.type === 'reaction_update') {
+              setMessages(prev => prev.map(m => 
+                  m.id === data.message_id ? { ...m, reactions: data.reactions } : m
+              ));
+          }
+
+          // Message Unsent
+          else if (data.type === 'message_unsent') {
+              setMessages(prev => prev.map(m => 
+                  m.id === data.message_id ? { ...m, text: "Message unsent", isDeleted: true } : m
+              ));
+          }
+
+          // Message Removed For Me
+          else if (data.type === 'message_removed_for_me') {
+              setMessages(prev => prev.filter(m => m.id !== data.message_id));
+          }
     };
 
     socketRef.current = socket;
@@ -290,6 +311,35 @@ const toggleCamera = () => {
     } else {
         // Fallback or reconnect logic
         console.warn("WebSocket not connected");
+    }
+  };
+
+  const handleAddReaction = (messageId: number, reaction: string) => {
+    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+        socketRef.current.send(JSON.stringify({
+            type: 'add_reaction',
+            message_id: messageId,
+            reaction: reaction
+        }));
+    }
+    setShowEmojiPicker(null);
+  };
+
+  const handleUnsend = (messageId: number) => {
+    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+        socketRef.current.send(JSON.stringify({
+            type: 'unsend_message',
+            message_id: messageId
+        }));
+    }
+  };
+
+  const handleRemoveForMe = (messageId: number) => {
+    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+        socketRef.current.send(JSON.stringify({
+            type: 'remove_message',
+            message_id: messageId
+        }));
     }
   };
 
@@ -490,20 +540,59 @@ const toggleCamera = () => {
                                                 <p className="opacity-80 line-clamp-1">{msg.replyTo.text}</p>
                                             </div>
                                         )}
-                                        <p className="text-sm md:text-base leading-relaxed break-words">{msg.text}</p>
+                                        <p className={`text-sm md:text-base leading-relaxed break-words ${msg.isDeleted ? 'italic opacity-70' : ''}`}>
+                                            {msg.text}
+                                        </p>
                                         <p className={`text-[10px] mt-1 text-right ${isMe ? 'text-blue-100/70' : 'text-gray-400'}`}>
                                             {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                         </p>
+
+                                        {/* Reactions Display (Moved inside the relative container) */}
+                                        {msg.reactions && Object.keys(msg.reactions).length > 0 && (
+                                            <div className={`absolute -bottom-3 flex -space-x-1 ${isMe ? 'right-0' : 'left-0'} z-10`}>
+                                                <div className="bg-white dark:bg-slate-800 rounded-full px-1.5 py-0.5 shadow-sm border border-gray-100 dark:border-slate-700 flex items-center gap-1 scale-90 origin-bottom">
+                                                    <div className="flex -space-x-1">
+                                                        {Array.from(new Set(Object.values(msg.reactions))).map((emoji, i) => (
+                                                            <span key={i} className="text-[14px]">{emoji as string}</span>
+                                                        ))}
+                                                    </div>
+                                                    <span className="text-[10px] font-bold text-gray-600 dark:text-gray-300">
+                                                        {Object.keys(msg.reactions).length}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* Action Buttons (Hidden by default, visible on hover) */}
                                     <div className={`opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center gap-1 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
-                                        <button 
-                                            className="p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-500 dark:text-gray-400 transition-colors focus:outline-none"
-                                            title="More"
-                                        >
-                                            <MoreVertical className="w-4 h-4" />
-                                        </button>
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <button 
+                                                    className="p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-500 dark:text-gray-400 transition-colors focus:outline-none"
+                                                    title="More"
+                                                >
+                                                    <MoreVertical className="w-4 h-4" />
+                                                </button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align={isMe ? "end" : "start"} className="w-48">
+                                                {isMe && !msg.isDeleted && (
+                                                    <DropdownMenuItem 
+                                                        onClick={() => handleUnsend(msg.id)}
+                                                        className="text-red-600 dark:text-red-400 focus:text-red-700 focus:bg-red-50 dark:focus:bg-red-900/20"
+                                                    >
+                                                        <Trash2 className="w-4 h-4 mr-2" />
+                                                        Unsend for everyone
+                                                    </DropdownMenuItem>
+                                                )}
+                                                <DropdownMenuItem 
+                                                    onClick={() => handleRemoveForMe(msg.id)}
+                                                >
+                                                    <Trash2 className="w-4 h-4 mr-2" />
+                                                    Remove for me
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
                                         <button 
                                             onClick={() => setReplyingTo(msg)}
                                             className="p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-500 dark:text-gray-400 transition-colors focus:outline-none"
@@ -511,12 +600,29 @@ const toggleCamera = () => {
                                         >
                                             <Reply className="w-4 h-4" />
                                         </button>
-                                        <button 
-                                            className="p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-500 dark:text-gray-400 transition-colors focus:outline-none"
-                                            title="React"
-                                        >
-                                            <Smile className="w-4 h-4" />
-                                        </button>
+                                        <div className="relative">
+                                            <button 
+                                                onClick={() => setShowEmojiPicker(showEmojiPicker === msg.id ? null : msg.id)}
+                                                className={`p-1.5 rounded-full ${showEmojiPicker === msg.id ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700'} text-gray-500 dark:text-gray-400 transition-colors focus:outline-none`}
+                                                title="React"
+                                            >
+                                                <Smile className="w-4 h-4" />
+                                            </button>
+                                            
+                                            {showEmojiPicker === msg.id && (
+                                                <div className={`absolute bottom-full mb-2 p-1 bg-white dark:bg-slate-800 rounded-full shadow-xl border border-gray-200 dark:border-slate-700 flex items-center gap-1 z-50 animate-bounce-in ${isMe ? 'right-0' : 'left-0'}`}>
+                                                    {['❤️', '😂', '😮', '😢', '😡', '👍'].map(emoji => (
+                                                        <button
+                                                            key={emoji}
+                                                            onClick={() => handleAddReaction(msg.id, emoji)}
+                                                            className="p-1.5 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-full transition-all hover:scale-125 text-lg"
+                                                        >
+                                                            {emoji}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
