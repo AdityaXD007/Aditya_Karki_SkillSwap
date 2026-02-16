@@ -28,6 +28,13 @@ class ChatConsumer(AsyncWebsocketConsumer):
             self.channel_name
         )
 
+        # Join personal user group for cross-conversation notifications
+        self.user_group_name = f"user_{self.scope['user'].id}"
+        await self.channel_layer.group_add(
+            self.user_group_name,
+            self.channel_name
+        )
+
         await self.accept()
 
     async def disconnect(self, close_code):
@@ -36,6 +43,12 @@ class ChatConsumer(AsyncWebsocketConsumer):
             self.room_group_name,
             self.channel_name
         )
+        # Leave personal group
+        if hasattr(self, 'user_group_name'):
+            await self.channel_layer.group_discard(
+                self.user_group_name,
+                self.channel_name
+            )
 
     # Receive message from WebSocket
     async def receive(self, text_data):
@@ -51,19 +64,22 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 # Save to DB
                 saved_message, reply_to_data = await self.save_message(self.room_name, user, message_content, reply_to_id)
                 
-                # Send message to room group
-                await self.channel_layer.group_send(
-                    self.room_group_name,
-                    {
-                        'type': 'chat_message',
-                        'id': saved_message.id,
-                        'message': message_content,
-                        'sender': user.username,
-                        'sender_id': user.id,
-                        'timestamp': str(saved_message.timestamp),
-                        'reply_to_data': reply_to_data
-                    }
-                )
+                # Send message to participants' personal groups
+                participant_ids = await self.get_participant_ids(self.room_name)
+                for pid in participant_ids:
+                    await self.channel_layer.group_send(
+                        f"user_{pid}",
+                        {
+                            'type': 'chat_message',
+                            'room_id': int(self.room_name),
+                            'id': saved_message.id,
+                            'message': message_content,
+                            'sender': user.username,
+                            'sender_id': user.id,
+                            'timestamp': str(saved_message.timestamp),
+                            'reply_to_data': reply_to_data
+                        }
+                    )
         elif message_type == 'add_reaction':
             message_id = text_data_json.get('message_id')
             reaction = text_data_json.get('reaction')
@@ -88,13 +104,17 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 user = self.scope['user']
                 success = await self.unsend_message_db(message_id, user)
                 if success:
-                    await self.channel_layer.group_send(
-                        self.room_group_name,
-                        {
-                            'type': 'message_unsent',
-                            'message_id': message_id
-                        }
-                    )
+                    # Broadcast to participants' personal groups
+                    participant_ids = await self.get_participant_ids(self.room_name)
+                    for pid in participant_ids:
+                        await self.channel_layer.group_send(
+                            f"user_{pid}",
+                            {
+                                'type': 'message_unsent',
+                                'room_id': int(self.room_name),
+                                'message_id': message_id
+                            }
+                        )
         elif message_type == 'remove_message':
             message_id = text_data_json.get('message_id')
             if message_id:
@@ -105,6 +125,21 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     'type': 'message_removed_for_me',
                     'message_id': message_id
                 }))
+        elif message_type == 'mark_read':
+            user = self.scope['user']
+            # Mark all messages in this conversation as read for this user
+            await self.mark_messages_as_read(self.room_name, user)
+            
+            # Optionally broadcast that messages were read (to update counters for other users if needed, 
+            # but usually unread count is per-user based on sender)
+            # Actually, we should tell the sender that their message was read.
+            await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    'type': 'messages_read',
+                    'reader_id': user.id
+                }
+            )
         elif message_type in ['video_offer', 'video_answer', 'new_ice_candidate']:
             # Forward signaling messages to the group
             # We add sender_id to avoid sending back to self in frontend
@@ -123,6 +158,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         # Send message to WebSocket
         await self.send(text_data=json.dumps({
             'type': 'chat_message',
+            'room_id': event.get('room_id'),
             'id': event.get('id'),
             'message': event['message'],
             'sender': event['sender'],
@@ -151,6 +187,12 @@ class ChatConsumer(AsyncWebsocketConsumer):
         await self.send(text_data=json.dumps({
             'type': 'message_unsent',
             'message_id': event['message_id']
+        }))
+
+    async def messages_read(self, event):
+        await self.send(text_data=json.dumps({
+            'type': 'messages_read',
+            'reader_id': event['reader_id']
         }))
 
     @database_sync_to_async
@@ -230,3 +272,18 @@ class ChatConsumer(AsyncWebsocketConsumer):
             return True
         except Message.DoesNotExist:
             return False
+
+    @database_sync_to_async
+    def mark_messages_as_read(self, room_id, user):
+        Message.objects.filter(
+            conversation_id=room_id,
+            is_read=False
+        ).exclude(sender=user).update(is_read=True)
+
+    @database_sync_to_async
+    def get_participant_ids(self, room_id):
+        try:
+            conversation = Conversation.objects.get(id=room_id)
+            return list(conversation.participants.values_list('id', flat=True))
+        except Conversation.DoesNotExist:
+            return []

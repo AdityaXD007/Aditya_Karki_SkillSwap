@@ -14,7 +14,10 @@ const ICE_SERVERS = {
 export const Messages: React.FC = () => {
   const { user } = useAuth();
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [selectedConversation, setSelectedConversation] = useState<number | null>(null);
+  const [selectedConversation, setSelectedConversation] = useState<number | null>(() => {
+    const saved = localStorage.getItem("selected_conversation_id");
+    return saved ? Number(saved) : null;
+  });
   const [messages, setMessages] = useState<Message[]>([]);
   const [messageText, setMessageText] = useState("");
   const [loading, setLoading] = useState(true);
@@ -48,8 +51,17 @@ export const Messages: React.FC = () => {
       try {
         const data = await messagesApi.getConversations();
         setConversations(data);
-        if (data.length > 0 && !selectedConversation) {
-          setSelectedConversation(data[0].id);
+        
+        if (data.length > 0) {
+            // Priority: 1. Locally saved ID (if it exists in data) 2. First conversation in list
+            const savedId = localStorage.getItem("selected_conversation_id");
+            if (savedId && data.some(c => c.id === Number(savedId))) {
+               if (selectedConversation !== Number(savedId)) {
+                   setSelectedConversation(Number(savedId));
+               }
+            } else if (!selectedConversation) {
+                setSelectedConversation(data[0].id);
+            }
         }
       } catch (error) {
         console.error("Error fetching conversations:", error);
@@ -86,13 +98,14 @@ export const Messages: React.FC = () => {
 
     socket.onopen = () => {
          console.log('Connected to chat');
+         // We no longer mark as read here automatically to avoid wiping out the counter on load
     };
 
     socket.onmessage = async (e) => {
          const data = JSON.parse(e.data);
          
-         // Chat Message
-         if (data.type === 'chat_message' || data.message) { // Handle legacy/fallback
+         if (data.type === 'chat_message' || data.message) {
+             const roomId = data.room_id || selectedConversation;
              const newMsg: Message = {
                  id: data.id || Date.now(), 
                  text: data.message,
@@ -103,7 +116,41 @@ export const Messages: React.FC = () => {
                  isRead: false,
                  replyTo: data.reply_to_data
              };
-             setMessages(prev => [...prev, newMsg]);
+
+             // Only add to messages view if it's the currently selected conversation
+             if (Number(roomId) === Number(selectedConversation)) {
+                 setMessages(prev => {
+                     // Simple deduplication based on ID
+                     if (prev.some(m => m.id === newMsg.id)) return prev;
+                     return [...prev, newMsg];
+                 });
+                 
+                 // Mark as read since we are viewing this conversation
+                 if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+                     socketRef.current.send(JSON.stringify({ type: 'mark_read' }));
+                 }
+             }
+
+             // Update conversation list for ALL rooms (sidebar sync)
+             setConversations(prev => {
+                 const convIndex = prev.findIndex(c => Number(c.id) === Number(roomId));
+                 if (convIndex === -1) return prev;
+                 
+                 const targetConv = prev[convIndex];
+                 const isSelected = Number(roomId) === Number(selectedConversation);
+                 const isFromMe = Number(data.sender_id) === Number(user?.id);
+
+                 const updatedConv = {
+                     ...targetConv,
+                     lastMessage: data.message,
+                     lastMessageTime: data.timestamp || new Date().toISOString(),
+                     // Increment unread count ONLY if it's not the active chat AND not from me
+                     unreadCount: isSelected ? 0 : (isFromMe ? targetConv.unreadCount : targetConv.unreadCount + 1)
+                 };
+                 
+                 const filtered = prev.filter(c => Number(c.id) !== Number(roomId));
+                 return [updatedConv, ...filtered];
+             });
          }
          
          // Signaling: Offer
@@ -153,6 +200,14 @@ export const Messages: React.FC = () => {
           // Message Removed For Me
           else if (data.type === 'message_removed_for_me') {
               setMessages(prev => prev.filter(m => m.id !== data.message_id));
+          }
+
+          // Messages Read
+          else if (data.type === 'messages_read') {
+              if (Number(data.reader_id) !== Number(user?.id)) {
+                  // If the other person read my messages
+                  setMessages(prev => prev.map(m => ({ ...m, isRead: true })));
+              }
           }
     };
 
@@ -305,6 +360,7 @@ const toggleCamera = () => {
             }));
             setMessageText("");
             setReplyingTo(null);
+            markAsRead(); // Mark as read locally after sending
         } catch (err) {
             console.error("WS Send Error", err);
         }
@@ -343,6 +399,24 @@ const toggleCamera = () => {
     }
   };
 
+  const markAsRead = (id?: number) => {
+    const targetId = id || selectedConversation;
+    if (!targetId) return;
+
+    // Tell backend if socket is ready
+    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+        socketRef.current.send(JSON.stringify({ type: 'mark_read' }));
+        
+        // Reset locally only for the specific conversation
+        setConversations(prev => prev.map(c => 
+            Number(c.id) === Number(targetId) ? { ...c, unreadCount: 0 } : c
+        ));
+    }
+  };
+
+  // Removed automatic markAsRead effects to ensure counter is visible on initial load
+  // until user interacts or a new message arrives.
+
   const selected = conversations.find((c) => c.id === selectedConversation);
 
   return (
@@ -370,7 +444,11 @@ const toggleCamera = () => {
                   conversations.map((conv) => (
                     <button
                       key={conv.id}
-                      onClick={() => setSelectedConversation(conv.id)}
+                      onClick={() => {
+                          setSelectedConversation(conv.id);
+                          localStorage.setItem("selected_conversation_id", conv.id.toString());
+                          markAsRead(conv.id);
+                      }}
                       className={`w-full p-4 text-left hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors ${
                         selectedConversation === conv.id ? "bg-blue-50 dark:bg-blue-900/20" : ""
                       }`}
