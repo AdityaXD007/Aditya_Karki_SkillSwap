@@ -53,6 +53,8 @@ export interface Conversation {
 export interface Message {
     id: number;
     text: string;
+    image?: string;
+    audio?: string;
     senderId: number;
     userName: string;
     userAvatar: string;

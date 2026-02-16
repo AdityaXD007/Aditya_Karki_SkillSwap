@@ -19,6 +19,8 @@ export const messagesApi = {
         return response.data.map((m: any) => ({
             id: m.id,
             text: m.content,
+            image: m.image,
+            audio: m.audio,
             senderId: m.sender,
             userName: m.sender_name,
             userAvatar: m.sender_avatar || `https://ui-avatars.com/api/?name=${m.sender_name}&background=random`,

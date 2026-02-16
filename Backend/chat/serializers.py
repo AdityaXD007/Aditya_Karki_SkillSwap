@@ -15,7 +15,7 @@ class MessageSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Message
-        fields = ['id', 'conversation', 'sender', 'sender_name', 'sender_avatar', 'content', 'timestamp', 'is_read', 'reply_to', 'reply_to_data', 'reactions', 'is_deleted', 'is_removed_by_me']
+        fields = ['id', 'conversation', 'sender', 'sender_name', 'sender_avatar', 'content', 'image', 'audio', 'timestamp', 'is_read', 'reply_to', 'reply_to_data', 'reactions', 'is_deleted', 'is_removed_by_me']
         read_only_fields = ['sender', 'timestamp', 'is_read', 'reactions', 'is_deleted']
 
     def to_representation(self, instance):
@@ -85,7 +85,12 @@ class ConversationSerializer(serializers.ModelSerializer):
         if msg:
             if msg.is_deleted:
                 return "Message unsent"
-            return msg.content
+            if msg.content:
+                return msg.content
+            if msg.image:
+                return "Sent a photo"
+            if msg.audio:
+                return "Sent a voice message"
         return ""
 
     def get_unread_count(self, obj):

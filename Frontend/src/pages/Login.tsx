@@ -33,8 +33,13 @@ export const Login: React.FC = () => {
     try {
       await login(email, password);
       navigate("/dashboard");
-    } catch (err) {
-      setError("Invalid credentials. Please try again.");
+    } catch (err: any) {
+      console.error("Login attempt failed:", err);
+      if (err.message === "Network Error" || !err.response) {
+        setError(`Cannot connect to server at ${window.location.hostname}. Check if your laptop is reachable.`);
+      } else {
+        setError(err.message || "Invalid credentials. Please try again.");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -87,6 +92,8 @@ export const Login: React.FC = () => {
                   className="block w-full pl-10 pr-3 py-3 border border-gray-300 dark:border-slate-800 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-white transition-colors"
                   placeholder="you@example.com"
                   autoComplete="username"
+                  autoCapitalize="none"
+                  autoCorrect="off"
                 />
               </div>
             </div>

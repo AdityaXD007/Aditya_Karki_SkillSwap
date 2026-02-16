@@ -105,6 +105,8 @@ export const Signup: React.FC = () => {
                   className="block w-full pl-10 pr-3 py-3 border border-gray-300 dark:border-slate-800 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-white transition-colors"
                   placeholder="User Name"
                   autoComplete="username"
+                  autoCapitalize="none"
+                  autoCorrect="off"
                 />
               </div>
             </div>
@@ -158,6 +160,8 @@ export const Signup: React.FC = () => {
                   className="block w-full pl-10 pr-3 py-3 border border-gray-300 dark:border-slate-800 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-white transition-colors"
                   placeholder="you@example.com"
                   autoComplete="username"
+                  autoCapitalize="none"
+                  autoCorrect="off"
                 />
               </div>
             </div>

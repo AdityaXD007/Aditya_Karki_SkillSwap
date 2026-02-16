@@ -164,7 +164,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       localStorage.setItem("user", JSON.stringify(mappedUser));
       await refreshUserSkills();
     } catch (error: any) {
-      throw new Error(error.response?.data?.error || "Invalid credentials");
+      console.error("Login Error Details:", error.response?.data);
+      const errorMsg = error.response?.data?.error || 
+                       error.response?.data?.email?.[0] || 
+                       error.response?.data?.password?.[0] || 
+                       "Invalid credentials";
+      throw new Error(errorMsg);
     } finally {
       setLoading(false);
     }

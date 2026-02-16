@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { messagesApi, type Conversation, type Message } from "@/services";
 import { useAuth } from "@/components/Context/AuthContext";
-import { Send, Search, Phone, X, Mic, MicOff, Video as VideoIcon, VideoOff, MoreVertical, Reply, Smile, Trash2 } from "lucide-react";
+import { Send, Search, Phone, X, Mic, MicOff, Video as VideoIcon, VideoOff, MoreVertical, Reply, Smile, Trash2, Image as ImageIcon } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 const ICE_SERVERS = {
@@ -30,6 +30,12 @@ export const Messages: React.FC = () => {
   const [cameraOn, setCameraOn] = useState(true);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState<number | null>(null); // Message ID
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const timerRef = useRef<any>(null);
 
   const socketRef = useRef<WebSocket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -37,6 +43,8 @@ export const Messages: React.FC = () => {
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -88,7 +96,7 @@ export const Messages: React.FC = () => {
     const token = localStorage.getItem('auth_token');
     if (!token) return;
 
-    const wsUrl = `ws://localhost:8000/ws/chat/${selectedConversation}/?token=${token}`;
+    const wsUrl = `ws://${window.location.hostname}:8000/ws/chat/${selectedConversation}/?token=${token}`;
     
     if (socketRef.current) {
         socketRef.current.close();
@@ -109,6 +117,8 @@ export const Messages: React.FC = () => {
              const newMsg: Message = {
                  id: data.id || Date.now(), 
                  text: data.message,
+                 image: data.image,
+                 audio: data.audio,
                  senderId: data.sender_id,
                  userName: data.sender || 'Unknown',
                  userAvatar: '', 
@@ -287,6 +297,10 @@ const acceptCall = async () => {
     setCallStatus("Connected");
 
     try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            throw new Error("BrowserNotSupported");
+        }
+
         const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
         localStreamRef.current = stream;
         
@@ -310,10 +324,28 @@ const acceptCall = async () => {
                     data: answer
                 }));
             }
+        } else {
+            console.warn("No pending offer found when accepting call.");
+            alert("Call connection error: missing signaling data.");
+            endCall();
+            return;
         }
 
-    } catch (err) {
+    } catch (err: any) {
         console.error("Error accepting call:", err);
+        let errorMsg = "Could not start video call.";
+        
+        if (err.message === "BrowserNotSupported") {
+            errorMsg = "Your browser does not support video calls on this connection. Ensure you use HTTPS or the chrome://flags workaround.";
+        } else if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+            errorMsg = "Camera or Microphone permission was denied. Please allow access in browser settings.";
+        } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+            errorMsg = "No camera or microphone found on your device.";
+        } else if (!window.isSecureContext && window.location.hostname !== 'localhost') {
+            errorMsg = "Video calls require a Secure Connection (HTTPS) or a special browser flag on mobile.";
+        }
+        
+        alert(errorMsg);
         endCall();
     }
 };
@@ -350,16 +382,40 @@ const toggleCamera = () => {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!messageText.trim() || !selectedConversation) return;
+    if (!messageText.trim() && !imagePreview && !isRecording) return;
 
     if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
         try {
-            socketRef.current.send(JSON.stringify({
+            const payload: any = {
                 message: messageText,
                 reply_to_id: replyingTo?.id
-            }));
+            };
+
+            if (imagePreview) {
+                payload.image = imagePreview;
+            }
+
+            if (isRecording) {
+                // If currently recording, stop it and wait briefly for the stop event to populate pendingAudio
+                setIsRecording(false);
+                if (timerRef.current) clearInterval(timerRef.current);
+                mediaRecorderRef.current?.stop();
+                
+                // Wait for the reader to finish (rough approximation for demo/simplicity)
+                await new Promise(resolve => setTimeout(resolve, 500));
+                if ((window as any).pendingAudio) {
+                    payload.audio = (window as any).pendingAudio;
+                    delete (window as any).pendingAudio;
+                }
+            }
+
+            socketRef.current.send(JSON.stringify(payload));
             setMessageText("");
             setReplyingTo(null);
+            setSelectedImage(null);
+            setImagePreview(null);
+            setIsRecording(false);
+            if (timerRef.current) clearInterval(timerRef.current);
             markAsRead(); // Mark as read locally after sending
         } catch (err) {
             console.error("WS Send Error", err);
@@ -416,6 +472,61 @@ const toggleCamera = () => {
 
   // Removed automatic markAsRead effects to ensure counter is visible on initial load
   // until user interacts or a new message arrives.
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const toggleRecording = async () => {
+    if (!isRecording) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const recorder = new MediaRecorder(stream);
+        mediaRecorderRef.current = recorder;
+        audioChunksRef.current = [];
+
+        recorder.ondataavailable = (e) => audioChunksRef.current.push(e.data);
+        recorder.onstop = async () => {
+            const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+            const reader = new FileReader();
+            reader.readAsDataURL(audioBlob);
+            reader.onloadend = () => {
+                const base64Audio = reader.result as string;
+                // We'll send this in handleSendMessage
+                (window as any).pendingAudio = base64Audio;
+            };
+            stream.getTracks().forEach(t => t.stop());
+        };
+
+        recorder.start();
+        setIsRecording(true);
+        setRecordingTime(0);
+        timerRef.current = setInterval(() => {
+          setRecordingTime(prev => prev + 1);
+        }, 1000);
+      } catch (err) {
+        console.error("Error accessing microphone:", err);
+      }
+    } else {
+      setIsRecording(false);
+      if (timerRef.current) clearInterval(timerRef.current);
+      mediaRecorderRef.current?.stop();
+    }
+  };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
 
   const selected = conversations.find((c) => c.id === selectedConversation);
 
@@ -520,30 +631,36 @@ const toggleCamera = () => {
 
                   {/* Video Call Overlay */}
                   {isInCall && (
-                      <div className="absolute inset-0 bg-slate-900 z-50 flex flex-col">
-                          <div className="relative flex-1 bg-black">
+                      <div className="absolute inset-0 bg-slate-950 z-50 flex flex-col rounded-lg overflow-hidden animate-in fade-in zoom-in-95 duration-300">
+                          <div className="relative flex-1 bg-black flex items-center justify-center">
                               {/* Remote Video */}
                               <video 
                                   ref={remoteVideoRef} 
                                   autoPlay 
                                   playsInline 
-                                  className="w-full h-full object-cover"
+                                  className="max-w-full max-h-full w-auto h-auto object-contain"
                               />
                               
-                              {/* Local Video */}
-                              <div className="absolute bottom-4 right-4 w-48 h-36 bg-gray-800 rounded-lg overflow-hidden border-2 border-slate-700 shadow-xl">
+                              {/* Local Video (Floating) */}
+                              <div className="absolute bottom-6 right-6 w-40 h-52 md:w-48 md:h-64 bg-slate-800 rounded-2xl overflow-hidden border-2 border-white/10 shadow-2xl transition-all duration-300 hover:scale-105 active:scale-95 cursor-move">
                                   <video 
                                       ref={localVideoRef} 
                                       autoPlay 
                                       playsInline 
                                       muted 
-                                      className="w-full h-full object-cover"
+                                      className="w-full h-full object-cover -scale-x-100"
                                   />
                               </div>
 
-                              {/* Status Overlay */}
-                              <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-black/50 px-4 py-2 rounded-full backdrop-blur-sm">
-                                  <p className="text-white font-medium">{callStatus}</p>
+                              {/* Call Metadata/Status */}
+                              <div className="absolute top-6 left-1/2 -translate-x-1/2 flex flex-col items-center space-y-2">
+                                  <div className="bg-slate-800/80 backdrop-blur-md px-4 py-1.5 rounded-full border border-white/10 flex items-center space-x-2">
+                                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                                      <p className="text-white text-sm font-medium tracking-wide uppercase">{callStatus}</p>
+                                  </div>
+                                  <h4 className="text-white/80 text-xs font-medium bg-black/20 px-3 py-1 rounded-full backdrop-blur-sm">
+                                      Stay connected with {selected?.userName}
+                                  </h4>
                               </div>
                           </div>
 
@@ -618,9 +735,29 @@ const toggleCamera = () => {
                                                 <p className="opacity-80 line-clamp-1">{msg.replyTo.text}</p>
                                             </div>
                                         )}
-                                        <p className={`text-sm md:text-base leading-relaxed break-words ${msg.isDeleted ? 'italic opacity-70' : ''}`}>
-                                            {msg.text}
-                                        </p>
+                                         {msg.audio && (
+                                            <div className="mb-2 max-w-full">
+                                                <audio 
+                                                    controls 
+                                                    className={`h-8 w-48 md:w-64 ${isMe ? 'brightness-125' : ''}`}
+                                                    src={msg.audio.startsWith('http') ? msg.audio : `http://${window.location.hostname}:8000${msg.audio}`}
+                                                />
+                                            </div>
+                                        )}
+                                        {msg.image && (
+                                            <div className="mb-2 relative rounded-lg overflow-hidden border border-black/5">
+                                                <img 
+                                                    src={msg.image.startsWith('http') ? msg.image : `http://${window.location.hostname}:8000${msg.image}`} 
+                                                    alt="Attached" 
+                                                    className="max-h-64 w-auto object-contain cursor-zoom-in hover:brightness-95 transition-all"
+                                                />
+                                            </div>
+                                        )}
+                                        {msg.text && (
+                                            <p className={`text-sm md:text-base leading-relaxed break-words ${msg.isDeleted ? 'italic opacity-70' : ''}`}>
+                                                {msg.text}
+                                            </p>
+                                        )}
                                         <p className={`text-[10px] mt-1 text-right ${isMe ? 'text-blue-100/70' : 'text-gray-400'}`}>
                                             {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                         </p>
@@ -711,44 +848,110 @@ const toggleCamera = () => {
                     <div ref={messagesEndRef} />
                   </div>
 
-                  {/* Message Input */}
-                  <form
-                    onSubmit={handleSendMessage}
-                    className="border-t border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 transition-colors flex flex-col"
-                  >
-                    {replyingTo && (
-                        <div className="px-4 py-2 bg-gray-50 dark:bg-slate-800/50 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center animate-slide-up">
-                            <div className="flex flex-col border-l-2 border-blue-500 pl-3">
-                                <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">Replying to {replyingTo.userName}</span>
-                                <span className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-xs">{replyingTo.text}</span>
-                            </div>
-                            <button 
-                                type="button"
-                                onClick={() => setReplyingTo(null)} 
-                                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-1"
-                            >
-                                <X className="w-4 h-4" />
-                            </button>
-                        </div>
-                    )}
-                    <div className="p-4 flex space-x-2">
-                       <input
-                        type="text"
-                        value={messageText}
-                        onChange={(e) => setMessageText(e.target.value)}
-                        placeholder="Type a message..."
-                        className="flex-1 px-4 py-2 border border-gray-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-white transition-colors"
-                      />
-                      <button
-                        type="submit"
-                        disabled={!messageText.trim()}
-                        className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 transition-all active:scale-95"
-                      >
-                        <Send className="w-4 h-4" />
-                        <span>Send</span>
-                      </button>
-                    </div>
-                  </form>
+                   {/* Message Input */}
+                   <form
+                     onSubmit={handleSendMessage}
+                     className="border-t border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 transition-colors flex flex-col"
+                   >
+                     {/* Image Preview Area */}
+                     {imagePreview && (
+                         <div className="px-4 py-3 bg-gray-50 dark:bg-slate-800/30 flex items-center space-x-4 animate-in fade-in slide-in-from-bottom-2">
+                             <div className="relative group">
+                                 <img src={imagePreview} alt="Preview" className="w-20 h-20 object-cover rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm" />
+                                 <button 
+                                     type="button"
+                                     onClick={() => { setSelectedImage(null); setImagePreview(null); }}
+                                     className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-lg hover:bg-red-600 transition-colors"
+                                 >
+                                     <X className="w-3 h-3" />
+                                 </button>
+                             </div>
+                             <div className="flex-1">
+                                 <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{selectedImage?.name}</p>
+                                 <p className="text-[10px] text-gray-500 italic">{(selectedImage!.size / 1024).toFixed(1)} KB</p>
+                             </div>
+                         </div>
+                     )}
+
+                     {replyingTo && (
+                         <div className="px-4 py-2 bg-gray-50 dark:bg-slate-800/50 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center animate-slide-up">
+                             <div className="flex flex-col border-l-2 border-blue-500 pl-3">
+                                 <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">Replying to {replyingTo.userName}</span>
+                                 <span className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-xs">{replyingTo.text}</span>
+                             </div>
+                             <button 
+                                 type="button"
+                                 onClick={() => setReplyingTo(null)} 
+                                 className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-1"
+                             >
+                                 <X className="w-4 h-4" />
+                             </button>
+                         </div>
+                     )}
+                     
+                     <div className="p-4 flex items-center space-x-3">
+                       <div className="flex items-center space-x-1 shrink-0">
+                           <input 
+                               type="file" 
+                               ref={fileInputRef} 
+                               onChange={handleImageSelect} 
+                               accept="image/*" 
+                               className="hidden" 
+                           />
+                           <button
+                             type="button"
+                             onClick={() => fileInputRef.current?.click()}
+                             className="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-full transition-all hover:text-blue-600 dark:hover:text-blue-400 active:scale-90"
+                             title="Attach Image"
+                           >
+                             <ImageIcon className="w-5 h-5" />
+                           </button>
+                           <button
+                             type="button"
+                             onClick={toggleRecording}
+                             className={`p-2 rounded-full transition-all active:scale-90 ${
+                               isRecording 
+                               ? 'bg-red-100 text-red-600 animate-pulse' 
+                               : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-red-500'
+                             }`}
+                             title={isRecording ? "Stop Recording" : "Voice Message"}
+                           >
+                             <Mic className="w-5 h-5" />
+                           </button>
+                       </div>
+
+                       {isRecording ? (
+                           <div className="flex-1 flex items-center justify-between bg-red-50 dark:bg-red-900/10 px-4 py-2 rounded-lg border border-red-100 dark:border-red-900/30 animate-in fade-in scale-in-95">
+                               <div className="flex items-center space-x-2">
+                                   <div className="w-2 h-2 bg-red-600 rounded-full animate-ping" />
+                                   <span className="text-sm font-medium text-red-600 dark:text-red-400">Recording Voice...</span>
+                               </div>
+                               <span className="text-sm font-mono font-bold text-red-600 dark:text-red-400">{formatTime(recordingTime)}</span>
+                           </div>
+                       ) : (
+                           <input
+                            type="text"
+                            value={messageText}
+                            onChange={(e) => setMessageText(e.target.value)}
+                            placeholder="Type a message..."
+                            className="flex-1 px-4 py-2 border border-gray-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-white transition-colors"
+                          />
+                       )}
+                       
+                       <button
+                         type="submit"
+                         disabled={!messageText.trim() && !imagePreview && !isRecording}
+                         className={`px-6 py-2 rounded-lg text-white font-medium flex items-center space-x-2 transition-all active:scale-95 shadow-md ${
+                            (messageText.trim() || imagePreview || isRecording)
+                            ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/25' 
+                            : 'bg-gray-300 dark:bg-slate-800 text-gray-500 dark:text-slate-600 cursor-not-allowed'
+                         }`}
+                       >
+                         <Send className="w-4 h-4" />
+                         <span>{isRecording ? 'Send Voice' : 'Send'}</span>
+                       </button>
+                     </div>
+                   </form>
                 </>
               ) : (
                 <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-slate-950 transition-colors">

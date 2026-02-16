@@ -3,6 +3,9 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 from .models import Conversation, Message
 from django.contrib.auth import get_user_model
+import base64
+from django.core.files.base import ContentFile
+import uuid
 
 User = get_user_model()
 
@@ -58,11 +61,15 @@ class ChatConsumer(AsyncWebsocketConsumer):
         if message_type == 'chat_message':
             message_content = text_data_json.get('message')
             reply_to_id = text_data_json.get('reply_to_id')
+            image_data = text_data_json.get('image') # Base64
+            audio_data = text_data_json.get('audio') # Base64
             
-            if message_content:
+            if message_content or image_data or audio_data:
                 user = self.scope['user']
                 # Save to DB
-                saved_message, reply_to_data = await self.save_message(self.room_name, user, message_content, reply_to_id)
+                saved_message, reply_to_data = await self.save_message(
+                    self.room_name, user, message_content, reply_to_id, image_data, audio_data
+                )
                 
                 # Send message to participants' personal groups
                 participant_ids = await self.get_participant_ids(self.room_name)
@@ -74,6 +81,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
                             'room_id': int(self.room_name),
                             'id': saved_message.id,
                             'message': message_content,
+                            'image': saved_message.image.url if saved_message.image else None,
+                            'audio': saved_message.audio.url if saved_message.audio else None,
                             'sender': user.username,
                             'sender_id': user.id,
                             'timestamp': str(saved_message.timestamp),
@@ -153,7 +162,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 }
             )
 
-    # Receive message from room group
     async def chat_message(self, event):
         # Send message to WebSocket
         await self.send(text_data=json.dumps({
@@ -161,6 +169,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
             'room_id': event.get('room_id'),
             'id': event.get('id'),
             'message': event['message'],
+            'image': event.get('image'),
+            'audio': event.get('audio'),
             'sender': event['sender'],
             'sender_id': event['sender_id'],
             'timestamp': event['timestamp'],
@@ -204,7 +214,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             return False
 
     @database_sync_to_async
-    def save_message(self, room_id, user, content, reply_to_id=None):
+    def save_message(self, room_id, user, content, reply_to_id=None, image_data=None, audio_data=None):
         conversation = Conversation.objects.get(id=room_id)
         reply_to_msg = None
         reply_to_data = None
@@ -212,11 +222,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         if reply_to_id:
             reply_to_msg = Message.objects.filter(id=reply_to_id).first()
             if reply_to_msg:
-                # Prevent replying to an unsent message
-                if reply_to_msg.is_deleted:
-                    reply_to_msg = None
-                    reply_to_data = None
-                else:
+                if not reply_to_msg.is_deleted:
                     reply_to_data = {
                         "id": reply_to_msg.id,
                         "text": reply_to_msg.content,
@@ -229,6 +235,23 @@ class ChatConsumer(AsyncWebsocketConsumer):
             content=content,
             reply_to=reply_to_msg
         )
+
+        # Handle Image
+        if image_data and ';base64,' in image_data:
+            format, imgstr = image_data.split(';base64,')
+            ext = format.split('/')[-1]
+            file_name = f"{uuid.uuid4()}.{ext}"
+            msg.image.save(file_name, ContentFile(base64.b64decode(imgstr)), save=False)
+
+        # Handle Audio
+        if audio_data and ';base64,' in audio_data:
+            format, audstr = audio_data.split(';base64,')
+            ext = format.split('/')[-1].split(';')[0] # handle mime types like audio/webm;codecs=opus
+            if ext == 'octet-stream': ext = 'webm'
+            file_name = f"{uuid.uuid4()}.{ext}"
+            msg.audio.save(file_name, ContentFile(base64.b64decode(audstr)), save=False)
+
+        msg.save()
         return msg, reply_to_data
 
     @database_sync_to_async

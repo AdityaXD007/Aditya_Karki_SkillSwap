@@ -32,7 +32,7 @@ class AuthViewSet(viewsets.ViewSet):
             password = serializer.validated_data['password']
             
             try:
-                user_obj = User.objects.get(email=email)
+                user_obj = User.objects.get(email__iexact=email)
             except User.DoesNotExist:
                 return Response({'error': 'User with this email not found'}, status=status.HTTP_401_UNAUTHORIZED)
             
