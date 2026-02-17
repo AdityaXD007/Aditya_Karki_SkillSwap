@@ -43,6 +43,7 @@ export interface Match {
 
 export interface Conversation {
     id: number;
+    partnerId: number;
     userName: string;
     userAvatar: string;
     lastMessage: string;
@@ -82,11 +83,17 @@ export interface SessionRequest {
 
 export interface LearningSession {
     id: number;
+    student: number;
+    teacher: number;
     student_name: string;
     teacher_name: string;
     skill_name: string;
     scheduled_time: string;
+    actual_start_time?: string;
+    actual_end_time?: string;
+    is_paused: boolean;
+    remaining_duration_seconds?: number;
     duration: number;
-    status: 'SCHEDULED' | 'COMPLETED' | 'CANCELLED';
+    status: 'SCHEDULED' | 'ONGOING' | 'COMPLETED' | 'CANCELLED';
     meeting_link: string;
 }

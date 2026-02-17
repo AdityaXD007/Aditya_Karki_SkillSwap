@@ -51,6 +51,7 @@ class MessageSerializer(serializers.ModelSerializer):
         return None
 
 class ConversationSerializer(serializers.ModelSerializer):
+    partner_id = serializers.SerializerMethodField()
     partner_name = serializers.SerializerMethodField()
     partner_avatar = serializers.SerializerMethodField()
     last_message = serializers.SerializerMethodField()
@@ -58,7 +59,11 @@ class ConversationSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Conversation
-        fields = ['id', 'partner_name', 'partner_avatar', 'last_message', 'unread_count', 'updated_at']
+        fields = ['id', 'partner_id', 'partner_name', 'partner_avatar', 'last_message', 'unread_count', 'updated_at']
+
+    def get_partner_id(self, obj):
+        partner = self.get_partner(obj)
+        return partner.id if partner else None
 
     def get_partner(self, obj):
         request = self.context.get('request')

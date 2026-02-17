@@ -6,6 +6,7 @@ export const messagesApi = {
         const response = await apiClient.get<any[]>('/chat/conversations/');
         return response.data.map((c: any) => ({
             id: c.id,
+            partnerId: c.partner_id,
             userName: c.partner_name,
             userAvatar: c.partner_avatar || `https://ui-avatars.com/api/?name=${c.partner_name}&background=random`,
             lastMessage: c.last_message || 'Start a conversation',

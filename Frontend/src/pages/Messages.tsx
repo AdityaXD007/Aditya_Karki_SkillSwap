@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { messagesApi, type Conversation, type Message } from "@/services";
+import { messagesApi, sessionsAPI, type Conversation, type Message, type LearningSession } from "@/services";
 import { useAuth } from "@/components/Context/AuthContext";
 import { Send, Search, Phone, X, Mic, MicOff, Video as VideoIcon, VideoOff, MoreVertical, Reply, Smile, Trash2, Image as ImageIcon } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -36,6 +36,9 @@ export const Messages: React.FC = () => {
   const [recordingTime, setRecordingTime] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const timerRef = useRef<any>(null);
+  const sessionTimerRef = useRef<any>(null);
+  const [activeSession, setActiveSession] = useState<LearningSession | null>(null);
+  const [timeLeft, setTimeLeft] = useState<number | null>(null);
 
   const socketRef = useRef<WebSocket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -82,6 +85,132 @@ export const Messages: React.FC = () => {
         fetchConversations();
     }
   }, [user]);
+
+  // Session Management & Timing
+  useEffect(() => {
+    if (selectedConversation && user) {
+        const fetchCurrentSession = async () => {
+            try {
+                const response = await sessionsAPI.getSessions();
+                const currentConv = conversations.find(c => c.id === selectedConversation);
+                
+                if (currentConv) {
+                    const session = response.data.find(s => {
+                        const isTeacher = Number(s.teacher) === Number(user.id);
+                        const isStudent = Number(s.student) === Number(user.id);
+                        const partnerId = Number(currentConv.partnerId);
+                        
+                        const statusMatch = s.status === 'SCHEDULED' || s.status === 'ONGOING';
+                        // Match: I am teacher, other is student OR I am student, other is teacher
+                        const participantMatch = (isTeacher && Number(s.student) === partnerId) || 
+                                                (isStudent && Number(s.teacher) === partnerId);
+                        
+                        return statusMatch && participantMatch;
+                    });
+                    
+                    console.log("Matched Session by ID:", session);
+                    setActiveSession(session || null);
+                }
+            } catch (err) {
+                console.error("Error fetching session:", err);
+            }
+        };
+        fetchCurrentSession();
+    }
+  }, [selectedConversation, user, conversations]);
+
+  useEffect(() => {
+    if (activeSession?.status === 'ONGOING' && activeSession.actual_start_time) {
+        if (activeSession.is_paused) {
+            setTimeLeft(activeSession.remaining_duration_seconds || 0);
+            if (sessionTimerRef.current) clearInterval(sessionTimerRef.current);
+            return;
+        }
+
+        const startTime = new Date(activeSession.actual_start_time).getTime();
+        const durationMs = activeSession.duration * 60 * 1000;
+        
+        const updateTimer = () => {
+            const now = new Date().getTime();
+            const elapsed = now - startTime;
+            const remaining = Math.max(0, Math.floor((durationMs - elapsed) / 1000));
+            setTimeLeft(remaining);
+            
+            if (remaining === 0) {
+                if (sessionTimerRef.current) clearInterval(sessionTimerRef.current);
+                handleEndSession(true); 
+            }
+        };
+
+        updateTimer();
+        sessionTimerRef.current = setInterval(updateTimer, 1000);
+        return () => { if (sessionTimerRef.current) clearInterval(sessionTimerRef.current); };
+    } else {
+        setTimeLeft(null);
+        if (sessionTimerRef.current) clearInterval(sessionTimerRef.current);
+    }
+  }, [activeSession]);
+
+  const handlePauseSession = async () => {
+    if (!activeSession) return;
+    try {
+        const response = await sessionsAPI.pauseSession(activeSession.id);
+        setActiveSession({
+            ...activeSession,
+            is_paused: true,
+            remaining_duration_seconds: response.data.remaining
+        });
+    } catch (err) {
+        console.error("Failed to pause session:", err);
+    }
+  };
+
+  const handleResumeSession = async () => {
+    if (!activeSession) return;
+    try {
+        const response = await sessionsAPI.resumeSession(activeSession.id);
+        setActiveSession({
+            ...activeSession,
+            is_paused: false,
+            actual_start_time: response.data.actual_start_time
+        });
+    } catch (err) {
+        console.error("Failed to resume session:", err);
+    }
+  };
+
+  const handleStartSession = async () => {
+    if (!activeSession) return;
+    try {
+        const response = await sessionsAPI.startSession(activeSession.id);
+        setActiveSession({
+            ...activeSession,
+            status: 'ONGOING',
+            actual_start_time: response.data.actual_start_time
+        });
+    } catch (err) {
+        console.error("Failed to start session:", err);
+        alert("Failed to start session. Please try again.");
+    }
+  };
+
+  const handleEndSession = async (isAuto = false) => {
+    if (!activeSession) return;
+    if (!isAuto && !window.confirm("Are you sure you want to end the session early?")) return;
+    
+    try {
+        await sessionsAPI.endSession(activeSession.id);
+        setActiveSession(null);
+        setTimeLeft(null);
+        if (isAuto) {
+            alert("Time's up! Session completed.");
+        } else {
+            alert("Session ended early.");
+        }
+    } catch (err) {
+        console.error("Failed to end session:", err);
+    }
+  };
 
   useEffect(() => {
     if (selectedConversation) {
@@ -618,8 +747,57 @@ const toggleCamera = () => {
                         <p className="text-sm text-gray-500 dark:text-gray-400">Active now</p>
                       </div>
                     </div>
-                    {/* Call Buttons */}
-                    <div className="flex space-x-3">
+                    {/* Session controls & Call Buttons */}
+                    <div className="flex items-center space-x-3">
+                        {/* Timer Display */}
+                            <div className={`px-3 py-1.5 rounded-full font-mono font-bold flex items-center gap-2 shadow-sm border transition-all ${
+                                activeSession?.is_paused
+                                ? 'bg-yellow-50 text-yellow-600 border-yellow-100'
+                                : timeLeft !== null && timeLeft < 300 
+                                ? 'bg-red-50 text-red-600 border-red-100 animate-pulse' 
+                                : 'bg-blue-50 text-blue-600 border-blue-100'
+                            }`}>
+                                <div className={`w-2 h-2 rounded-full ${
+                                    activeSession?.is_paused ? 'bg-yellow-600' :
+                                    timeLeft !== null && timeLeft < 300 ? 'bg-red-600' : 'bg-blue-600'
+                                }`} />
+                                {activeSession?.is_paused ? 'PAUSED ' : ''}
+                                {timeLeft !== null && (
+                                    <>
+                                        {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
+                                    </>
+                                )}
+                            </div>
+
+                        {/* Teacher Controls */}
+                        {activeSession && user && Number(activeSession.teacher) === Number(user.id) && (
+                            <>
+                                {activeSession.status === 'SCHEDULED' && (
+                                    <button 
+                                        onClick={handleStartSession}
+                                        className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white text-xs font-bold rounded-lg transition-all shadow-lg shadow-green-500/20 flex items-center gap-2"
+                                    >
+                                        <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                                        Start Session
+                                    </button>
+                                )}
+                                {activeSession.status === 'ONGOING' && (
+                                    <button 
+                                        onClick={activeSession.is_paused ? handleResumeSession : handlePauseSession}
+                                        className={`px-4 py-2 text-white text-xs font-bold rounded-lg transition-all shadow-lg ${
+                                            activeSession.is_paused 
+                                            ? 'bg-blue-500 hover:bg-blue-600 shadow-blue-500/20' 
+                                            : 'bg-yellow-500 hover:bg-yellow-600 shadow-yellow-500/20'
+                                        }`}
+                                    >
+                                        {activeSession.is_paused ? 'Resume' : 'Pause'}
+                                    </button>
+                                )}
+                            </>
+                        )}
+
+                        <div className="h-8 w-[1px] bg-gray-200 dark:bg-slate-800 mx-1" />
+
                         <button onClick={startCall} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 text-blue-600 dark:text-blue-400 transition-colors">
                             <VideoIcon className="w-5 h-5" />
                         </button>

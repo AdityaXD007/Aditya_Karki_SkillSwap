@@ -93,3 +93,80 @@ class LearningSessionViewSet(viewsets.ModelViewSet):
         ).order_by('scheduled_time')
 
     # Add actions for cancelling, adding feedback etc.
+    @action(detail=True, methods=['post'])
+    def start_session(self, request, pk=None):
+        session = self.get_object()
+        if session.teacher != request.user:
+            return Response({'error': 'Only the teacher can start the session'}, status=status.HTTP_403_FORBIDDEN)
+        
+        if session.status != 'SCHEDULED':
+            return Response({'error': f'Cannot start session with status {session.status}'}, status=status.HTTP_400_BAD_REQUEST)
+
+        session.status = 'ONGOING'
+        session.actual_start_time = timezone.now()
+        session.save()
+        
+        return Response({
+            'status': 'Session started',
+            'actual_start_time': session.actual_start_time,
+            'duration': session.duration
+        })
+
+    @action(detail=True, methods=['post'])
+    def end_session(self, request, pk=None):
+        session = self.get_object()
+        if session.teacher != request.user:
+            return Response({'error': 'Only the teacher can end the session'}, status=status.HTTP_403_FORBIDDEN)
+
+        if session.status != 'ONGOING':
+            return Response({'error': 'Session is not ongoing'}, status=status.HTTP_400_BAD_REQUEST)
+
+        session.status = 'COMPLETED'
+        session.actual_end_time = timezone.now()
+        session.save()
+
+        return Response({'status': 'Session completed'})
+
+    @action(detail=True, methods=['post'])
+    def pause_session(self, request, pk=None):
+        session = self.get_object()
+        if session.teacher != request.user:
+            return Response({'error': 'Only teacher can pause'}, status=status.HTTP_403_FORBIDDEN)
+        
+        if session.status != 'ONGOING' or session.is_paused:
+            return Response({'error': 'Cannot pause this session'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Calculate remaining seconds
+        now = timezone.now()
+        elapsed = (now - session.actual_start_time).total_seconds()
+        total_duration = session.duration * 60
+        remaining = max(0, total_duration - elapsed)
+
+        session.is_paused = True
+        session.paused_at = now
+        session.remaining_duration_seconds = int(remaining)
+        session.save()
+
+        return Response({'status': 'Session paused', 'remaining': session.remaining_duration_seconds})
+
+    @action(detail=True, methods=['post'])
+    def resume_session(self, request, pk=None):
+        session = self.get_object()
+        if session.teacher != request.user:
+            return Response({'error': 'Only teacher can resume'}, status=status.HTTP_403_FORBIDDEN)
+        
+        if not session.is_paused:
+            return Response({'error': 'Session is not paused'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Adjust actual_start_time so that (current_time - actual_start_time) = total - remaining
+        # Basically: actual_start_time = current_time - (total - remaining)
+        now = timezone.now()
+        total_duration = session.duration * 60
+        elapsed_needed = total_duration - session.remaining_duration_seconds
+        session.actual_start_time = now - timezone.timedelta(seconds=elapsed_needed)
+        
+        session.is_paused = False
+        session.paused_at = None
+        session.save()
+
+        return Response({'status': 'Session resumed', 'actual_start_time': session.actual_start_time})

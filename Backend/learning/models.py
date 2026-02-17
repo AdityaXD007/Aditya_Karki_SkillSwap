@@ -30,6 +30,7 @@ class SessionRequest(models.Model):
 class LearningSession(models.Model):
     STATUS_CHOICES = (
         ('SCHEDULED', 'Scheduled'),
+        ('ONGOING', 'Ongoing'),
         ('COMPLETED', 'Completed'),
         ('CANCELLED', 'Cancelled'),
     )
@@ -44,6 +45,15 @@ class LearningSession(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='SCHEDULED')
     meeting_link = models.URLField(blank=True, max_length=500)
     notes = models.TextField(blank=True)
+
+    # Actual Session Tracking
+    actual_start_time = models.DateTimeField(null=True, blank=True)
+    actual_end_time = models.DateTimeField(null=True, blank=True)
+    
+    # Pause Functionality
+    is_paused = models.BooleanField(default=False)
+    paused_at = models.DateTimeField(null=True, blank=True)
+    remaining_duration_seconds = models.IntegerField(null=True, blank=True, help_text="Remaining seconds when paused")
     
     # Ratings/Feedback
     rating_by_student = models.IntegerField(null=True, blank=True)
