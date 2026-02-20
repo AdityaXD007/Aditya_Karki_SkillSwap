@@ -125,6 +125,16 @@ class LearningSessionViewSet(viewsets.ModelViewSet):
         session.actual_end_time = timezone.now()
         session.save()
 
+        # Update teacher's taught count
+        teacher_profile = session.teacher.profile
+        teacher_profile.sessions_taught_count += 1
+        teacher_profile.save()
+
+        # Update student's learned count
+        student_profile = session.student.profile
+        student_profile.sessions_learned_count += 1
+        student_profile.save()
+
         return Response({'status': 'Session completed'})
 
     @action(detail=True, methods=['post'])

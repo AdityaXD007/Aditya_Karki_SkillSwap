@@ -25,6 +25,9 @@ export interface User {
   userSkills: UserSkillInfo[];
   rating: number;
   availability?: string[];
+  sessionsTaughtCount: number;
+  sessionsLearnedCount: number;
+  canCharge: boolean;
 }
 
 // Auth context type
@@ -77,6 +80,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             availability: userData.availability
               ? userData.availability.split(",").filter(Boolean)
               : [],
+            sessionsTaughtCount: userData.sessions_taught_count || 0,
+            sessionsLearnedCount: userData.sessions_learned_count || 0,
+            canCharge: userData.can_charge || false,
           };
 
           setUser(mappedUser);
@@ -155,6 +161,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         skillsLearning: [],
         userSkills: [],
         rating: 5.0,
+        sessionsTaughtCount: userData.sessions_taught_count || 0,
+        sessionsLearnedCount: userData.sessions_learned_count || 0,
+        canCharge: userData.can_charge || false,
         availability: userData.availability
           ? userData.availability.split(",").filter(Boolean)
           : [],
@@ -199,6 +208,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         skillsLearning: [],
         userSkills: [],
         rating: 5.0,
+        sessionsTaughtCount: userData.sessions_taught_count || 0,
+        sessionsLearnedCount: userData.sessions_learned_count || 0,
+        canCharge: userData.can_charge || false,
         availability: userData.availability
           ? userData.availability.split(",").filter(Boolean)
           : [],

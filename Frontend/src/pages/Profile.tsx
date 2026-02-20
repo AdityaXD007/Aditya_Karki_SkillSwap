@@ -75,16 +75,19 @@ export const Profile: React.FC = () => {
           avatar: profileData.profile_image_url || profileData.profile_image,
           name: profileData.full_name || profileData.username,
           availability: profileData.availability ? profileData.availability.split(',').filter(Boolean) : [],
-          userSkills: profileData.user_skills ? profileData.user_skills.map((s: any) => ({
-            id: s.id,
-            skill_id: s.skill_details?.id || s.skill_id,
-            name: s.skill_details?.name || "Unknown Skill",
-            type: s.skill_type,
-            proficiency: s.proficiency_level,
-            icon_class: s.skill_details?.icon_class || "",
-            color_class: s.skill_details?.color_class || "",
-          })) : []
-        };
+            userSkills: profileData.user_skills ? profileData.user_skills.map((s: any) => ({
+              id: s.id,
+              skill_id: s.skill_details?.id || s.skill_id,
+              name: s.skill_details?.name || "Unknown Skill",
+              type: s.skill_type,
+              proficiency: s.proficiency_level,
+              icon_class: s.skill_details?.icon_class || "",
+              color_class: s.skill_details?.color_class || "",
+            })) : [],
+            sessionsTaughtCount: profileData.sessions_taught_count || 0,
+            sessionsLearnedCount: profileData.sessions_learned_count || 0,
+            canCharge: profileData.can_charge || false,
+          };
         
         setProfileUser(normalized);
         setFormData({
@@ -481,6 +484,18 @@ export const Profile: React.FC = () => {
                 <div className="flex items-center space-x-1.5 text-slate-600 dark:text-slate-400">
                   <Clock className="w-4 h-4 text-purple-500" />
                   <span className="text-sm font-medium">Joined Jan 2026</span>
+                </div>
+                <div className="flex items-center space-x-1.5 bg-blue-50/50 dark:bg-blue-900/10 px-3 py-1 rounded-full border border-blue-100 dark:border-blue-900/20">
+                  <Award className={`w-4 h-4 ${profileUser?.canCharge ? 'text-green-500' : 'text-blue-500'}`} />
+                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                    {profileUser?.sessionsTaughtCount || 0} taught
+                  </span>
+                </div>
+                <div className="flex items-center space-x-1.5 bg-slate-50 dark:bg-slate-800/50 px-3 py-1 rounded-full border border-slate-100 dark:border-slate-700">
+                  <CheckCircle className="w-4 h-4 text-green-500" />
+                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                    {profileUser?.sessionsLearnedCount || 0} learned
+                  </span>
                 </div>
               </div>
             </div>

@@ -85,7 +85,7 @@ export const Dashboard: React.FC = () => {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 mb-8">
           <div className="bg-white dark:bg-slate-900 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-slate-800">
             <div className="flex items-center justify-between">
               <div>
@@ -122,14 +122,43 @@ export const Dashboard: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                  Upcoming Sessions
+                  Lessons Taught
+                </p>
+                <div className="flex items-baseline space-x-1">
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
+                    {user?.sessionsTaughtCount || 0}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">/ 5 for Pro</p>
+                </div>
+              </div>
+              <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg flex items-center justify-center">
+                <Users className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+              </div>
+            </div>
+            {/* Progress Bar */}
+            <div className="mt-4 h-1.5 w-full bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden">
+              <div 
+                className={`h-full rounded-full transition-all duration-500 ${user?.canCharge ? 'bg-green-500' : 'bg-indigo-500'}`}
+                style={{ width: `${Math.min(((user?.sessionsTaughtCount || 0) / 5) * 100, 100)}%` }}
+              ></div>
+            </div>
+            {user?.canCharge && (
+              <p className="text-[10px] text-green-600 dark:text-green-400 mt-1 font-medium">✨ Pro Mode Eligible</p>
+            )}
+          </div>
+
+          <div className="bg-white dark:bg-slate-900 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-slate-800">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                  Lessons Learned
                 </p>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
-                  {upcomingSessions.length}
+                  {user?.sessionsLearnedCount || 0}
                 </p>
               </div>
               <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
-                <Calendar className="w-6 h-6 text-green-600 dark:text-green-400" />
+                <Clock className="w-6 h-6 text-green-600 dark:text-green-400" />
               </div>
             </div>
           </div>
@@ -143,7 +172,7 @@ export const Dashboard: React.FC = () => {
                 </p>
               </div>
               <div className="w-12 h-12 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg flex items-center justify-center">
-                <Users className="w-6 h-6 text-yellow-600 dark:text-yellow-400" />
+                <TrendingUp className="w-6 h-6 text-yellow-600 dark:text-yellow-400" />
               </div>
             </div>
           </div>

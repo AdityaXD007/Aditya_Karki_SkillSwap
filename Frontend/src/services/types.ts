@@ -11,6 +11,9 @@ export interface UserProfile {
     availability: string;
     user_skills?: UserSkill[];
     rating?: number;
+    sessions_taught_count?: number;
+    sessions_learned_count?: number;
+    can_charge?: boolean;
 }
 
 export interface Skill {

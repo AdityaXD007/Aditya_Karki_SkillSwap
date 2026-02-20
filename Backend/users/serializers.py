@@ -67,8 +67,10 @@ class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserProfile
         fields = ['id', 'username', 'email', 'full_name', 'profile_image', 'profile_image_url', 
-                  'location', 'bio', 'languages', 'availability', 'user_skills', 'rating']
-        read_only_fields = ['id', 'username', 'email', 'full_name', 'rating']
+                  'location', 'bio', 'languages', 'availability', 'user_skills', 'rating',
+                  'sessions_taught_count', 'sessions_learned_count', 'can_charge']
+        read_only_fields = ['id', 'username', 'email', 'full_name', 'rating', 
+                           'sessions_taught_count', 'sessions_learned_count', 'can_charge']
     
     def get_full_name(self, obj):
         # Return full_name from UserProfile if available, otherwise use Django User's first_name

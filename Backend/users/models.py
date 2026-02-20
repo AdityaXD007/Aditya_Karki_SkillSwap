@@ -11,6 +11,12 @@ class UserProfile(models.Model):
     bio = models.TextField(blank=True)
     languages = models.TextField(blank=True, help_text="Comma-separated list of languages")
     availability = models.TextField(blank=True, help_text="Comma-separated list of available times")
+    sessions_taught_count = models.IntegerField(default=0)
+    sessions_learned_count = models.IntegerField(default=0)
+
+    @property
+    def can_charge(self):
+        return self.sessions_taught_count >= 5
 
     def __str__(self):
         return f"{self.user.username}'s Profile"
