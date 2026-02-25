@@ -253,7 +253,9 @@ export const Messages: React.FC = () => {
                  userAvatar: '', 
                  timestamp: data.timestamp || new Date().toISOString(),
                  isRead: false,
-                 replyTo: data.reply_to_data
+                 replyTo: data.reply_to_data,
+                 messageType: data.message_type,
+                 callDuration: data.call_duration
              };
 
              // Only add to messages view if it's the currently selected conversation
@@ -312,6 +314,12 @@ export const Messages: React.FC = () => {
          }
          
          // Signaling: ICE Candidate
+          // Signaling: End Call
+          else if (data.type === 'end_call') {
+              if (data.sender_id === Number(user?.id)) return;
+              endCall(false);
+          }
+
          else if (data.type === 'new_ice_candidate') {
              if (peerConnectionRef.current && data.data) {
                  try {
@@ -479,10 +487,16 @@ const acceptCall = async () => {
     }
 };
 
-const endCall = () => {
+const endCall = (sendSignal = true) => {
     setIsInCall(false);
     setIsIncomingCall(false);
     setCallStatus("");
+    
+    if (sendSignal && socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+        socketRef.current.send(JSON.stringify({
+            type: 'end_call'
+        }));
+    }
     
     if (localStreamRef.current) {
         localStreamRef.current.getTracks().forEach(track => track.stop());
@@ -851,7 +865,7 @@ const toggleCamera = () => {
                                   {micOn ? <Mic className="w-6 h-6" /> : <MicOff className="w-6 h-6" />}
                               </button>
                               <button 
-                                  onClick={endCall}
+                                  onClick={() => endCall()}
                                   className="p-4 rounded-full bg-red-600 text-white hover:bg-red-700 transition-all shadow-lg shadow-red-500/20"
                               >
                                   <Phone className="w-8 h-8 rotate-[135deg]" />
@@ -877,7 +891,7 @@ const toggleCamera = () => {
                                <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{selected?.userName}</p>
                                <div className="flex space-x-3 w-full">
                                    <button 
-                                       onClick={() => setIsIncomingCall(false)}
+                                       onClick={() => endCall()}
                                        className="flex-1 py-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 font-medium transition-colors"
                                    >
                                        Decline
@@ -929,6 +943,12 @@ const toggleCamera = () => {
                                                     alt="Attached" 
                                                     className="max-h-64 w-auto object-contain cursor-zoom-in hover:brightness-95 transition-all"
                                                 />
+                                            </div>
+                                        )}
+                                        {msg.messageType === 'video_call' && (
+                                            <div className={`flex items-center space-x-2 py-1 mb-2 border-b ${isMe ? 'border-white/20' : 'border-gray-200 dark:border-slate-700'}`}>
+                                                <VideoIcon className="w-4 h-4 text-inherit" />
+                                                <span className="text-xs font-bold uppercase tracking-wider">Video Call</span>
                                             </div>
                                         )}
                                         {msg.text && (

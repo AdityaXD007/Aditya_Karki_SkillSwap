@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider, useAuth } from '@/components/Context/AuthContext';
 import { Navbar } from '@/components/Navbar';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
+import { AIChatBubble } from '@/components/AIChatBubble';
 
 // Pages
 import { Login } from '@/pages/Login';
@@ -105,6 +106,7 @@ export default function App() {
             <Route path="/" element={<HomeRedirect />} />
             <Route path="*" element={<HomeRedirect />} />
           </Routes>
+          <AIChatBubble />
         </div>
       </Router>
     </AuthProvider>

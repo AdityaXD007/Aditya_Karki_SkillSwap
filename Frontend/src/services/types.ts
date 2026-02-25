@@ -71,6 +71,8 @@ export interface Message {
     };
     reactions?: Record<string, string>;
     isDeleted?: boolean;
+    messageType?: 'text' | 'image' | 'audio' | 'video_call';
+    callDuration?: number;
 }
 
 export interface SessionRequest {

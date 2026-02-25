@@ -15,13 +15,15 @@ class MessageSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Message
-        fields = ['id', 'conversation', 'sender', 'sender_name', 'sender_avatar', 'content', 'image', 'audio', 'timestamp', 'is_read', 'reply_to', 'reply_to_data', 'reactions', 'is_deleted', 'is_removed_by_me']
+        fields = ['id', 'conversation', 'sender', 'sender_name', 'sender_avatar', 'content', 'image', 'audio', 'message_type', 'call_duration', 'timestamp', 'is_read', 'reply_to', 'reply_to_data', 'reactions', 'is_deleted', 'is_removed_by_me']
         read_only_fields = ['sender', 'timestamp', 'is_read', 'reactions', 'is_deleted']
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
         if instance.is_deleted:
             data['content'] = "Message unsent"
+        elif instance.message_type == 'video_call':
+            data['content'] = f"Video Call ({instance.call_duration}s)" if instance.call_duration else "Video Call"
         return data
 
     def get_is_removed_by_me(self, obj):
@@ -86,10 +88,18 @@ class ConversationSerializer(serializers.ModelSerializer):
         return None
 
     def get_last_message(self, obj):
-        msg = obj.messages.order_by('-timestamp').first()
+        msg = obj.messages.order_by('-timestamp').last() # Actually order by -timestamp and first() is latest
+        # Wait, the previous code had .first() which is correct for latest if ordered by -timestamp
+        # But wait, looking at the code I see:
+        # msg = obj.messages.order_by('-timestamp').first()
+        # That is correct.
+        
+        msg = obj.messages.all().order_by('-timestamp').first()
         if msg:
             if msg.is_deleted:
                 return "Message unsent"
+            if msg.message_type == 'video_call':
+                return "Video Call"
             if msg.content:
                 return msg.content
             if msg.image:

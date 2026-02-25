@@ -149,7 +149,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     'reader_id': user.id
                 }
             )
-        elif message_type in ['video_offer', 'video_answer', 'new_ice_candidate']:
+        elif message_type in ['video_offer', 'video_answer', 'new_ice_candidate', 'end_call']:
             # Forward signaling messages to the group
             # We add sender_id to avoid sending back to self in frontend
             await self.channel_layer.group_send(
@@ -161,6 +161,31 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     'sender_id': self.scope['user'].id
                 }
             )
+            
+            # Special case: Record call history on offer (Start of call)
+            if message_type == 'video_offer':
+                user = self.scope['user']
+                # Save as a system-like message in DB
+                saved_message, _ = await self.save_message(
+                    self.room_name, user, "Video Call Started", message_type='video_call'
+                )
+                
+                # Broad cast as a chat message so it appears immediately in history
+                participant_ids = await self.get_participant_ids(self.room_name)
+                for pid in participant_ids:
+                    await self.channel_layer.group_send(
+                        f"user_{pid}",
+                        {
+                            'type': 'chat_message',
+                            'room_id': int(self.room_name),
+                            'id': saved_message.id,
+                            'message': "Video Call Started",
+                            'message_type': 'video_call',
+                            'sender': user.username,
+                            'sender_id': user.id,
+                            'timestamp': str(saved_message.timestamp)
+                        }
+                    )
 
     async def chat_message(self, event):
         # Send message to WebSocket
@@ -169,6 +194,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
             'room_id': event.get('room_id'),
             'id': event.get('id'),
             'message': event['message'],
+            'message_type': event.get('message_type', 'text'),
+            'call_duration': event.get('call_duration'),
             'image': event.get('image'),
             'audio': event.get('audio'),
             'sender': event['sender'],
@@ -214,7 +241,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             return False
 
     @database_sync_to_async
-    def save_message(self, room_id, user, content, reply_to_id=None, image_data=None, audio_data=None):
+    def save_message(self, room_id, user, content, reply_to_id=None, image_data=None, audio_data=None, message_type='text', call_duration=None):
         conversation = Conversation.objects.get(id=room_id)
         reply_to_msg = None
         reply_to_data = None
@@ -233,7 +260,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
             conversation=conversation,
             sender=user,
             content=content,
-            reply_to=reply_to_msg
+            reply_to=reply_to_msg,
+            message_type=message_type,
+            call_duration=call_duration
         )
 
         # Handle Image

@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'skills',
     'learning',
     'chat',
+    'ai_assistant',
 ]
 
 MIDDLEWARE = [
