@@ -13,6 +13,7 @@ class Transaction(models.Model):
     session = models.ForeignKey(LearningSession, on_delete=models.CASCADE, related_name='transactions')
     student = models.ForeignKey(User, on_delete=models.CASCADE, related_name='payments')
     amount = models.DecimalField(max_digits=10, decimal_places=2)
+    pidx = models.CharField(max_length=100, unique=True, null=True, blank=True)
     khalti_transaction_id = models.CharField(max_length=100, unique=True, null=True, blank=True)
     khalti_purchase_order_id = models.CharField(max_length=100, unique=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='INITIATED')

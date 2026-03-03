@@ -58,12 +58,17 @@ class InitiatePaymentView(views.APIView):
             khalti_data = response.json()
 
             if response.status_code == 200:
+                # Save the pidx to the transaction object
+                print(f"Initiated payment, pidx received: {khalti_data.get('pidx')}")
+                transaction.pidx = khalti_data.get('pidx')
+                transaction.save()
                 return Response(khalti_data)
             else:
                 transaction.status = 'FAILED'
                 transaction.save()
                 return Response(khalti_data, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
+            print(f"Exception during verification: {str(e)}")
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class VerifyPaymentView(views.APIView):
@@ -78,14 +83,16 @@ class VerifyPaymentView(views.APIView):
         }
 
         try:
+            print(f"Verifying payment with pidx: {pidx}")
             response = requests.post(f'{settings.KHALTI_API_URL}/epayment/lookup/', json={'pidx': pidx}, headers=headers)
             data = response.json()
+            print(f"Khalti lookup response: {data}")
 
             if data.get('status') == 'Completed':
-                # Find the transaction
-                purchase_order_id = data.get('purchase_order_id')
+                # Find the transaction using the pidx from our request
                 try:
-                    transaction = Transaction.objects.get(khalti_purchase_order_id=purchase_order_id)
+                    print(f"Looking for transaction with pidx: {pidx}")
+                    transaction = Transaction.objects.get(pidx=pidx)
                     transaction.status = 'COMPLETED'
                     transaction.khalti_transaction_id = data.get('transaction_id')
                     transaction.save()
@@ -97,9 +104,17 @@ class VerifyPaymentView(views.APIView):
 
                     return Response({'status': 'Payment verified and session unlocked'})
                 except Transaction.DoesNotExist:
-                    return Response({'error': 'Transaction not found'}, status=status.HTTP_404_NOT_FOUND)
+                    print(f"Failed to find transaction for pidx: {pidx}")
+                    return Response({
+                        'error': 'Transaction not found in our database.',
+                        'pidx': pidx,
+                        'khalti_full_data': data
+                    }, status=status.HTTP_404_NOT_FOUND)
             else:
-                return Response({'error': 'Payment not completed', 'khalti_status': data.get('status')}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({
+                    'error': 'Payment verification failed', 
+                    'khalti_error': data
+                }, status=status.HTTP_400_BAD_REQUEST)
 
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

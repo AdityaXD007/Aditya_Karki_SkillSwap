@@ -20,9 +20,9 @@ export const PaymentCallback: React.FC = () => {
                     setTimeout(() => navigate('/messages'), 3000);
                 })
                 .catch((err) => {
-                    console.error('Verification error:', err);
+                    console.error('Verification error details:', err.response?.data || err);
                     setStatus('error');
-                    setMessage('Payment verification failed. Please contact support.');
+                    setMessage(err.response?.data?.error || 'Payment verification failed. Please contact support.');
                 });
         } else if (searchParams.get('status') === 'User canceled') {
              setStatus('error');
