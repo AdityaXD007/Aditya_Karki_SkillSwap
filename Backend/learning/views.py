@@ -102,6 +102,9 @@ class LearningSessionViewSet(viewsets.ModelViewSet):
         if session.status != 'SCHEDULED':
             return Response({'error': f'Cannot start session with status {session.status}'}, status=status.HTTP_400_BAD_REQUEST)
 
+        if not session.is_paid:
+            return Response({'error': 'Session cannot be started until student has paid the fee'}, status=status.HTTP_400_BAD_REQUEST)
+
         session.status = 'ONGOING'
         session.actual_start_time = timezone.now()
         session.save()
@@ -136,6 +139,27 @@ class LearningSessionViewSet(viewsets.ModelViewSet):
         student_profile.save()
 
         return Response({'status': 'Session completed'})
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def admin_confirm_session(self, request, pk=None):
+        """
+        Action for admin to confirm session completion and trigger payout.
+        In a real app, this should be restricted to admin/staff.
+        """
+        if not request.user.is_staff:
+            return Response({'error': 'Only admins can confirm session completion'}, status=status.HTTP_403_FORBIDDEN)
+            
+        session = self.get_object()
+        if session.status != 'COMPLETED':
+            return Response({'error': 'Only completed sessions can be confirmed'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        session.admin_confirmed = True
+        session.save()
+        
+        # Here you would trigger the actual payout logic to the teacher
+        # For now, we just mark it as confirmed
+        
+        return Response({'status': 'Session confirmed by admin, payment released to teacher'})
 
     @action(detail=True, methods=['post'])
     def pause_session(self, request, pk=None):

@@ -6,3 +6,4 @@ export { matchesApi } from './matchService';
 export { requestsAPI } from './requestService';
 export { sessionsAPI } from './sessionService';
 export { messagesApi } from './messageService';
+export { paymentAPI } from './paymentService';

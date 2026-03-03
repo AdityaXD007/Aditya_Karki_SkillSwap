@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'learning',
     'chat',
     'ai_assistant',
+    'payment',
 ]
 
 MIDDLEWARE = [
@@ -153,3 +154,9 @@ CHANNEL_LAYERS = {
         'BACKEND': 'channels.layers.InMemoryChannelLayer',
     },
 }
+
+#Payment Configuration
+# Khalti Payment Gateway Configuration
+KHALTI_API_URL = 'https://dev.khalti.com/api/v2' # Sandbox URL for Khalti API
+KHALTI_PUBLIC_KEY = "795b49aae20046789cc4b1649039f069"
+KHALTI_SECRET_KEY = "7cff57f78f0243f7a65b9c8b1f5b019c"

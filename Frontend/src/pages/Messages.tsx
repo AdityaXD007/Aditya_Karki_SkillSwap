@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { messagesApi, sessionsAPI, type Conversation, type Message, type LearningSession } from "@/services";
+import { messagesApi, sessionsAPI, paymentAPI, type Conversation, type Message, type LearningSession } from "@/services";
 import { useAuth } from "@/components/Context/AuthContext";
 import { Send, Search, Phone, X, Mic, MicOff, Video as VideoIcon, VideoOff, MoreVertical, Reply, Smile, Trash2, Image as ImageIcon } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -209,6 +209,21 @@ export const Messages: React.FC = () => {
         }
     } catch (err) {
         console.error("Failed to end session:", err);
+    }
+  };
+
+  const handleInitiatePayment = async () => {
+    if (!activeSession) return;
+    try {
+        const response = await paymentAPI.initiatePayment(activeSession.id, 1000); // 1000 Paisa = 10 NPR
+        if (response.data && response.data.payment_url) {
+            window.location.href = response.data.payment_url;
+        } else {
+            alert("Failed to initiate payment. Please try again.");
+        }
+    } catch (err) {
+        console.error("Payment initiation error:", err);
+        alert("An error occurred while initiating payment.");
     }
   };
 
@@ -789,10 +804,15 @@ const toggleCamera = () => {
                                 {activeSession.status === 'SCHEDULED' && (
                                     <button 
                                         onClick={handleStartSession}
-                                        className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white text-xs font-bold rounded-lg transition-all shadow-lg shadow-green-500/20 flex items-center gap-2"
+                                        disabled={!activeSession.is_paid}
+                                        className={`px-4 py-2 text-white text-xs font-bold rounded-lg transition-all shadow-lg flex items-center gap-2 ${
+                                            activeSession.is_paid 
+                                            ? "bg-green-500 hover:bg-green-600 shadow-green-500/20" 
+                                            : "bg-gray-400 cursor-not-allowed shadow-none"
+                                        }`}
                                     >
-                                        <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
-                                        Start Session
+                                        <div className={`w-2 h-2 bg-white rounded-full ${activeSession.is_paid ? "animate-pulse" : ""}`} />
+                                        {activeSession.is_paid ? "Start Session" : "Waiting for Payment"}
                                     </button>
                                 )}
                                 {activeSession.status === 'ONGOING' && (
@@ -806,6 +826,27 @@ const toggleCamera = () => {
                                     >
                                         {activeSession.is_paused ? 'Resume' : 'Pause'}
                                     </button>
+                                )}
+                            </>
+                        )}
+
+                        {/* Student Controls */}
+                        {activeSession && user && Number(activeSession.student) === Number(user.id) && (
+                            <>
+                                {activeSession.status === 'SCHEDULED' && !activeSession.is_paid && (
+                                    <button 
+                                        onClick={handleInitiatePayment}
+                                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition-all shadow-lg shadow-blue-500/20 flex items-center gap-2"
+                                    >
+                                        <VideoIcon className="w-4 h-4" />
+                                        Pay Fee to Join (Khalti)
+                                    </button>
+                                )}
+                                {activeSession.status === 'SCHEDULED' && activeSession.is_paid && (
+                                    <div className="px-4 py-2 bg-green-100 text-green-700 text-xs font-bold rounded-lg border border-green-200 flex items-center gap-2">
+                                        <div className="w-2 h-2 bg-green-600 rounded-full" />
+                                        Paid - Waiting for Teacher
+                                    </div>
                                 )}
                             </>
                         )}

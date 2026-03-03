@@ -16,6 +16,7 @@ import { ForgotPassword } from '@/pages/ForgotPassword';
 import { Landing } from '@/pages/Landing';
 import { Settings } from '@/pages/Settings';
 import { Feedback } from '@/pages/Feedback';
+import { PaymentCallback } from '@/pages/PaymentCallback';
 
 // Home redirect component
 const HomeRedirect = () => {
@@ -98,6 +99,14 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <Feedback />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/payment-callback"
+              element={
+                <ProtectedRoute>
+                  <PaymentCallback />
                 </ProtectedRoute>
               }
             />

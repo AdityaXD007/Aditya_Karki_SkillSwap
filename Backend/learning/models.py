@@ -55,6 +55,11 @@ class LearningSession(models.Model):
     paused_at = models.DateTimeField(null=True, blank=True)
     remaining_duration_seconds = models.IntegerField(null=True, blank=True, help_text="Remaining seconds when paused")
     
+    # Payment and Verification
+    is_paid = models.BooleanField(default=False, help_text="Has the student paid the session fee?")
+    admin_confirmed = models.BooleanField(default=False, help_text="Has the admin confirmed session completion?")
+    payout_completed = models.BooleanField(default=False, help_text="Has the teacher received the payment?")
+
     # Ratings/Feedback
     rating_by_student = models.IntegerField(null=True, blank=True)
     rating_by_teacher = models.IntegerField(null=True, blank=True)
