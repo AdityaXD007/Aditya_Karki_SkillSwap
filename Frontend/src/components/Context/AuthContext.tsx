@@ -28,6 +28,7 @@ export interface User {
   sessionsTaughtCount: number;
   sessionsLearnedCount: number;
   canCharge: boolean;
+  hourlyRate: number;
 }
 
 // Auth context type
@@ -83,6 +84,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             sessionsTaughtCount: userData.sessions_taught_count || 0,
             sessionsLearnedCount: userData.sessions_learned_count || 0,
             canCharge: userData.can_charge || false,
+            hourlyRate: parseFloat(userData.hourly_rate?.toString() || "0"),
           };
 
           setUser(mappedUser);
@@ -164,6 +166,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         sessionsTaughtCount: userData.sessions_taught_count || 0,
         sessionsLearnedCount: userData.sessions_learned_count || 0,
         canCharge: userData.can_charge || false,
+        hourlyRate: parseFloat(userData.hourly_rate?.toString() || "0"),
         availability: userData.availability
           ? userData.availability.split(",").filter(Boolean)
           : [],
@@ -211,6 +214,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         sessionsTaughtCount: userData.sessions_taught_count || 0,
         sessionsLearnedCount: userData.sessions_learned_count || 0,
         canCharge: userData.can_charge || false,
+        hourlyRate: parseFloat(userData.hourly_rate?.toString() || "0"),
         availability: userData.availability
           ? userData.availability.split(",").filter(Boolean)
           : [],

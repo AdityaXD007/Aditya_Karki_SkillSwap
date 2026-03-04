@@ -13,6 +13,7 @@ class UserProfile(models.Model):
     availability = models.TextField(blank=True, help_text="Comma-separated list of available times")
     sessions_taught_count = models.IntegerField(default=0)
     sessions_learned_count = models.IntegerField(default=0)
+    hourly_rate = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, help_text="Hourly rate in NPR")
 
     @property
     def can_charge(self):

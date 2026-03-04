@@ -838,10 +838,13 @@ const toggleCamera = () => {
                                 {activeSession.status === 'SCHEDULED' && !activeSession.is_paid && (
                                     <button 
                                         onClick={handleInitiatePayment}
-                                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition-all shadow-lg shadow-blue-500/20 flex items-center gap-2"
+                                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition-all shadow-lg shadow-blue-500/20 flex flex-col items-center leading-none"
                                     >
-                                        <VideoIcon className="w-4 h-4" />
-                                        Pay Fee to Join (Khalti)
+                                        <div className="flex items-center gap-2 mb-0.5">
+                                          <VideoIcon className="w-4 h-4" />
+                                          <span>Pay NPR {parseFloat(activeSession.total_price.toString()).toFixed(2)} to Join</span>
+                                        </div>
+                                        <span className="text-[10px] opacity-60 font-normal">Secure payment via Khalti</span>
                                     </button>
                                 )}
                                 {activeSession.status === 'SCHEDULED' && activeSession.is_paid && (

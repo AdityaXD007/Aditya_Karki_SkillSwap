@@ -41,6 +41,15 @@ class SessionRequestViewSet(viewsets.ModelViewSet):
         # Check if teacher has taught 5+ sessions; if not, mark it as free session
         teacher_profile = session_request.partner.profile
         is_free_session = not teacher_profile.can_charge
+        
+        # Calculate price if not free
+        total_price = 0
+        if not is_free_session:
+            # (Duration in min / 60) * Hourly Rate * 1.10 (Fee)
+            base_rate = float(teacher_profile.hourly_rate)
+            duration_hours = session_request.session_length / 60.0
+            total_price = duration_hours * base_rate * 1.10 
+            print(f"Calculated session price: {total_price} for {session_request.session_length} min at {base_rate}/hr + 10% fee")
 
         LearningSession.objects.create(
             request=session_request,
@@ -51,7 +60,8 @@ class SessionRequestViewSet(viewsets.ModelViewSet):
             scheduled_time=timezone.now() + timezone.timedelta(days=1), # Default: Tomorrow
             status='SCHEDULED',
             is_paid=is_free_session,
-            is_free=is_free_session
+            is_free=is_free_session,
+            total_price=total_price
         )
 
         # 3. Create/Get Chat Conversation

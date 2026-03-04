@@ -30,16 +30,15 @@ class InitiatePaymentView(views.APIView):
 
         purchase_order_id = str(uuid.uuid4())
         
-        # In a real app, amount should be derived from the skill/teacher's rate
-        # For now, we accept it from frontend or set a default
-        if not amount:
-            amount = 1000 # Default 10 NPR (1000 Paisa)
+        # Use the stored total_price from the session (includes 10% fee)
+        # Convert total_price from NPR to Paisa for Khalti
+        paisa_amount = int(float(session.total_price) * 100)
 
         # Create initiated transaction
         transaction = Transaction.objects.create(
             session=session,
             student=request.user,
-            amount=amount/100, # Store in NPR
+            amount=session.total_price, # Store in NPR
             khalti_purchase_order_id=purchase_order_id,
             status='INITIATED'
         )
@@ -47,7 +46,7 @@ class InitiatePaymentView(views.APIView):
         payload = {
             "return_url": request.data.get('return_url', "http://localhost:5173/payment-callback"),
             "website_url": "http://localhost:5173",
-            "amount": int(amount),
+            "amount": paisa_amount,
             "purchase_order_id": purchase_order_id,
             "purchase_order_name": f"Session with {session.teacher.username}",
             "customer_info": {

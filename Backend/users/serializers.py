@@ -68,7 +68,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
         model = UserProfile
         fields = ['id', 'username', 'email', 'full_name', 'profile_image', 'profile_image_url', 
                   'location', 'bio', 'languages', 'availability', 'user_skills', 'rating',
-                  'sessions_taught_count', 'sessions_learned_count', 'can_charge']
+                  'sessions_taught_count', 'sessions_learned_count', 'can_charge', 'hourly_rate']
         read_only_fields = ['id', 'username', 'email', 'full_name', 'rating', 
                            'sessions_taught_count', 'sessions_learned_count', 'can_charge']
     

@@ -49,6 +49,7 @@ export const Profile: React.FC = () => {
   const [formData, setFormData] = useState({
     name: "",
     bio: "",
+    hourlyRate: 0,
   });
 
   // Fetch target profile user
@@ -87,12 +88,14 @@ export const Profile: React.FC = () => {
             sessionsTaughtCount: profileData.sessions_taught_count || 0,
             sessionsLearnedCount: profileData.sessions_learned_count || 0,
             canCharge: profileData.can_charge || false,
+            hourlyRate: parseFloat(profileData.hourly_rate?.toString() || "0"),
           };
         
         setProfileUser(normalized);
         setFormData({
             name: normalized.name,
             bio: normalized.bio || "",
+            hourlyRate: normalized.hourlyRate,
         });
         setError(null);
       } catch (err: any) {
@@ -203,12 +206,19 @@ export const Profile: React.FC = () => {
       await authAPI.updateProfile({
         full_name: formData.name,
         bio: formData.bio,
+        hourly_rate: formData.hourlyRate,
       });
       updateUser({
         name: formData.name,
         bio: formData.bio,
+        hourlyRate: formData.hourlyRate,
       });
-      setProfileUser((prev: any) => ({ ...prev, name: formData.name, bio: formData.bio }));
+      setProfileUser((prev: any) => ({ 
+        ...prev, 
+        name: formData.name, 
+        bio: formData.bio,
+        hourlyRate: formData.hourlyRate
+      }));
       toast.success("Profile updated successfully");
       setIsEditing(false);
     } catch (error) {
@@ -496,6 +506,41 @@ export const Profile: React.FC = () => {
                   <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
                     {profileUser?.sessionsLearnedCount || 0} learned
                   </span>
+                </div>
+                
+                {/* Hourly Rate Section */}
+                <div className={`flex items-center space-x-1.5 px-3 py-1 rounded-full border transition-all ${
+                  isEditing 
+                  ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-400 dark:border-blue-600 ring-2 ring-blue-500/20' 
+                  : (profileUser?.canCharge ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-100 dark:border-indigo-900/30' : 'bg-gray-50 dark:bg-slate-800/50 border-gray-100 dark:border-slate-700 grayscale')
+                }`}>
+                  <div className={`w-2 h-2 rounded-full ${isEditing ? 'bg-blue-600 animate-pulse' : (profileUser?.canCharge ? 'bg-indigo-600' : 'bg-gray-400')}`} />
+                  {isEditing ? (
+                    <div className="flex items-center gap-1">
+                      <span className="text-sm font-bold text-blue-700 dark:text-blue-400">NPR</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="10"
+                        value={formData.hourlyRate}
+                        onChange={(e) => setFormData({ ...formData, hourlyRate: parseFloat(e.target.value) || 0 })}
+                        className="w-20 bg-transparent border-none focus:ring-0 text-sm font-black text-blue-800 dark:text-blue-300 p-0"
+                      />
+                      <span className="text-[10px] font-bold text-blue-500/70 uppercase">/ hr</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                        {profileUser?.canCharge ? `${profileUser?.hourlyRate} NPR` : "Free Trial"}
+                      </span>
+                      {profileUser?.canCharge && <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tighter">/ hr</span>}
+                      {!profileUser?.canCharge && (
+                        <Badge variant="outline" className="text-[8px] bg-white dark:bg-slate-900 text-slate-400 border-slate-200 dark:border-slate-800 scale-90 px-1 py-0">
+                          PRO AT 5
+                        </Badge>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -838,6 +883,31 @@ export const Profile: React.FC = () => {
                          <Users className="w-3.5 h-3.5 text-blue-500" />
                          {profileUser?.sessionsTaughtCount || 0}
                        </p>
+                    </div>
+                    <div className={`px-4 py-2 rounded-xl border transition-all ${
+                      profileUser?.canCharge 
+                      ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-100 dark:border-indigo-900/30 ring-1 ring-indigo-500/10' 
+                      : 'bg-green-50 dark:bg-green-900/10 border-green-100 dark:border-green-900/20'
+                    }`}>
+                       <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-tighter">
+                         {profileUser?.canCharge ? "Hourly Rate" : "Special Offer"}
+                       </p>
+                       <div className="flex flex-col items-center">
+                          <p className={`font-black flex items-baseline gap-0.5 justify-center ${
+                            profileUser?.canCharge ? 'text-indigo-600 dark:text-indigo-400' : 'text-green-600 dark:text-green-400'
+                          }`}>
+                            <span className="text-sm">{profileUser?.canCharge ? "NPR" : ""}</span>
+                            <span className="text-xl leading-none">
+                              {profileUser?.canCharge ? profileUser?.hourlyRate : "FREE"}
+                            </span>
+                            {profileUser?.canCharge && <span className="text-[10px] uppercase">/ hr</span>}
+                          </p>
+                          {profileUser?.canCharge && (
+                            <span className="text-[8px] font-bold text-slate-400 uppercase leading-none block -mt-0.5">
+                              + 10% Fee
+                            </span>
+                          )}
+                       </div>
                     </div>
                   </div>
                 </div>

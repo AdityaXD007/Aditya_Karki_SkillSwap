@@ -14,6 +14,7 @@ export interface UserProfile {
     sessions_taught_count?: number;
     sessions_learned_count?: number;
     can_charge?: boolean;
+    hourly_rate?: string | number;
 }
 
 export interface Skill {
@@ -103,6 +104,7 @@ export interface LearningSession {
     meeting_link: string;
     is_paid: boolean;
     is_free: boolean;
+    total_price: number | string;
     admin_confirmed: boolean;
     payout_completed: boolean;
 }
