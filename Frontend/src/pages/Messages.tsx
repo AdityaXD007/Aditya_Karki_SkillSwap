@@ -240,7 +240,15 @@ export const Messages: React.FC = () => {
     const token = localStorage.getItem('auth_token');
     if (!token) return;
 
-    const wsUrl = `ws://${window.location.hostname}:8000/ws/chat/${selectedConversation}/?token=${token}`;
+    let wsUrl;
+    const hostname = window.location.hostname;
+    
+    if (hostname.includes('devtunnels.ms') || hostname.includes('preview.app.github.dev')) {
+        const backendHostname = hostname.replace('5173', '8000');
+        wsUrl = `wss://${backendHostname}/ws/chat/${selectedConversation}/?token=${token}`;
+    } else {
+        wsUrl = `ws://${hostname}:8000/ws/chat/${selectedConversation}/?token=${token}`;
+    }
     
     if (socketRef.current) {
         socketRef.current.close();

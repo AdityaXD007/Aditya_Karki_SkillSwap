@@ -18,7 +18,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-your-secret-key-change-this-in-production')
 DEBUG = config('DEBUG', default=True, cast=bool)
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ['*', 'localhost', '127.0.0.1', '.devtunnels.ms', '.preview.app.github.dev']
 
 
 # Application definition
@@ -124,10 +124,15 @@ CORS_ALLOWED_ORIGINS = [
     "http://192.168.1.67:5173",
 ]
 
+if DEBUG:
+    CORS_ALLOW_ALL_ORIGINS = True
+
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "http://192.168.1.67:5173",
+    "https://*.devtunnels.ms",
+    "https://*.preview.app.github.dev",
 ]
 
 CORS_ALLOW_CREDENTIALS = True

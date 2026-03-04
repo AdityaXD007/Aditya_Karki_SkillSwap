@@ -1,6 +1,20 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:8000/api`;
+let API_BASE_URL = import.meta.env.VITE_API_URL;
+
+if (!API_BASE_URL) {
+    const hostname = window.location.hostname;
+    // If using VS Code tunnels (e.g. 5173-xxx.devtunnels.ms), 
+    // the backend will likely be on 8000-xxx.devtunnels.ms
+    if (hostname.includes('devtunnels.ms') || hostname.includes('preview.app.github.dev')) {
+        const tunnelProtocol = window.location.protocol;
+        const backendHostname = hostname.replace('5173', '8000');
+        API_BASE_URL = `${tunnelProtocol}//${backendHostname}/api`;
+        console.log("Detected Dev Tunnel. Initializing backend at:", API_BASE_URL);
+    } else {
+        API_BASE_URL = `http://${hostname}:8000/api`;
+    }
+}
 
 const apiClient = axios.create({
     baseURL: API_BASE_URL,
