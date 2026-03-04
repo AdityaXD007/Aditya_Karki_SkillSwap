@@ -836,7 +836,7 @@ export const Profile: React.FC = () => {
                        <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">Sessions</p>
                        <p className="font-bold text-slate-900 dark:text-white flex items-center gap-1 justify-center">
                          <Users className="w-3.5 h-3.5 text-blue-500" />
-                         12
+                         {profileUser?.sessionsTaughtCount || 0}
                        </p>
                     </div>
                   </div>

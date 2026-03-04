@@ -102,6 +102,7 @@ export interface LearningSession {
     status: 'SCHEDULED' | 'ONGOING' | 'COMPLETED' | 'CANCELLED';
     meeting_link: string;
     is_paid: boolean;
+    is_free: boolean;
     admin_confirmed: boolean;
     payout_completed: boolean;
 }

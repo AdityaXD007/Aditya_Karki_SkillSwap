@@ -812,7 +812,9 @@ const toggleCamera = () => {
                                         }`}
                                     >
                                         <div className={`w-2 h-2 bg-white rounded-full ${activeSession.is_paid ? "animate-pulse" : ""}`} />
-                                        {activeSession.is_paid ? "Start Session" : "Waiting for Payment"}
+                                        {activeSession.is_paid 
+                                            ? (activeSession.is_free ? "Start Free Session" : "Start Paid Session") 
+                                            : "Waiting for Payment"}
                                     </button>
                                 )}
                                 {activeSession.status === 'ONGOING' && (
@@ -845,7 +847,7 @@ const toggleCamera = () => {
                                 {activeSession.status === 'SCHEDULED' && activeSession.is_paid && (
                                     <div className="px-4 py-2 bg-green-100 text-green-700 text-xs font-bold rounded-lg border border-green-200 flex items-center gap-2">
                                         <div className="w-2 h-2 bg-green-600 rounded-full" />
-                                        Paid - Waiting for Teacher
+                                        {activeSession.is_free ? 'Free Trial Session' : 'Fee Paid - Waiting for Teacher'}
                                     </div>
                                 )}
                             </>

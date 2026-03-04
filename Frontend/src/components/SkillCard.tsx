@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { Star, Calendar, BookOpen, User } from "lucide-react";
+import { Star, Calendar, BookOpen, User, Users } from "lucide-react";
 import type { Match } from "@/services";
 
 interface SkillCardProps {
@@ -47,11 +47,20 @@ export const SkillCard: React.FC<SkillCardProps> = ({
             </div>
           </div>
 
-          {/* Rating (Placeholder) */}
-          <div className="flex items-center space-x-1 mb-3">
-            <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-            <span className="font-medium text-sm text-gray-700 dark:text-gray-300">5.0</span>
-            <span className="text-sm text-gray-500 dark:text-gray-500">rating</span>
+          {/* Rating & Sessions */}
+          <div className="flex items-center gap-4 mb-3">
+            <div className="flex items-center space-x-1">
+              <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+              <span className="font-bold text-sm text-gray-700 dark:text-gray-300">
+                {teacher.rating?.toFixed(1) || "5.0"}
+              </span>
+            </div>
+            <div className="flex items-center space-x-1.5 bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded-md border border-blue-100 dark:border-blue-800">
+              <Users className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+              <span className="text-xs font-bold text-blue-700 dark:text-blue-300">
+                {teacher.sessions_taught_count || 0} Taught
+              </span>
+            </div>
           </div>
 
           {/* Bio */}

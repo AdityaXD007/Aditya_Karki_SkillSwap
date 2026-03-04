@@ -57,6 +57,7 @@ class LearningSession(models.Model):
     
     # Payment and Verification
     is_paid = models.BooleanField(default=False, help_text="Has the student paid the session fee?")
+    is_free = models.BooleanField(default=False, help_text="Is this a free session?")
     admin_confirmed = models.BooleanField(default=False, help_text="Has the admin confirmed session completion?")
     payout_completed = models.BooleanField(default=False, help_text="Has the teacher received the payment?")
 

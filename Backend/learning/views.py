@@ -38,8 +38,10 @@ class SessionRequestViewSet(viewsets.ModelViewSet):
         session_request.save()
 
         # 2. Create Learning Session
-        # Default scheduling logic could go here, or handled separately
-        # For now, we create a placeholder session (user needs to update time later)
+        # Check if teacher has taught 5+ sessions; if not, mark it as free session
+        teacher_profile = session_request.partner.profile
+        is_free_session = not teacher_profile.can_charge
+
         LearningSession.objects.create(
             request=session_request,
             student=session_request.requester,
@@ -47,7 +49,9 @@ class SessionRequestViewSet(viewsets.ModelViewSet):
             skill=session_request.skill_to_learn,
             duration=session_request.session_length,
             scheduled_time=timezone.now() + timezone.timedelta(days=1), # Default: Tomorrow
-            status='SCHEDULED'
+            status='SCHEDULED',
+            is_paid=is_free_session,
+            is_free=is_free_session
         )
 
         # 3. Create/Get Chat Conversation
