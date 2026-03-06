@@ -36,10 +36,11 @@ INSTALLED_APPS = [
     #Apps registered hereee
     'users',
     'skills',
-    'learning',
+    'learning.apps.LearningConfig',
     'chat',
     'ai_assistant',
     'payment',
+    'django_apscheduler',
 ]
 
 MIDDLEWARE = [

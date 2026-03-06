@@ -9,6 +9,9 @@ class SessionRequest(models.Model):
         ('ACCEPTED', 'Accepted'),
         ('REJECTED', 'Rejected'),
         ('CANCELLED', 'Cancelled'),
+        ('WITHDRAWN', 'Withdrawn'),
+        ('EXPIRED', 'Expired'),
+        ('COMPLETED', 'Completed'),
     )
 
     requester = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_requests')
@@ -33,6 +36,8 @@ class LearningSession(models.Model):
         ('ONGOING', 'Ongoing'),
         ('COMPLETED', 'Completed'),
         ('CANCELLED', 'Cancelled'),
+        ('WITHDRAWN', 'Withdrawn'),
+        ('EXPIRED', 'Expired'),
     )
 
     request = models.OneToOneField(SessionRequest, on_delete=models.SET_NULL, null=True, related_name='session')

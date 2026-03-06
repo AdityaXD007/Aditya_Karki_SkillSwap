@@ -14,4 +14,5 @@ export const requestsAPI = {
     acceptRequest: (id: number) => apiClient.post(`/requests/${id}/accept/`),
 
     rejectRequest: (id: number) => apiClient.post(`/requests/${id}/reject/`),
+    withdrawRequest: (id: number) => apiClient.patch(`/requests/${id}/withdraw/`),
 };

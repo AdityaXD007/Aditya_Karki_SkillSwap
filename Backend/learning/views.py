@@ -94,6 +94,25 @@ class SessionRequestViewSet(viewsets.ModelViewSet):
         session_request.save()
         return Response({'status': 'Request rejected'})
 
+    @action(detail=True, methods=['patch'])
+    def withdraw(self, request, pk=None):
+        """
+        Withdraw a sent request. Only available for the requester and when status is PENDING.
+        """
+        session_request = self.get_object()
+        
+        # Verify requesting user is the original requester
+        if session_request.requester != request.user:
+            return Response({'error': 'Not authorized to withdraw this request'}, status=status.HTTP_403_FORBIDDEN)
+        
+        # Only pending sessions (requests) can be withdrawn
+        if session_request.status != 'PENDING':
+            return Response({'error': 'Only pending requests can be withdrawn'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        session_request.status = 'WITHDRAWN'
+        session_request.save()
+        return Response({'status': 'Request withdrawn'}, status=status.HTTP_200_OK)
+
 class LearningSessionViewSet(viewsets.ModelViewSet):
     """
     Manage confirmed learning sessions.
