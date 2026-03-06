@@ -21,6 +21,8 @@ import {
 
 export const Dashboard: React.FC = () => {
   const { user } = useAuth();
+  const taughtCount = user?.sessionsTaughtCount || 0;
+  const isProUnlocked = taughtCount >= 5;
   const [matches, setMatches] = useState<Match[]>([]);
   const [upcomingSessions, setUpcomingSessions] = useState<LearningSession[]>([]);
   const [pendingRequests, setPendingRequests] = useState<SessionRequest[]>([]);
@@ -122,13 +124,15 @@ export const Dashboard: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                  Lessons Taught
+                  {isProUnlocked ? "Total Lessons Taught" : "Lessons Taught"}
                 </p>
                 <div className="flex items-baseline space-x-1">
                   <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
-                    {user?.sessionsTaughtCount || 0}
+                    {taughtCount}
                   </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">/ 5 for Pro</p>
+                  {!isProUnlocked && (
+                    <p className="text-xs text-gray-500 dark:text-gray-400">/ 5 for Pro</p>
+                  )}
                 </div>
               </div>
               <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg flex items-center justify-center">
@@ -138,8 +142,8 @@ export const Dashboard: React.FC = () => {
             {/* Progress Bar */}
             <div className="mt-4 h-1.5 w-full bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden">
               <div 
-                className={`h-full rounded-full transition-all duration-500 ${user?.canCharge ? 'bg-green-500' : 'bg-indigo-500'}`}
-                style={{ width: `${Math.min(((user?.sessionsTaughtCount || 0) / 5) * 100, 100)}%` }}
+                className={`h-full rounded-full transition-all duration-500 ${isProUnlocked ? 'bg-green-500' : 'bg-indigo-500'}`}
+                style={{ width: `${isProUnlocked ? 100 : Math.min((taughtCount / 5) * 100, 100)}%` }}
               ></div>
             </div>
             {user?.canCharge && (
