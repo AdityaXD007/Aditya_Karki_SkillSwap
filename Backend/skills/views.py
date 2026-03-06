@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from .models import Skill, UserSkill
 from .serializers import SkillSerializer, UserSkillSerializer, MatchSerializer, AggregatedMatchSerializer
 from django.db import models
+from django.db.models import Avg, Count, Q
 
 class SkillViewSet(viewsets.ModelViewSet):
     """
@@ -100,4 +101,80 @@ class MatchViewSet(viewsets.ReadOnlyModelViewSet):
         
         grouped_queryset = list(unique_matches.values())
         serializer = self.get_serializer(grouped_queryset, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'], url_path='category-fallback')
+    def category_fallback(self, request):
+        """
+        Level 2 Fallback: Get users who teach in specific categories.
+        Level 0/Entry Check B Fallback: Get top teachers who share my skills (if no categories provided).
+        """
+        categories_str = request.query_params.get('categories', '')
+        categories = [c.strip() for c in categories_str.split(',') if c.strip()]
+        
+        # Base queryset: Active teachers, excludes current user
+        queryset = self.get_queryset()
+        
+        if not categories:
+            # Entry Check B Fallback: User has teaching skills but nothing they want to learn
+            # 1. Filter out users with 0 lessons taught
+            queryset = queryset.filter(user__profile__sessions_taught_count__gt=0)
+            
+            # 2. Sort by lessons taught DESC, then rating DESC
+            matches = queryset.annotate(
+                taught_count=models.F('user__profile__sessions_taught_count'),
+                avg_rating=Avg('user__learning_sessions_as_teacher__rating_by_student')
+            ).order_by('-taught_count', '-avg_rating')
+        else:
+            # Level 2 Fallback: Matching by categories
+            queryset = queryset.filter(skill__category__in=categories)
+            
+            # Sort by highest rating first, then most lessons taught (as per waterfall requirements)
+            matches = queryset.annotate(
+                avg_rating=Avg('user__learning_sessions_as_teacher__rating_by_student'),
+                taught_count=models.F('user__profile__sessions_taught_count')
+            ).order_by('-avg_rating', '-taught_count')
+
+        # Limit to 10 unique users directly in the loop with a cap on the DB fetch
+        unique_matches_data = []
+        seen_users = set()
+        
+        for m in matches[:50]: # Fetch a reasonably large slice to ensure we find 10 unique users
+            if m.user_id not in seen_users:
+                unique_matches_data.append(m)
+                seen_users.add(m.user_id)
+            if len(unique_matches_data) >= 10:
+                break
+                
+        serializer = self.get_serializer(unique_matches_data, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'], url_path='top-teachers')
+    def top_teachers(self, request):
+        """
+        Top Teachers: Filtered, sorted and capped at 10.
+        """
+        # Base queryset: Active teachers, excludes current user
+        queryset = self.get_queryset()
+        
+        # 1. Filter out users with 0 lessons taught
+        queryset = queryset.filter(user__profile__sessions_taught_count__gt=0)
+        
+        # 2. Sort by lessons taught DESC, then rating DESC
+        matches = queryset.annotate(
+            taught_count=models.F('user__profile__sessions_taught_count'),
+            avg_rating=Avg('user__learning_sessions_as_teacher__rating_by_student')
+        ).order_by('-taught_count', '-avg_rating')
+
+        unique_matches_data = []
+        seen_users = set()
+        
+        for m in matches[:50]:
+            if m.user_id not in seen_users:
+                unique_matches_data.append(m)
+                seen_users.add(m.user_id)
+            if len(unique_matches_data) >= 10:
+                break
+                
+        serializer = self.get_serializer(unique_matches_data, many=True)
         return Response(serializer.data)

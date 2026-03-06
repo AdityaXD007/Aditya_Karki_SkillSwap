@@ -8,6 +8,7 @@ export interface UserSkillInfo {
   name: string;
   type: "TEACH" | "LEARN";
   proficiency: string;
+  category: string;
   icon_class?: string;
   color_class?: string;
 }
@@ -116,6 +117,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           name: s.skill_details?.name || "Unknown Skill",
           type: s.skill_type,
           proficiency: s.proficiency_level,
+          category: s.skill_details?.category || "",
           icon_class: s.skill_details?.icon_class || "",
           color_class: s.skill_details?.color_class || "",
         }));
