@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import { messagesApi, sessionsAPI, paymentAPI, type Conversation, type Message, type LearningSession } from "@/services";
 import { useAuth } from "@/components/Context/AuthContext";
-import { Send, Search, Phone, X, Mic, MicOff, Video as VideoIcon, VideoOff, MoreVertical, Reply, Smile, Trash2, Image as ImageIcon } from "lucide-react";
+import { Send, Search, Phone, X, Mic, MicOff, Video as VideoIcon, VideoOff, MoreVertical, Reply, Smile, Trash2, Image as ImageIcon, CreditCard, Wallet, ShieldCheck, CheckCircle2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 const ICE_SERVERS = {
   iceServers: [
@@ -39,6 +40,8 @@ export const Messages: React.FC = () => {
   const sessionTimerRef = useRef<any>(null);
   const [activeSession, setActiveSession] = useState<LearningSession | null>(null);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   const socketRef = useRef<WebSocket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -212,18 +215,21 @@ export const Messages: React.FC = () => {
     }
   };
 
-  const handleInitiatePayment = async () => {
+  const handleInitiatePayment = async (method: string) => {
     if (!activeSession) return;
+    setIsProcessingPayment(true);
     try {
-        const response = await paymentAPI.initiatePayment(activeSession.id, 1000); // 1000 Paisa = 10 NPR
+        const response = await paymentAPI.initiatePayment(activeSession.id, 1000, method); 
         if (response.data && response.data.payment_url) {
             window.location.href = response.data.payment_url;
         } else {
             alert("Failed to initiate payment. Please try again.");
+            setIsProcessingPayment(false);
         }
     } catch (err) {
         console.error("Payment initiation error:", err);
         alert("An error occurred while initiating payment.");
+        setIsProcessingPayment(false);
     }
   };
 
@@ -697,6 +703,7 @@ const toggleCamera = () => {
   const selected = conversations.find((c) => c.id === selectedConversation);
 
   return (
+    <>
     <div className="min-h-screen bg-gray-50 dark:bg-slate-950 py-8 transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div
@@ -845,14 +852,14 @@ const toggleCamera = () => {
                             <>
                                 {activeSession.status === 'SCHEDULED' && !activeSession.is_paid && (
                                     <button 
-                                        onClick={handleInitiatePayment}
+                                        onClick={() => setShowPaymentModal(true)}
                                         className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition-all shadow-lg shadow-blue-500/20 flex flex-col items-center leading-none"
                                     >
                                         <div className="flex items-center gap-2 mb-0.5">
                                           <VideoIcon className="w-4 h-4" />
                                           <span>Pay NPR {parseFloat(activeSession.total_price.toString()).toFixed(2)} to Join</span>
                                         </div>
-                                        <span className="text-[10px] opacity-60 font-normal">Secure payment via Khalti</span>
+                                        <span className="text-[10px] opacity-60 font-normal">Secure payment via Khalti or Stripe</span>
                                     </button>
                                 )}
                                 {activeSession.status === 'SCHEDULED' && activeSession.is_paid && (
@@ -1214,6 +1221,88 @@ const toggleCamera = () => {
           </div>
         </div>
       </div>
+
+      <Dialog open={showPaymentModal} onOpenChange={setShowPaymentModal}>
+        <DialogContent className="sm:max-w-[450px] bg-white dark:bg-slate-900 border-none shadow-2xl p-0 overflow-hidden">
+          <div className="relative h-32 bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center">
+            <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,_white_1px,_transparent_1px)] bg-[size:20px_20px]" />
+            <div className="z-10 text-center">
+              <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center mx-auto mb-2 border border-white/30">
+                <ShieldCheck className="w-8 h-8 text-white" />
+              </div>
+              <h3 className="text-white font-bold text-lg">Secure Checkout</h3>
+            </div>
+          </div>
+          
+          <div className="p-6">
+            <DialogHeader className="mb-6">
+              <DialogTitle className="text-gray-900 dark:text-white text-xl font-bold">Choose Payment Method</DialogTitle>
+              <DialogDescription className="text-gray-500 dark:text-gray-400">
+                You are paying <span className="font-bold text-blue-600 dark:text-blue-400">NPR {activeSession ? parseFloat(activeSession.total_price.toString()).toFixed(2) : "0.00"}</span> for your learning session.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="grid gap-4 py-2">
+              <button
+                onClick={() => handleInitiatePayment('KHALTI')}
+                disabled={isProcessingPayment}
+                className="group relative flex items-center p-4 rounded-xl border-2 border-slate-100 dark:border-slate-800 hover:border-purple-500 dark:hover:border-purple-600 hover:bg-purple-50/50 dark:hover:bg-purple-900/10 transition-all duration-300 text-left"
+              >
+                <div className="w-12 h-12 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center mr-4 group-hover:scale-110 transition-transform">
+                  <Wallet className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-bold text-gray-900 dark:text-white">Khalti Wallet</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Pay using your Khalti account or eBanking</p>
+                </div>
+                <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                  <CheckCircle2 className="w-5 h-5 text-purple-600" />
+                </div>
+              </button>
+
+              <button
+                onClick={() => handleInitiatePayment('STRIPE')}
+                disabled={isProcessingPayment}
+                className="group relative flex items-center p-4 rounded-xl border-2 border-slate-100 dark:border-slate-800 hover:border-blue-500 dark:hover:border-blue-600 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-all duration-300 text-left"
+              >
+                <div className="w-12 h-12 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mr-4 group-hover:scale-110 transition-transform">
+                  <CreditCard className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-bold text-gray-900 dark:text-white">Card Payment</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Pay with Visa, Mastercard, or other cards via Stripe</p>
+                </div>
+                <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                  <CheckCircle2 className="w-5 h-5 text-blue-600" />
+                </div>
+              </button>
+            </div>
+
+            {isProcessingPayment && (
+              <div className="mt-4 flex items-center justify-center space-x-2 text-sm text-blue-600 dark:text-blue-400 animate-pulse">
+                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                <span>Redirecting to payment gateway...</span>
+              </div>
+            )}
+
+            <div className="mt-8 pt-6 border-t border-gray-100 dark:border-slate-800">
+              <div className="flex items-center justify-center space-x-6">
+                <div className="flex flex-col items-center">
+                  <span className="text-[10px] text-gray-400 uppercase tracking-widest mb-1">Secure</span>
+                  <ShieldCheck className="w-5 h-5 text-green-500" />
+                </div>
+                <div className="h-8 w-px bg-gray-100 dark:bg-slate-800" />
+                <div className="flex space-x-2 opacity-50 grayscale transition-all hover:grayscale-0">
+                  {/* Mimic small logo icons or just text for simplicity */}
+                  <span className="text-[10px] font-bold text-gray-900 dark:text-white px-1.5 py-0.5 border rounded uppercase">Visa</span>
+                  <span className="text-[10px] font-bold text-gray-900 dark:text-white px-1.5 py-0.5 border rounded uppercase">MC</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
+    </>
   );
 };

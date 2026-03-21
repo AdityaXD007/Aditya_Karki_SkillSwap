@@ -163,6 +163,11 @@ CHANNEL_LAYERS = {
 
 #Payment Configuration
 # Khalti Payment Gateway Configuration
-KHALTI_API_URL = 'https://dev.khalti.com/api/v2' # Sandbox URL for Khalti API
-KHALTI_PUBLIC_KEY = "795b49aae20046789cc4b1649039f069"
-KHALTI_SECRET_KEY = "7cff57f78f0243f7a65b9c8b1f5b019c"
+KHALTI_API_URL = config('KHALTI_API_URL', default='https://dev.khalti.com/api/v2')
+KHALTI_PUBLIC_KEY = config('KHALTI_PUBLIC_KEY', default='')
+KHALTI_SECRET_KEY = config('KHALTI_SECRET_KEY', default='')
+
+# Stripe Payment Gateway Configuration
+STRIPE_PUBLISHABLE_KEY = config('STRIPE_PUBLISHABLE_KEY', default='')
+STRIPE_SECRET_KEY = config('STRIPE_SECRET_KEY', default='')
+

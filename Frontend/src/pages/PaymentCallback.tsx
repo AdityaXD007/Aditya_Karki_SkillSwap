@@ -11,9 +11,10 @@ export const PaymentCallback: React.FC = () => {
 
     useEffect(() => {
         const pidx = searchParams.get('pidx');
+        const stripeSessionId = searchParams.get('session_id');
 
-        if (pidx) {
-            paymentAPI.verifyPayment(pidx)
+        if (pidx || stripeSessionId) {
+            paymentAPI.verifyPayment(pidx || undefined, stripeSessionId || undefined)
                 .then(() => {
                     setStatus('success');
                     setMessage('Payment successful! Your session is now unlocked.');
@@ -30,7 +31,7 @@ export const PaymentCallback: React.FC = () => {
              setTimeout(() => navigate('/messages'), 3000);
         } else {
             setStatus('error');
-            setMessage('Invalid callback parameters.');
+            setMessage('Invalid callback parameters. Please wait or go back to messages.');
         }
     }, [searchParams, navigate]);
 
