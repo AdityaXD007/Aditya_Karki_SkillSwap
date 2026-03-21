@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { messagesApi, sessionsAPI, paymentAPI, type Conversation, type Message, type LearningSession } from "@/services";
 import { useAuth } from "@/components/Context/AuthContext";
-import { Send, Search, Phone, X, Mic, MicOff, Video as VideoIcon, VideoOff, MoreVertical, Reply, Smile, Trash2, Image as ImageIcon, CreditCard, Wallet, ShieldCheck, CheckCircle2 } from "lucide-react";
+import { Send, Search, Phone, X, Mic, MicOff, Video as VideoIcon, VideoOff, MoreVertical, Reply, Smile, Trash2, Image as ImageIcon, ShieldCheck, CheckCircle2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
@@ -1242,38 +1242,42 @@ const toggleCamera = () => {
               </DialogDescription>
             </DialogHeader>
 
-            <div className="grid gap-4 py-2">
+            <div className="flex flex-col sm:flex-row gap-4 py-2">
               <button
                 onClick={() => handleInitiatePayment('KHALTI')}
                 disabled={isProcessingPayment}
-                className="group relative flex items-center p-4 rounded-xl border-2 border-slate-100 dark:border-slate-800 hover:border-purple-500 dark:hover:border-purple-600 hover:bg-purple-50/50 dark:hover:bg-purple-900/10 transition-all duration-300 text-left"
+                className="group relative flex-1 flex flex-col items-center p-6 rounded-2xl border-2 border-slate-100 dark:border-slate-800 hover:border-purple-500 dark:hover:border-purple-600 hover:bg-purple-50/50 dark:hover:bg-purple-900/10 transition-all duration-300 text-center"
               >
-                <div className="w-12 h-12 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center mr-4 group-hover:scale-110 transition-transform">
-                  <Wallet className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                <div className="w-16 h-16 rounded-xl bg-white dark:bg-slate-800 flex items-center justify-center mb-4 shadow-sm group-hover:scale-110 transition-transform overflow-hidden p-2">
+                  <img 
+                    src="data:image/webp;base64,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" 
+                    alt="Khalti" 
+                    className="w-full h-full object-contain" 
+                  />
                 </div>
-                <div className="flex-1">
-                  <p className="font-bold text-gray-900 dark:text-white">Khalti Wallet</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Pay using your Khalti account or eBanking</p>
+                <div>
+                  <p className="font-bold text-gray-900 dark:text-white mb-1">Khalti Wallet</p>
+                  <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight">Pay using your Nepali Khalti account</p>
                 </div>
-                <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                  <CheckCircle2 className="w-5 h-5 text-purple-600" />
+                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <CheckCircle2 className="w-4 h-4 text-purple-600" />
                 </div>
               </button>
 
               <button
                 onClick={() => handleInitiatePayment('STRIPE')}
                 disabled={isProcessingPayment}
-                className="group relative flex items-center p-4 rounded-xl border-2 border-slate-100 dark:border-slate-800 hover:border-blue-500 dark:hover:border-blue-600 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-all duration-300 text-left"
+                className="group relative flex-1 flex flex-col items-center p-6 rounded-2xl border-2 border-slate-100 dark:border-slate-800 hover:border-blue-500 dark:hover:border-blue-600 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-all duration-300 text-center"
               >
-                <div className="w-12 h-12 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mr-4 group-hover:scale-110 transition-transform">
-                  <CreditCard className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                <div className="w-16 h-16 rounded-xl bg-white dark:bg-slate-800 flex items-center justify-center mb-4 shadow-sm group-hover:scale-110 transition-transform overflow-hidden p-2">
+                  <img src="https://upload.wikimedia.org/wikipedia/commons/b/ba/Stripe_Logo%2C_revised_2016.svg" alt="Stripe" className="w-full h-full object-contain" />
                 </div>
-                <div className="flex-1">
-                  <p className="font-bold text-gray-900 dark:text-white">Card Payment</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Pay with Visa, Mastercard, or other cards via Stripe</p>
+                <div>
+                  <p className="font-bold text-gray-900 dark:text-white mb-1">Card Payment</p>
+                  <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight">Pay with Visa, Mastercard via Stripe</p>
                 </div>
-                <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                  <CheckCircle2 className="w-5 h-5 text-blue-600" />
+                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <CheckCircle2 className="w-4 h-4 text-blue-600" />
                 </div>
               </button>
             </div>

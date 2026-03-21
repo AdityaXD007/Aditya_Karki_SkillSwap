@@ -27,10 +27,12 @@ class InitiatePaymentView(views.APIView):
 
         # Ensure teacher can charge (5+ sessions taught)
         if not session.teacher.profile.can_charge:
+            print(f"Error: Teacher {session.teacher.username} cannot charge yet.")
             return Response({'error': 'This teacher is still in their free trail period (less than 5 sessions taught). No payment is required.'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Ensure session is not already paid or free
         if session.is_paid or session.is_free:
+            print(f"Error: Session {session_id} is already paid or free. is_paid={session.is_paid}, is_free={session.is_free}")
             return Response({'error': 'This session is already paid or marked as free.'}, status=status.HTTP_400_BAD_REQUEST)
 
         purchase_order_id = str(uuid.uuid4())
