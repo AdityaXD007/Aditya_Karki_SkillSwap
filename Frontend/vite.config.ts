@@ -16,8 +16,8 @@ export default defineConfig({
       usePolling: true    // Important for Docker
     },
     hmr: {
-      // Allow Vite to detect the host automatically for devtunnels
-      clientPort: 443 
+      protocol: 'wss',
+      clientPort: 443
     }
   }
 })

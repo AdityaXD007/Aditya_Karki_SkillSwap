@@ -14,6 +14,7 @@ const ICE_SERVERS = {
     { urls: 'stun:stun4.l.google.com:19302' },
     { urls: 'stun:stun.l.google.com:19305' },
     { urls: 'stun:stun.services.mozilla.com' },
+    { urls: 'stun:global.stun.twilio.com:3478' },
     { urls: 'stun:stun.stunprotocol.org' },
     {
       urls: [
@@ -35,11 +36,11 @@ const ICE_SERVERS = {
     }
   ],
 
-  iceCandidatePoolSize: 0,
+  iceCandidatePoolSize: 10,
   bundlePolicy: 'max-bundle' as RTCBundlePolicy,
   rtcpMuxPolicy: 'require' as RTCRtcpMuxPolicy,
   sdpSemantics: 'unified-plan',
-  iceTransportPolicy: 'relay' as RTCIceTransportPolicy
+  iceTransportPolicy: 'all' as RTCIceTransportPolicy
 };
 
 
@@ -61,8 +62,19 @@ export const Messages: React.FC = () => {
   const [callStatus, setCallStatus] = useState<string>("");
   const [micOn, setMicOn] = useState(true);
   const [cameraOn, setCameraOn] = useState(true);
-  const remoteStreamRef = useRef<MediaStream>(new MediaStream());
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
+  const remoteBackgroundVideoRef = useRef<HTMLVideoElement | null>(null);
+
+  useEffect(() => {
+    if (remoteVideoRef.current && remoteStream) {
+        console.log("📺 Setting remote srcObject via useEffect (Tracks:", remoteStream.getTracks().length, ")");
+        remoteVideoRef.current.srcObject = remoteStream;
+    }
+    if (remoteBackgroundVideoRef.current && remoteStream) {
+        remoteBackgroundVideoRef.current.srcObject = remoteStream;
+    }
+  }, [remoteStream]);
   const [localStreamReady, setLocalStreamReady] = useState(false);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState<number | null>(null); // Message ID
@@ -483,7 +495,9 @@ const createPeerConnection = () => {
         const state = pc.iceConnectionState;
         console.log("⚡ ICE Connection State:", state);
         if (state === 'failed' || state === 'disconnected') {
-            console.warn("⚠️ Connection unstable. Attempting to maintain...");
+            console.warn("⚠️ Connection lost/unstable. ICE state is:", state);
+        } else if (state === 'connected' || state === 'completed') {
+            console.log("✅ ICE Connection established! Media should flow.");
         }
     };
 
@@ -500,23 +514,31 @@ const createPeerConnection = () => {
 
     pc.ontrack = (event) => {
         console.log("🎬 Received remote track:", event.track.kind, "State:", event.track.readyState);
-        if (remoteStreamRef.current) {
-            const existing = remoteStreamRef.current.getTracks().find(t => t.id === event.track.id);
-            if (!existing) {
-                remoteStreamRef.current.addTrack(event.track);
-                console.log("➕ Track added to stable stream");
+        setRemoteStream(prev => {
+            if (!prev) {
+                const s = new MediaStream();
+                s.addTrack(event.track);
+                return s;
             }
-            
-            // Re-check if track was muted
-            event.track.onunmute = () => console.log("🔊 Track unmuted:", event.track.kind);
-            event.track.onmute = () => console.warn("🔇 Track muted by sender:", event.track.kind);
-            
-            // NUDGE: Tell the video element to refresh
-            if (remoteVideoRef.current) {
-                console.log("🔄 Nudging video element to play new track");
-                remoteVideoRef.current.srcObject = remoteStreamRef.current;
-                remoteVideoRef.current.play().catch(() => {});
+            if (!prev.getTracks().find(t => t.id === event.track.id)) {
+                prev.addTrack(event.track);
             }
+            // Always return a new MediaStream to trigger React re-renders/prop updates
+            return new MediaStream(prev.getTracks());
+        });
+
+        event.track.onunmute = () => {
+             console.log("🔊 Track unmuted:", event.track.kind);
+             if (remoteVideoRef.current) {
+                 remoteVideoRef.current.play().catch(e => {
+                     if (e.name !== 'AbortError') console.error("Play error on unmute:", e);
+                 });
+             }
+        };
+
+        // Redundant nudge for certain browsers
+        if (remoteVideoRef.current) {
+            remoteVideoRef.current.play().catch(() => {});
         }
     };
 
@@ -529,7 +551,7 @@ const startCall = async () => {
     
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ 
-            video: { width: 640, height: 480 }, 
+            video: { width: { ideal: 640 }, height: { ideal: 480 } }, 
             audio: true 
         });
         localStreamRef.current = stream;
@@ -567,7 +589,7 @@ const acceptCall = async () => {
         }
 
         const stream = await navigator.mediaDevices.getUserMedia({ 
-            video: { width: 640, height: 480 }, 
+            video: { width: { ideal: 640 }, height: { ideal: 480 } }, 
             audio: true 
         });
         localStreamRef.current = stream;
@@ -643,12 +665,12 @@ const endCall = (sendSignal = true) => {
         localStreamRef.current = null;
     }
 
-    // Clear tracks from remote stream ref
-    if (remoteStreamRef.current) {
-        remoteStreamRef.current.getTracks().forEach(track => {
+    // Clear tracks from remote stream
+    if (remoteStream) {
+        remoteStream.getTracks().forEach(track => {
             track.stop();
-            remoteStreamRef.current.removeTrack(track);
         });
+        setRemoteStream(null);
     }
 
 
@@ -1004,27 +1026,33 @@ const toggleCamera = () => {
 
                   {/* Video Call Overlay */}
                   {isInCall && (
-                      <div className="absolute inset-0 bg-slate-950 z-50 flex flex-col rounded-lg overflow-hidden animate-in fade-in zoom-in-95 duration-300">
-                          <div className="relative flex-1 bg-black flex items-center justify-center">
+                      <div className="absolute inset-0 bg-slate-950 z-50 flex flex-col md:rounded-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-500 shadow-[0_0_50px_rgba(0,0,0,0.5)]">
+                          <div className="relative flex-1 bg-slate-950 flex items-center justify-center group">
+                              {/* Remote Video Background (Blurred) */}
+                              <div className="absolute inset-0 opacity-30 blur-3xl scale-110 pointer-events-none overflow-hidden">
+                                  <video 
+                                      ref={remoteBackgroundVideoRef}
+                                      autoPlay 
+                                      muted 
+                                      className="w-full h-full object-cover"
+                                  />
+                              </div>
+
                               {/* Remote Video */}
-                              <video 
-                                  ref={(el) => {
-                                      remoteVideoRef.current = el;
-                                      if (el && el.srcObject !== remoteStreamRef.current) {
-                                          console.log("📺 Attaching stable remote stream");
-                                          el.srcObject = remoteStreamRef.current;
-                                          el.play().catch(e => {
-                                              if (e.name !== 'AbortError') console.error("Play error:", e);
-                                          });
-                                      }
-                                  }} 
-                                  autoPlay 
-                                  playsInline 
-                                  className="w-full h-full object-cover bg-slate-900 shadow-inner"
-                              />
+                            <video 
+                                ref={remoteVideoRef}
+                                autoPlay 
+                                playsInline 
+                                muted={false}
+                                className="relative z-10 w-auto h-full max-h-screen max-w-full object-contain transition-all duration-700"
+                                onLoadedMetadata={() => {
+                                    console.log("📽️ Remote metadata loaded");
+                                    remoteVideoRef.current?.play().catch(() => {});
+                                }}
+                            />
                               
                               {/* Local Video (Floating) */}
-                              <div className="absolute bottom-6 right-6 w-40 h-52 md:w-48 md:h-64 bg-slate-800 rounded-2xl overflow-hidden border-2 border-white/10 shadow-2xl transition-all duration-300 hover:scale-105 active:scale-95 cursor-move">
+                              <div className="absolute top-6 right-6 w-32 h-44 md:w-56 md:h-72 z-30 bg-slate-800 rounded-3xl overflow-hidden border-2 border-white/20 shadow-2xl transition-all duration-500 hover:scale-105 hover:border-blue-500/50 group-hover:translate-x-0">
                                   <video 
                                       key={`local-video-${localStreamReady}`}
                                       ref={(el) => {
@@ -1042,40 +1070,48 @@ const toggleCamera = () => {
                                       muted 
                                       className="w-full h-full object-cover -scale-x-100"
                                   />
-                              </div>
-
-                              {/* Call Metadata/Status */}
-                              <div className="absolute top-6 left-1/2 -translate-x-1/2 flex flex-col items-center space-y-2">
-                                  <div className="bg-slate-800/80 backdrop-blur-md px-4 py-1.5 rounded-full border border-white/10 flex items-center space-x-2">
-                                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                                      <p className="text-white text-sm font-medium tracking-wide uppercase">{callStatus}</p>
+                                  <div className="absolute bottom-2 left-2 px-2 py-0.5 bg-black/40 backdrop-blur-md rounded-md">
+                                      <p className="text-[10px] text-white font-medium">You</p>
                                   </div>
-                                  <h4 className="text-white/80 text-xs font-medium bg-black/20 px-3 py-1 rounded-full backdrop-blur-sm">
-                                      Stay connected with {selected?.userName}
-                                  </h4>
                               </div>
-                          </div>
 
-                          {/* Controls */}
-                          <div className="h-20 bg-slate-900 flex items-center justify-center space-x-6 border-t border-slate-800">
-                              <button 
-                                  onClick={toggleMic}
-                                  className={`p-4 rounded-full ${micOn ? 'bg-slate-800 text-white' : 'bg-red-500 text-white'} hover:opacity-90 transition-all`}
-                              >
-                                  {micOn ? <Mic className="w-6 h-6" /> : <MicOff className="w-6 h-6" />}
-                              </button>
-                              <button 
-                                  onClick={() => endCall()}
-                                  className="p-4 rounded-full bg-red-600 text-white hover:bg-red-700 transition-all shadow-lg shadow-red-500/20"
-                              >
-                                  <Phone className="w-8 h-8 rotate-[135deg]" />
-                              </button>
-                              <button 
-                                  onClick={toggleCamera}
-                                  className={`p-4 rounded-full ${cameraOn ? 'bg-slate-800 text-white' : 'bg-red-500 text-white'} hover:opacity-90 transition-all`}
-                              >
-                                  {cameraOn ? <VideoIcon className="w-6 h-6" /> : <VideoOff className="w-6 h-6" />}
-                              </button>
+                              {/* Top Bar with Status */}
+                              <div className="absolute top-8 left-8 z-30 flex items-center space-x-4">
+                                  <div className="flex flex-col">
+                                      <h3 className="text-white font-bold text-lg md:text-xl drop-shadow-md">{selected?.userName || 'Participant'}</h3>
+                                      <div className="flex items-center space-x-2">
+                                          <div className={`w-2 h-2 rounded-full ${callStatus === 'Connected' ? 'bg-green-500 animate-pulse' : 'bg-yellow-500'}`} />
+                                          <p className="text-white/70 text-xs font-medium uppercase tracking-widest">{callStatus}</p>
+                                      </div>
+                                  </div>
+                              </div>
+
+                              {/* Floating Glass Controls */}
+                              <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-40 px-6 py-4 bg-white/10 backdrop-blur-2xl rounded-3xl border border-white/10 flex items-center space-x-6 transition-all duration-300 hover:bg-white/15 hover:scale-105 shadow-[0_20px_50px_rgba(0,0,0,0.3)]">
+                                  <button 
+                                      onClick={toggleMic}
+                                      className={`p-4 rounded-2xl transition-all duration-300 ${micOn ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-red-500 text-white hover:bg-red-600 shadow-lg shadow-red-500/20'}`}
+                                      title={micOn ? "Mute" : "Unmute"}
+                                  >
+                                      {micOn ? <Mic className="w-6 h-6" /> : <MicOff className="w-6 h-6" />}
+                                  </button>
+
+                                  <button 
+                                      onClick={() => endCall()}
+                                      className="p-5 rounded-2xl bg-red-600 text-white hover:bg-red-700 transition-all duration-300 shadow-xl shadow-red-600/30 hover:scale-110 active:scale-95 group-endcall"
+                                      title="End Call"
+                                  >
+                                      <Phone className="w-8 h-8 rotate-[135deg]" />
+                                  </button>
+
+                                  <button 
+                                      onClick={toggleCamera}
+                                      className={`p-4 rounded-2xl transition-all duration-300 ${cameraOn ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-red-500 text-white hover:bg-red-600 shadow-lg shadow-red-500/20'}`}
+                                      title={cameraOn ? "Stop Video" : "Start Video"}
+                                  >
+                                      {cameraOn ? <VideoIcon className="w-6 h-6" /> : <VideoOff className="w-6 h-6" />}
+                                  </button>
+                              </div>
                           </div>
                       </div>
                   )}
