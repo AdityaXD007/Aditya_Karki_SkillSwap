@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from "react";
 import { authAPI, skillsAPI } from "@/services";
+import { getMediaUrl } from "@/services";
 
 // Define User interface
 export interface UserSkillInfo {
@@ -61,7 +62,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       const token = localStorage.getItem("auth_token");
 
       if (storedUser && token) {
-        setUser(JSON.parse(storedUser));
+        // Parse the stored user — but rewrite any stale localhost avatar URLs
+        const parsed = JSON.parse(storedUser);
+        if (parsed.avatar) parsed.avatar = getMediaUrl(parsed.avatar);
+        setUser(parsed);
         try {
           const response = await authAPI.getProfile();
           const userData = response.data;
@@ -72,7 +76,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             name: userData.full_name || userData.username,
             username: userData.username,
             avatar:
-              userData.profile_image || userData.profile_image || undefined,
+              userData.profile_image ? getMediaUrl(userData.profile_image) : undefined,
             bio: userData.bio,
             location: userData.location,
             skillsTeaching: [],
@@ -158,7 +162,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         email: userData.email,
         name: userData.full_name || userData.username,
         username: userData.username,
-        avatar: userData.profile_image || undefined,
+        avatar: userData.profile_image ? getMediaUrl(userData.profile_image) : undefined,
         bio: userData.bio,
         location: userData.location,
         skillsTeaching: [],
@@ -206,7 +210,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         email: userData.email,
         name: userData.full_name || userData.username,
         username: userData.username,
-        avatar: userData.profile_image || undefined,
+        avatar: userData.profile_image ? getMediaUrl(userData.profile_image) : undefined,
         bio: userData.bio,
         location: userData.location,
         skillsTeaching: [],

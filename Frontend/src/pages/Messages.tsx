@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { messagesApi, sessionsAPI, paymentAPI, type Conversation, type Message, type LearningSession } from "@/services";
+import { messagesApi, sessionsAPI, paymentAPI, getMediaUrl, type Conversation, type Message, type LearningSession } from "@/services";
 import { useAuth } from "@/components/Context/AuthContext";
 import { Send, Search, Phone, X, Mic, MicOff, Video as VideoIcon, VideoOff, MoreVertical, Reply, Smile, Trash2, Image as ImageIcon, ShieldCheck, CheckCircle2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -9,8 +9,40 @@ const ICE_SERVERS = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
+    { urls: 'stun:stun3.l.google.com:19302' },
+    { urls: 'stun:stun4.l.google.com:19302' },
+    { urls: 'stun:stun.l.google.com:19305' },
+    { urls: 'stun:stun.services.mozilla.com' },
+    { urls: 'stun:stun.stunprotocol.org' },
+    {
+      urls: [
+        'turn:openrelay.metered.ca:80',
+        'turn:openrelay.metered.ca:443',
+        'turns:openrelay.metered.ca:443',
+        'turn:openrelay.metered.ca:80?transport=tcp',
+      ],
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    },
+    {
+      urls: [
+        'turn:74.125.143.127:19305?transport=udp',
+        'turn:74.125.143.127:19305?transport=tcp',
+      ],
+      username: 'google-ice-user',
+      credential: 'google-ice-password',
+    }
   ],
+
+  iceCandidatePoolSize: 0,
+  bundlePolicy: 'max-bundle' as RTCBundlePolicy,
+  rtcpMuxPolicy: 'require' as RTCRtcpMuxPolicy,
+  sdpSemantics: 'unified-plan',
+  iceTransportPolicy: 'relay' as RTCIceTransportPolicy
 };
+
+
 
 export const Messages: React.FC = () => {
   const { user } = useAuth();
@@ -29,6 +61,9 @@ export const Messages: React.FC = () => {
   const [callStatus, setCallStatus] = useState<string>("");
   const [micOn, setMicOn] = useState(true);
   const [cameraOn, setCameraOn] = useState(true);
+  const remoteStreamRef = useRef<MediaStream>(new MediaStream());
+  const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
+  const [localStreamReady, setLocalStreamReady] = useState(false);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState<number | null>(null); // Message ID
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
@@ -46,11 +81,11 @@ export const Messages: React.FC = () => {
   const socketRef = useRef<WebSocket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
-  const localVideoRef = useRef<HTMLVideoElement>(null);
-  const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  // Buffer for ICE candidates that arrive before the peer connection is ready
+  const iceCandidateBufferRef = useRef<RTCIceCandidateInit[]>([]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -61,6 +96,9 @@ export const Messages: React.FC = () => {
   }, [messages]);
 
   useEffect(() => {
+    if (user?.id) {
+        console.log("👤 My User ID is:", user.id, "(Type:", typeof user.id, ")");
+    }
     const fetchConversations = async () => {
       try {
         const data = await messagesApi.getConversations();
@@ -104,14 +142,12 @@ export const Messages: React.FC = () => {
                         const partnerId = Number(currentConv.partnerId);
                         
                         const statusMatch = s.status === 'SCHEDULED' || s.status === 'ONGOING';
-                        // Match: I am teacher, other is student OR I am student, other is teacher
                         const participantMatch = (isTeacher && Number(s.student) === partnerId) || 
                                                 (isStudent && Number(s.teacher) === partnerId);
                         
                         return statusMatch && participantMatch;
                     });
                     
-                    console.log("Matched Session by ID:", session);
                     setActiveSession(session || null);
                 }
             } catch (err) {
@@ -120,7 +156,7 @@ export const Messages: React.FC = () => {
         };
         fetchCurrentSession();
     }
-  }, [selectedConversation, user, conversations]);
+  }, [selectedConversation, user?.id]);
 
   useEffect(() => {
     if (activeSession?.status === 'ONGOING' && activeSession.actual_start_time) {
@@ -325,37 +361,73 @@ export const Messages: React.FC = () => {
          
          // Signaling: Offer
          else if (data.type === 'video_offer') {
-             if (data.sender_id === Number(user?.id)) return; // Ignore own offer if echoed
+             console.log("🔔 Incoming video_offer from:", data.sender_id, "(My ID is:", user?.id, ")");
+             // Guard: Never process an offer sent by ourselves
+             if (data.sender_id && String(data.sender_id) === String(user?.id)) {
+                 console.log("⚠️ Ignoring self-echoed offer");
+                 return;
+             }
+             // Guard: If we are already the one who initiated a call, ignore incoming offers to stay as Caller
+             if (peerConnectionRef.current && peerConnectionRef.current.signalingState !== "stable") {
+                 console.log("⚠️ Signaling Collision: Staying as Caller, ignoring incoming offer.");
+                 return;
+             }
+             iceCandidateBufferRef.current = [];
+             (window as any).pendingOffer = data.data;
              setIsIncomingCall(true);
-             // Store offer data temporarily? Or just set it when accepting
-             // For simplicity, we assume we can handle it now or wait
-             // Better: Store offer in a ref to use when user 'Accepts'
-             // For now, let's just log it. Real-world: show Accept/Reject UI
-             // We'll attach the offer data to a ref to use in 'acceptCall'
-             (window as any).pendingOffer = data.data; 
          }
          
          // Signaling: Answer
          else if (data.type === 'video_answer') {
-             if (peerConnectionRef.current) {
-                 await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(data.data));
+             console.log("✅ Received video_answer from:", data.sender_id, "(My ID is:", user?.id, ")");
+             if (data.sender_id && String(data.sender_id) === String(user?.id)) {
+                 console.log("⚠️ Ignoring self-echoed answer");
+                 return;
+             }
+             if (peerConnectionRef.current && peerConnectionRef.current.signalingState === "have-local-offer") {
+                 try {
+                     console.log("📝 Setting remote description (answer)");
+                     await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(data.data));
+                     // Flush any buffered ICE candidates now that remote description is set
+                     console.log("💧 Flushing buffered ICE candidates:", iceCandidateBufferRef.current.length);
+                     for (const candidate of iceCandidateBufferRef.current) {
+                         try {
+                             await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(candidate));
+                         } catch (e) {
+                             console.error("Error adding buffered ICE candidate:", e);
+                         }
+                     }
+                     iceCandidateBufferRef.current = [];
+                 } catch (err) {
+                     console.error("Error setting remote description:", err);
+                 }
+             } else {
+                 console.warn("🚫 Received answer but PC is not in 'have-local-offer' state. State:", peerConnectionRef.current?.signalingState);
              }
          }
          
-         // Signaling: ICE Candidate
-          // Signaling: End Call
-          else if (data.type === 'end_call') {
-              if (data.sender_id === Number(user?.id)) return;
-              endCall(false);
-          }
+         // Signaling: End Call
+         else if (data.type === 'end_call') {
+             if (data.sender_id === Number(user?.id)) return;
+             endCall(false);
+         }
 
+         // Signaling: ICE Candidate
          else if (data.type === 'new_ice_candidate') {
-             if (peerConnectionRef.current && data.data) {
+             if (String(data.sender_id) === String(user?.id)) return;
+             if (!data.data) return;
+             const pc = peerConnectionRef.current;
+             console.log("🧊 Received remote ICE candidate");
+             // If peer connection exists and remote description is set, add immediately
+             if (pc && pc.remoteDescription) {
                  try {
-                     await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(data.data));
+                     await pc.addIceCandidate(new RTCIceCandidate(data.data));
                  } catch (e) {
-                     console.error("Error adding ice candidate", e);
+                     console.error("Error adding ICE candidate:", e);
                  }
+             } else {
+                 console.log("📥 Buffering ICE candidate (no remote description yet)");
+                 iceCandidateBufferRef.current.push(data.data);
              }
          }
 
@@ -407,18 +479,44 @@ export const Messages: React.FC = () => {
 const createPeerConnection = () => {
     const pc = new RTCPeerConnection(ICE_SERVERS);
 
+    pc.oniceconnectionstatechange = () => {
+        const state = pc.iceConnectionState;
+        console.log("⚡ ICE Connection State:", state);
+        if (state === 'failed' || state === 'disconnected') {
+            console.warn("⚠️ Connection unstable. Attempting to maintain...");
+        }
+    };
+
     pc.onicecandidate = (event) => {
         if (event.candidate && socketRef.current) {
+            console.log("📤 Sending local ICE candidate (My ID:", user?.id, ")");
             socketRef.current.send(JSON.stringify({
                 type: 'new_ice_candidate',
-                data: event.candidate
+                data: event.candidate,
+                sender_id: user?.id // Explicitly adding sender_id to payload
             }));
         }
     };
 
     pc.ontrack = (event) => {
-        if (remoteVideoRef.current) {
-            remoteVideoRef.current.srcObject = event.streams[0];
+        console.log("🎬 Received remote track:", event.track.kind, "State:", event.track.readyState);
+        if (remoteStreamRef.current) {
+            const existing = remoteStreamRef.current.getTracks().find(t => t.id === event.track.id);
+            if (!existing) {
+                remoteStreamRef.current.addTrack(event.track);
+                console.log("➕ Track added to stable stream");
+            }
+            
+            // Re-check if track was muted
+            event.track.onunmute = () => console.log("🔊 Track unmuted:", event.track.kind);
+            event.track.onmute = () => console.warn("🔇 Track muted by sender:", event.track.kind);
+            
+            // NUDGE: Tell the video element to refresh
+            if (remoteVideoRef.current) {
+                console.log("🔄 Nudging video element to play new track");
+                remoteVideoRef.current.srcObject = remoteStreamRef.current;
+                remoteVideoRef.current.play().catch(() => {});
+            }
         }
     };
 
@@ -430,13 +528,13 @@ const startCall = async () => {
     setCallStatus("Calling...");
     
     try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+            video: { width: 640, height: 480 }, 
+            audio: true 
+        });
         localStreamRef.current = stream;
+        setLocalStreamReady(true);
         
-        if (localVideoRef.current) {
-            localVideoRef.current.srcObject = stream;
-        }
-
         const pc = createPeerConnection();
         stream.getTracks().forEach(track => pc.addTrack(track, stream));
         peerConnectionRef.current = pc;
@@ -447,7 +545,8 @@ const startCall = async () => {
         if (socketRef.current) {
             socketRef.current.send(JSON.stringify({
                 type: 'video_offer',
-                data: offer
+                data: offer,
+                sender_id: user?.id
             }));
         }
 
@@ -467,13 +566,13 @@ const acceptCall = async () => {
             throw new Error("BrowserNotSupported");
         }
 
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+            video: { width: 640, height: 480 }, 
+            audio: true 
+        });
         localStreamRef.current = stream;
+        setLocalStreamReady(true);
         
-        if (localVideoRef.current) {
-            localVideoRef.current.srcObject = stream;
-        }
-
         const pc = createPeerConnection();
         stream.getTracks().forEach(track => pc.addTrack(track, stream));
         peerConnectionRef.current = pc;
@@ -481,13 +580,25 @@ const acceptCall = async () => {
         const offer = (window as any).pendingOffer;
         if (offer) {
             await pc.setRemoteDescription(new RTCSessionDescription(offer));
+
+            // Flush any ICE candidates that arrived while user was deciding to accept
+            for (const candidate of iceCandidateBufferRef.current) {
+                try {
+                    await pc.addIceCandidate(new RTCIceCandidate(candidate));
+                } catch (e) {
+                    console.error("Error adding buffered ICE candidate in acceptCall:", e);
+                }
+            }
+            iceCandidateBufferRef.current = [];
+
             const answer = await pc.createAnswer();
             await pc.setLocalDescription(answer);
             
             if (socketRef.current) {
                 socketRef.current.send(JSON.stringify({
                     type: 'video_answer',
-                    data: answer
+                    data: answer,
+                    sender_id: user?.id
                 }));
             }
         } else {
@@ -531,6 +642,15 @@ const endCall = (sendSignal = true) => {
         localStreamRef.current.getTracks().forEach(track => track.stop());
         localStreamRef.current = null;
     }
+
+    // Clear tracks from remote stream ref
+    if (remoteStreamRef.current) {
+        remoteStreamRef.current.getTracks().forEach(track => {
+            track.stop();
+            remoteStreamRef.current.removeTrack(track);
+        });
+    }
+
 
     if (peerConnectionRef.current) {
         peerConnectionRef.current.close();
@@ -740,7 +860,7 @@ const toggleCamera = () => {
                       <div className="flex items-center space-x-3">
                         <div className="relative">
                           <img
-                            src={conv.userAvatar}
+                            src={getMediaUrl(conv.userAvatar)}
                             alt={conv.userName}
                             className="w-12 h-12 rounded-full"
                           />
@@ -780,7 +900,7 @@ const toggleCamera = () => {
                   <div className="p-4 border-b border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 transition-colors flex justify-between items-center">
                     <div className="flex items-center space-x-3">
                       <img
-                        src={selected.userAvatar}
+                        src={getMediaUrl(selected.userAvatar)}
                         alt={selected.userName}
                         className="w-10 h-10 rounded-full"
                       />
@@ -888,16 +1008,35 @@ const toggleCamera = () => {
                           <div className="relative flex-1 bg-black flex items-center justify-center">
                               {/* Remote Video */}
                               <video 
-                                  ref={remoteVideoRef} 
+                                  ref={(el) => {
+                                      remoteVideoRef.current = el;
+                                      if (el && el.srcObject !== remoteStreamRef.current) {
+                                          console.log("📺 Attaching stable remote stream");
+                                          el.srcObject = remoteStreamRef.current;
+                                          el.play().catch(e => {
+                                              if (e.name !== 'AbortError') console.error("Play error:", e);
+                                          });
+                                      }
+                                  }} 
                                   autoPlay 
                                   playsInline 
-                                  className="max-w-full max-h-full w-auto h-auto object-contain"
+                                  className="w-full h-full object-cover bg-slate-900 shadow-inner"
                               />
                               
                               {/* Local Video (Floating) */}
                               <div className="absolute bottom-6 right-6 w-40 h-52 md:w-48 md:h-64 bg-slate-800 rounded-2xl overflow-hidden border-2 border-white/10 shadow-2xl transition-all duration-300 hover:scale-105 active:scale-95 cursor-move">
                                   <video 
-                                      ref={localVideoRef} 
+                                      key={`local-video-${localStreamReady}`}
+                                      ref={(el) => {
+                                          if (el && localStreamRef.current) {
+                                              if (el.srcObject !== localStreamRef.current) {
+                                                  console.log("📹 Starting local camera view (Ready:", localStreamReady, ")");
+                                                  el.srcObject = localStreamRef.current;
+                                                  el.load();
+                                              }
+                                              el.play().catch(e => console.error("Local video error:", e));
+                                          }
+                                      }} 
                                       autoPlay 
                                       playsInline 
                                       muted 
@@ -993,14 +1132,14 @@ const toggleCamera = () => {
                                                 <audio 
                                                     controls 
                                                     className={`h-8 w-48 md:w-64 ${isMe ? 'brightness-125' : ''}`}
-                                                    src={msg.audio.startsWith('http') ? msg.audio : `http://${window.location.hostname}:8000${msg.audio}`}
+                                                    src={getMediaUrl(msg.audio)}
                                                 />
                                             </div>
                                         )}
                                         {msg.image && (
                                             <div className="mb-2 relative rounded-lg overflow-hidden border border-black/5">
                                                 <img 
-                                                    src={msg.image.startsWith('http') ? msg.image : `http://${window.location.hostname}:8000${msg.image}`} 
+                                                    src={getMediaUrl(msg.image)} 
                                                     alt="Attached" 
                                                     className="max-h-64 w-auto object-contain cursor-zoom-in hover:brightness-95 transition-all"
                                                 />
@@ -1248,16 +1387,16 @@ const toggleCamera = () => {
                 disabled={isProcessingPayment}
                 className="group relative flex-1 flex flex-col items-center p-6 rounded-2xl border-2 border-slate-100 dark:border-slate-800 hover:border-purple-500 dark:hover:border-purple-600 hover:bg-purple-50/50 dark:hover:bg-purple-900/10 transition-all duration-300 text-center"
               >
-                <div className="w-16 h-16 rounded-xl bg-white dark:bg-slate-800 flex items-center justify-center mb-4 shadow-sm group-hover:scale-110 transition-transform overflow-hidden p-2">
+                <div className="w-25 h-25 rounded-xl bg-white dark:bg-slate-800 flex items-center justify-center mb-4 shadow-sm group-hover:scale-110 transition-transform overflow-hidden p-2">
                   <img 
-                    src="data:image/webp;base64,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" 
+                    src="https://upload.wikimedia.org/wikipedia/commons/e/ee/Khalti_Digital_Wallet_Logo.png.jpg" 
                     alt="Khalti" 
                     className="w-full h-full object-contain" 
                   />
                 </div>
                 <div>
                   <p className="font-bold text-gray-900 dark:text-white mb-1">Khalti Wallet</p>
-                  <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight">Pay using your Nepali Khalti account</p>
+                  <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight">Pay using your Khalti account</p>
                 </div>
                 <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                   <CheckCircle2 className="w-4 h-4 text-purple-600" />
@@ -1269,12 +1408,12 @@ const toggleCamera = () => {
                 disabled={isProcessingPayment}
                 className="group relative flex-1 flex flex-col items-center p-6 rounded-2xl border-2 border-slate-100 dark:border-slate-800 hover:border-blue-500 dark:hover:border-blue-600 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-all duration-300 text-center"
               >
-                <div className="w-16 h-16 rounded-xl bg-white dark:bg-slate-800 flex items-center justify-center mb-4 shadow-sm group-hover:scale-110 transition-transform overflow-hidden p-2">
+                <div className="w-20 h-20 rounded-xl bg-white dark:bg-slate-800 flex items-center justify-center mb-4 shadow-sm group-hover:scale-110 transition-transform overflow-hidden p-2">
                   <img src="https://upload.wikimedia.org/wikipedia/commons/b/ba/Stripe_Logo%2C_revised_2016.svg" alt="Stripe" className="w-full h-full object-contain" />
                 </div>
                 <div>
-                  <p className="font-bold text-gray-900 dark:text-white mb-1">Card Payment</p>
-                  <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight">Pay with Visa, Mastercard via Stripe</p>
+                  <p className="font-bold text-gray-900 dark:text-white mb-1">Stripe Payment</p>
+                  <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight">Pay using your Stripe account</p>
                 </div>
                 <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                   <CheckCircle2 className="w-4 h-4 text-blue-600" />

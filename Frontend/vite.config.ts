@@ -16,7 +16,8 @@ export default defineConfig({
       usePolling: true    // Important for Docker
     },
     hmr: {
-      host: 'localhost'   // Hot Module Replacement
+      // Allow Vite to detect the host automatically for devtunnels
+      clientPort: 443 
     }
   }
 })

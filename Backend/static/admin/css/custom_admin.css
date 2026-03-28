@@ -1,0 +1,420 @@
+:root {
+    --primary-color: #4e73df;
+    --accent-color: #00d1ff;
+    --success-color: #1cc88a;
+    --warning-color: #f6c23e;
+    --danger-color: #e74a3b;
+    --bg-dark: #0e0f1d;
+    --card-bg: #1a1b2e;
+    --sidebar-bg: #111223;
+    --text-main: #ffffff;
+    --text-muted: #858796;
+    --border-color: rgba(255, 255, 255, 0.05);
+}
+
+body {
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    margin: 0;
+    font-family: 'Nunito', sans-serif;
+}
+
+/* Hide default Django header and sidebar to replace with custom dashboard layout if on index */
+.dashboard #header, .dashboard .breadcrumbs {
+    display: none !important;
+}
+
+#content {
+    background: transparent !important;
+    padding: 0 !important;
+}
+
+/* Custom Layout Wrapper for Dashboard */
+.custom-dashboard-wrapper {
+    display: flex;
+    min-height: 100vh;
+}
+
+/* Left Sidebar */
+.custom-sidebar {
+    width: 260px;
+    background: var(--sidebar-bg);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--border-color);
+}
+
+.sidebar-logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px;
+    margin-bottom: 30px;
+}
+
+.sidebar-logo i {
+    font-size: 1.5rem;
+    color: var(--accent-color);
+    background: rgba(0, 209, 255, 0.1);
+    padding: 10px;
+    border-radius: 12px;
+}
+
+.sidebar-logo div h2 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 800;
+}
+
+.sidebar-logo div span {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--accent-color);
+}
+
+.sidebar-section {
+    margin-bottom: 25px;
+}
+
+.sidebar-section h3 {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--text-muted);
+    margin-bottom: 15px;
+    padding-left: 10px;
+}
+
+.sidebar-nav {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.sidebar-nav li a {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 12px 15px;
+    color: var(--text-muted);
+    text-decoration: none;
+    border-radius: 10px;
+    transition: all 0.3s;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.sidebar-nav li a:hover, .sidebar-nav li.active a {
+    background: rgba(78, 115, 223, 0.1);
+    color: var(--text-main);
+}
+
+.sidebar-nav li.active a {
+    border-left: 4px solid var(--primary-color);
+}
+
+/* Main Content Area */
+.main-content {
+    flex: 1;
+    padding: 30px 40px;
+}
+
+.top-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 40px;
+}
+
+.welcome-box h1 {
+    margin: 0;
+    font-size: 1.8rem;
+    font-weight: 800;
+}
+
+.welcome-box p {
+    margin: 5px 0 0;
+    color: var(--text-muted);
+}
+
+.header-tools {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.status-badge {
+    background: rgba(28, 200, 138, 0.1);
+    color: var(--success-color);
+    padding: 8px 15px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    background: var(--success-color);
+    border-radius: 50%;
+    box-shadow: 0 0 10px var(--success-color);
+}
+
+/* Metric Cards */
+.metrics-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 25px;
+    margin-bottom: 40px;
+}
+
+.metric-card {
+    background: var(--card-bg);
+    padding: 30px;
+    border-radius: 20px;
+    border: 1px solid var(--border-color);
+    position: relative;
+    overflow: hidden;
+}
+
+.metric-icon {
+    position: absolute;
+    right: 20px;
+    top: 20px;
+    width: 50px;
+    height: 50px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    color: var(--accent-color);
+}
+
+.metric-title {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin-bottom: 15px;
+}
+
+.metric-value {
+    font-size: 2.2rem;
+    font-weight: 800;
+    margin-bottom: 10px;
+}
+
+.metric-trend {
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.trend-up { color: var(--success-color); }
+
+/* Charts Row */
+.charts-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 25px;
+    margin-bottom: 40px;
+}
+
+.chart-card {
+    background: var(--card-bg);
+    padding: 25px;
+    border-radius: 20px;
+    border: 1px solid var(--border-color);
+}
+
+.chart-card h3 {
+    margin: 0 0 20px;
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+/* Tables Section */
+.tables-grid {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr;
+    gap: 25px;
+}
+
+.table-card {
+    background: var(--card-bg);
+    padding: 25px;
+    border-radius: 20px;
+    border: 1px solid var(--border-color);
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.view-all-btn {
+    color: var(--accent-color);
+    text-decoration: none;
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+/* Custom Table */
+.modern-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.modern-table th {
+    text-align: left;
+    padding: 15px;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.modern-table td {
+    padding: 15px;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 0.9rem;
+}
+
+.user-cell {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.avatar-circle {
+    width: 35px;
+    height: 35px;
+    background: var(--primary-color);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 0.8rem;
+}
+
+.status-pill {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.status-pill.active { background: rgba(28, 200, 138, 0.1); color: var(--success-color); }
+.status-pill.pending { background: rgba(246, 194, 62, 0.1); color: var(--warning-color); }
+
+/* Bottom User Profile */
+.user-profile-bottom {
+    margin-top: auto;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.profile-info h4 {
+    margin: 0;
+    font-size: 0.85rem;
+}
+
+/* Global Admin Styling (Ensures standard pages look good in dark mode) */
+#container {
+    background: transparent !important;
+}
+
+#header, .breadcrumbs {
+    background: var(--sidebar-bg) !important;
+    border-bottom: 1px solid var(--border-color) !important;
+}
+
+#branding h1 a {
+    color: var(--text-main) !important;
+}
+
+.module {
+    background: var(--card-bg) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 12px !important;
+    overflow: hidden;
+}
+
+.module h2 {
+    background: rgba(255, 255, 255, 0.03) !important;
+    color: var(--text-main) !important;
+    font-weight: 700 !important;
+}
+
+table thead th {
+    background: rgba(255, 255, 255, 0.02) !important;
+    color: var(--text-muted) !important;
+}
+
+table tr.row1 { background: transparent !important; }
+table tr.row2 { background: rgba(255, 255, 255, 0.01) !important; }
+
+table td, table th {
+    border-bottom: 1px solid var(--border-color) !important;
+    color: var(--text-main) !important;
+}
+
+/* Forms */
+fieldset {
+    background: transparent !important;
+    border: none !important;
+}
+
+.form-row {
+    border-bottom: 1px solid var(--border-color) !important;
+}
+
+label {
+    color: var(--text-muted) !important;
+}
+
+input[type=text], input[type=password], input[type=email], input[type=url], input[type=number], textarea, select {
+    background: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid var(--border-color) !important;
+    color: var(--text-main) !important;
+    border-radius: 8px !important;
+    padding: 8px 12px !important;
+}
+
+.submit-row {
+    background: var(--sidebar-bg) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 12px !important;
+}
+
+.button, input[type=submit] {
+    background: var(--primary-color) !important;
+    border: none !important;
+    border-radius: 8px !important;
+    font-weight: 700 !important;
+}
+
+/* Dashboard Default Content Adjustments */
+.default-admin-content a {
+    color: var(--accent-color) !important;
+}
+
+.default-admin-content th a {
+    color: var(--text-main) !important;
+}
+
+.default-admin-content .model-group {
+    margin-bottom: 20px;
+}
+
