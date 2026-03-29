@@ -1,22 +1,26 @@
 :root {
-    --primary-color: #4e73df;
-    --accent-color: #00d1ff;
-    --success-color: #1cc88a;
-    --warning-color: #f6c23e;
-    --danger-color: #e74a3b;
-    --bg-dark: #0e0f1d;
-    --card-bg: #1a1b2e;
-    --sidebar-bg: #111223;
-    --text-main: #ffffff;
-    --text-muted: #858796;
-    --border-color: rgba(255, 255, 255, 0.05);
+    --primary-color: #673ab7;
+    --accent-color: #2196f3;
+    --success-color: #00c853;
+    --warning-color: #ffab00;
+    --danger-color: #d84315;
+    --bg-dark: #f4f7fb;
+    --card-bg: #ffffff;
+    --sidebar-bg: #ffffff;
+    --text-main: #121926;
+    --text-muted: #697586;
+    --border-color: #e3e8ef;
 }
 
 body {
     background-color: var(--bg-dark);
     color: var(--text-main);
     margin: 0;
-    font-family: 'Nunito', sans-serif;
+    font-family: 'Inter', sans-serif;
+}
+
+h1, h2, h3, h4, h5, h6, #branding h1 a, .site-name a, .navbar-brand, .brand-text, .main-header .nav-link, .breadcrumbs a, .breadcrumb-item a, .navbar-light .navbar-nav .nav-link, .app-content-header, .app-content-header *, .app-content-header a {
+    color: var(--text-main) !important;
 }
 
 /* Hide default Django header and sidebar to replace with custom dashboard layout if on index */

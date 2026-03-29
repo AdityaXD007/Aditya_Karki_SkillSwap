@@ -24,7 +24,9 @@ ALLOWED_HOSTS = ['*', 'localhost', '127.0.0.1', '.devtunnels.ms', '.preview.app.
 # Application definition
 INSTALLED_APPS = [
     'daphne',
+    'jazzmin',
     'django.contrib.admin',
+    'admin_berry.apps.AdminBerryConfig',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
@@ -126,7 +128,7 @@ CORS_ALLOW_CREDENTIALS = True
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
-    "http://192.168.1.67:5173",
+    "http://192.168.2.106:5173",
     "https://*.devtunnels.ms",
     "https://*.preview.app.github.dev",
 ]
