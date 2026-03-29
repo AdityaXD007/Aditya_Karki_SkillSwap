@@ -1,5 +1,6 @@
 # Virtual Environments
 .venv/
+venv/
 env/
 ENV/
 *.venv
@@ -28,8 +29,6 @@ wheels/
 MANIFEST
 
 # Django
-db.sqlite3
-*.sqlite3
 .env
 .env.local
 local_settings.py
@@ -68,3 +67,5 @@ Thumbs.db
 # Build artifacts
 build/
 *.egg-info/
+
+echo ".venv/" >> .gitignore
