@@ -35,11 +35,7 @@ export const Login: React.FC = () => {
       navigate("/dashboard");
     } catch (err: any) {
       console.error("Login attempt failed:", err);
-      if (err.message === "Network Error" || !err.response) {
-        setError(`Cannot connect to server at ${window.location.hostname}. Check if your laptop is reachable.`);
-      } else {
-        setError(err.message || "Invalid credentials. Please try again.");
-      }
+      setError(err.message);
     } finally {
       setIsLoading(false);
     }

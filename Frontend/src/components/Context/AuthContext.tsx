@@ -183,6 +183,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       await refreshUserSkills();
     } catch (error: any) {
       console.error("Login Error Details:", error.response?.data);
+      if (!error.response) {
+          throw new Error("Cannot connect to server. Check if your backend is running.");
+      }
       const errorMsg = error.response?.data?.error || 
                        error.response?.data?.email?.[0] || 
                        error.response?.data?.password?.[0] || 
