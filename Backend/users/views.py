@@ -6,10 +6,40 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
-from .serializers import UserSerializer, RegisterSerializer, LoginSerializer, UserProfileSerializer
+from django.core.mail import send_mail
+from .serializers import UserSerializer, RegisterSerializer, LoginSerializer, UserProfileSerializer, ChangePasswordSerializer
 from .models import UserProfile
 
 class AuthViewSet(viewsets.ViewSet):
+    @action(detail=False, methods=['post'], authentication_classes=[JWTAuthentication], permission_classes=[IsAuthenticated])
+    def change_password(self, request):
+        """Update user password"""
+        serializer = ChangePasswordSerializer(data=request.data)
+        if serializer.is_valid():
+            user = request.user
+            if not user.check_password(serializer.validated_data['old_password']):
+                return Response({'error': 'Incorrect old password'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            user.set_password(serializer.validated_data['new_password'])
+            user.save()
+
+            # SMTP feature: Notify user about password change
+            try:
+                subject = "Security Alert: Password Changed"
+                message = f"Hello {user.username},\n\nYour SkillSwap account password was recently changed. If you did not perform this action, please contact support immediately."
+                send_mail(
+                    subject,
+                    message,
+                    None, # Uses DEFAULT_FROM_EMAIL
+                    [user.email],
+                    fail_silently=False,
+                )
+            except Exception as e:
+                print(f"Error sending email: {e}")
+
+            return Response({'message': 'Password updated successfully'})
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
     @action(detail=False, methods=['post'], permission_classes=[AllowAny])
     def register(self, request):
         """Register a new user"""

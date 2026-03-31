@@ -1,5 +1,8 @@
-import React from "react";
-import { User, Bell, Shield, Globe, Trash2, ChevronRight, Lock } from "lucide-react";
+import React, { useState } from "react";
+import { User, Bell, Shield, Globe, Trash2, ChevronRight, Lock, X, Key, AlertCircle, CheckCircle2 } from "lucide-react";
+import { useAuth } from "@/components/Context/AuthContext";
+import { authAPI } from "@/services";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface SettingItem {
   icon: any;
@@ -8,7 +11,8 @@ interface SettingItem {
   link?: string;
   action?: string;
   toggle?: boolean;
-  default?: boolean;
+  active?: boolean;
+  onToggle?: () => void;
   count?: number;
 }
 
@@ -18,25 +22,111 @@ interface SettingSection {
 }
 
 export const Settings: React.FC = () => {
+  const { user } = useAuth();
+  
+  // States for toggles
+  const [emailNotif, setEmailNotif] = useState(true);
+  const [pushNotif, setPushNotif] = useState(false);
+  const [isPublic, setIsPublic] = useState(true);
+
+  // States for Password Change Modal
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({
+    old_password: "",
+    new_password: "",
+    confirm_password: "",
+  });
+  const [passwordStatus, setPasswordStatus] = useState<{
+    loading: boolean;
+    error: string | null;
+    success: string | null;
+  }>({
+    loading: false,
+    error: null,
+    success: null,
+  });
+
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordStatus({ loading: true, error: null, success: null });
+
+    if (passwordForm.new_password !== passwordForm.confirm_password) {
+      setPasswordStatus({ loading: false, error: "New passwords do not match", success: null });
+      return;
+    }
+
+    try {
+      await authAPI.changePassword({
+        old_password: passwordForm.old_password,
+        new_password: passwordForm.new_password,
+        confirm_password: passwordForm.confirm_password,
+      });
+      setPasswordStatus({ loading: false, error: null, success: "Password updated successfully!" });
+      setPasswordForm({ old_password: "", new_password: "", confirm_password: "" });
+      setTimeout(() => {
+        setIsPasswordModalOpen(false);
+        setPasswordStatus({ loading: false, error: null, success: null });
+      }, 2000);
+    } catch (err: any) {
+      setPasswordStatus({ 
+        loading: false, 
+        error: err.response?.data?.error || err.response?.data?.confirm_password?.[0] || "Failed to update password", 
+        success: null 
+      });
+    }
+  };
+
   const sections: SettingSection[] = [
     {
       title: "Account",
       items: [
-        { icon: User, label: "Profile Information", description: "Name, bio, and avatar settings", link: "/profile" },
-        { icon: Lock, label: "Password", description: "Change your security password", action: "Change" },
+        { 
+          icon: User, 
+          label: "Profile Information", 
+          description: user ? `${user.name} (@${user.username})` : "Name, bio, and avatar settings", 
+          link: "/profile" 
+        },
+        { 
+          icon: Lock, 
+          label: "Password", 
+          description: user?.email ? `Linked to ${user.email}` : "Change your security password", 
+          action: "Change",
+          onToggle: () => setIsPasswordModalOpen(true)
+        },
       ],
     },
     {
       title: "Notifications",
       items: [
-        { icon: Bell, label: "Email Notifications", description: "Manage what you receive via email", toggle: true, default: true },
-        { icon: Bell, label: "Push Notifications", description: "Browser and mobile alerts", toggle: true, default: false },
+        { 
+          icon: Bell, 
+          label: "Email Notifications", 
+          description: "Manage what you receive via email", 
+          toggle: true, 
+          active: emailNotif,
+          onToggle: () => setEmailNotif(!emailNotif)
+        },
+        { 
+          icon: Bell, 
+          label: "Push Notifications", 
+          description: "Browser and mobile alerts", 
+          toggle: true, 
+          active: pushNotif,
+          onToggle: () => setPushNotif(!pushNotif)
+        },
       ],
     },
     {
       title: "Privacy & Security",
       items: [
-        { icon: Shield, label: "Public Profile", description: "Allow others to find your profile", toggle: true, default: true },
+        { 
+          icon: Shield, 
+          label: "Public Profile", 
+          description: "Allow others to find your profile", 
+          toggle: true, 
+          active: isPublic,
+          onToggle: () => setIsPublic(!isPublic)
+        },
         { icon: Globe, label: "Connected Accounts", description: "Google, LinkedIn, etc.", count: 1 },
       ],
     },
@@ -65,6 +155,7 @@ export const Settings: React.FC = () => {
                   <div
                     key={itemIdx}
                     className="px-6 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer group"
+                    onClick={() => item.link ? window.location.href = item.link : item.onToggle?.()}
                   >
                     <div className="flex items-center space-x-4">
                       <div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center">
@@ -81,8 +172,10 @@ export const Settings: React.FC = () => {
                     </div>
                     <div className="flex items-center space-x-4">
                       {item.toggle ? (
-                        <button className={`w-11 h-6 rounded-full transition-colors relative ${item.default ? 'bg-blue-600' : 'bg-gray-200 dark:bg-slate-700'}`}>
-                          <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${item.default ? 'translate-x-5' : ''}`} />
+                        <button 
+                          className={`w-11 h-6 rounded-full transition-colors relative ${item.active ? 'bg-blue-600' : 'bg-gray-200 dark:bg-slate-700'}`}
+                        >
+                          <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${item.active ? 'translate-x-5' : ''}`} />
                         </button>
                       ) : item.action ? (
                         <span className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">{item.action}</span>
@@ -120,6 +213,116 @@ export const Settings: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Password Change Modal */}
+      <AnimatePresence>
+        {isPasswordModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsPasswordModalOpen(false)}
+              className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden border border-white/20"
+            >
+              <div className="p-8">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center">
+                      <Key className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white">Change Password</h3>
+                  </div>
+                  <button
+                    onClick={() => setIsPasswordModalOpen(false)}
+                    className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-full transition-colors"
+                  >
+                    <X className="w-5 h-5 text-gray-400" />
+                  </button>
+                </div>
+
+                {passwordStatus.error && (
+                  <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/20 rounded-xl flex items-start space-x-3 text-red-600 dark:text-red-400">
+                    <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                    <p className="text-sm font-medium">{passwordStatus.error}</p>
+                  </div>
+                )}
+
+                {passwordStatus.success && (
+                  <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/10 border border-green-100 dark:border-green-900/20 rounded-xl flex items-start space-x-3 text-green-600 dark:text-green-400">
+                    <CheckCircle2 className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                    <p className="text-sm font-medium">{passwordStatus.success}</p>
+                  </div>
+                )}
+
+                <form onSubmit={handlePasswordSubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-gray-700 dark:text-gray-300 ml-1">Current Password</label>
+                    <input
+                      type="password"
+                      required
+                      value={passwordForm.old_password}
+                      onChange={(e) => setPasswordForm({ ...passwordForm, old_password: e.target.value })}
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-slate-700 transition-all outline-none text-gray-900 dark:text-white"
+                      placeholder="••••••••"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-gray-700 dark:text-gray-300 ml-1">New Password</label>
+                    <input
+                      type="password"
+                      required
+                      minLength={8}
+                      value={passwordForm.new_password}
+                      onChange={(e) => setPasswordForm({ ...passwordForm, new_password: e.target.value })}
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-slate-700 transition-all outline-none text-gray-900 dark:text-white"
+                      placeholder="Min. 8 characters"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-gray-700 dark:text-gray-300 ml-1">Confirm New Password</label>
+                    <input
+                      type="password"
+                      required
+                      value={passwordForm.confirm_password}
+                      onChange={(e) => setPasswordForm({ ...passwordForm, confirm_password: e.target.value })}
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-slate-700 transition-all outline-none text-gray-900 dark:text-white"
+                      placeholder="••••••••"
+                    />
+                  </div>
+
+                  <div className="pt-4 flex space-x-3">
+                    <button
+                      type="button"
+                      onClick={() => setIsPasswordModalOpen(false)}
+                      className="flex-1 px-4 py-3 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-900 dark:text-white rounded-xl font-bold transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={passwordStatus.loading}
+                      className="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl font-bold transition-all shadow-lg shadow-blue-500/30 flex items-center justify-center"
+                    >
+                      {passwordStatus.loading ? (
+                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      ) : (
+                        "Update Password"
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
