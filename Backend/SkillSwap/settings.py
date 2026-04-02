@@ -224,4 +224,30 @@ GOOGLE_CLIENT_ID = config('GOOGLE_CLIENT_ID', default='')
 GITHUB_CLIENT_ID = config('GITHUB_CLIENT_ID', default='')
 GITHUB_CLIENT_SECRET = config('GITHUB_CLIENT_SECRET', default='')
 FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:5173')
+
+# Jazzmin Admin UI Settings
+JAZZMIN_SETTINGS = {
+    "site_title": "SkillSwap Admin",
+    "site_header": "SkillSwap",
+    "site_brand": "SkillSwap Administration",
+    "welcome_sign": "Welcome to SkillSwap Admin Panel",
+    "copyright": "SkillSwap Ltd",
+    "user_avatar": None,
+    "topmenu_links": [
+        {"name": "Home",  "url": "admin:index", "permissions": ["auth.view_user"]},
+        {"name": "View Site", "url": "/", "new_window": True},
+    ],
+    "show_sidebar": True,
+    "navigation_expanded": True,
+    "hide_apps": [],
+    "hide_models": [],
+    "icons": {
+        "auth": "fas fa-users-cog",
+        "auth.user": "fas fa-user",
+        "auth.Group": "fas fa-users",
+    },
+    "default_icon_parents": "fas fa-chevron-circle-right",
+    "default_icon_children": "fas fa-circle",
+    "custom_css": "admin/css/custom_admin.css",  # ADD THIS LINE
+}
 

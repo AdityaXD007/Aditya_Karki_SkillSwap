@@ -48,7 +48,6 @@
     <div class="main-content">
         <header class="top-header">
             <div class="welcome-box">
-                <h1>Dashboard</h1>
                 <p>Welcome back, {{ user.username }} 👋</p>
             </div>
             <div class="header-tools">
@@ -59,6 +58,19 @@
                 <a href="/" class="view-all-btn" style="background: rgba(255,255,255,0.05); padding: 8px 20px; border-radius: 10px; border: 1px solid var(--border-color);">View Site &rarr;</a>
             </div>
         </header>
+
+        {% if dashboard_error %}
+        <div class="dashboard-error-banner" style="background: rgba(255, 68, 68, 0.1); border: 1px solid rgba(255, 68, 68, 0.3); padding: 20px; border-radius: 12px; margin: 25px 0; color: #ff8888; border-left: 5px solid #ff4444;">
+            <div style="display: flex; align-items: flex-start; gap: 15px;">
+                <i class="fas fa-exclamation-triangle" style="margin-top: 4px;"></i>
+                <div>
+                    <strong style="display: block; margin-bottom: 5px; color: #ffbbbb;">Dashboard Data Load Error</strong>
+                    <p style="margin: 0; font-size: 0.9rem; opacity: 0.9;">{{ dashboard_error }}</p>
+                    <p style="margin: 10px 0 0 0; font-size: 0.8rem; color: #ffbbbb;">Please ensure all database migrations are applied and dependencies are installed.</p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
 
         <!-- Metric Cards -->
         <div class="metrics-row">
@@ -188,7 +200,7 @@
         Chart.defaults.font.family = 'Nunito';
 
         // Registration Chart
-        const regData = {{ dashboard_stats.registration_chart|safe }};
+        const regData = JSON.parse('{{ dashboard_stats.registration_chart|default:"[]"|escapejs }}');
         const ctx1 = document.getElementById('registrationChart').getContext('2d');
         new Chart(ctx1, {
             type: 'line',
@@ -220,7 +232,7 @@
         });
 
         // Skill Categories Chart
-        const skillCategories = {{ dashboard_stats.skill_categories|safe }};
+        const skillCategories = JSON.parse('{{ dashboard_stats.skill_categories|default:"[]"|escapejs }}');
         const ctx2 = document.getElementById('skillCategoryChart').getContext('2d');
         new Chart(ctx2, {
             type: 'doughnut',
