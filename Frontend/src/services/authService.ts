@@ -8,6 +8,9 @@ export const authAPI = {
     login: (email: string, password: string) =>
         apiClient.post('/auth/login/', { email, password }),
 
+    googleLogin: (token: string) =>
+        apiClient.post('/auth/google_login/', { token }),
+
     logout: () => apiClient.post('/auth/logout/'),
 
     getProfile: () => apiClient.get<UserProfile>('/profiles/me/'),

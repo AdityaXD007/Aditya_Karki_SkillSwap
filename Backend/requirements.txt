@@ -156,3 +156,4 @@ websocket-client==1.9.0
 widgetsnbextension==4.0.15
 zope.interface==8.2
 stripe
+google-auth

@@ -10,7 +10,83 @@ from django.core.mail import send_mail
 from .serializers import UserSerializer, RegisterSerializer, LoginSerializer, UserProfileSerializer, ChangePasswordSerializer
 from .models import UserProfile
 
+from django.conf import settings
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
+
 class AuthViewSet(viewsets.ViewSet):
+    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
+    def google_login(self, request):
+        """Handle Google OAuth login"""
+        token = request.data.get('token')
+        if not token:
+            return Response({'error': 'No token provided'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            # 1. Verify the access token by calling Google's userinfo endpoint
+            # We use the 'requests' library here
+            import requests as py_requests
+            userinfo_url = f"https://www.googleapis.com/oauth2/v3/userinfo?access_token={token}"
+            response = py_requests.get(userinfo_url)
+            
+            if response.status_code != 200:
+                return Response({'error': 'Invalid Google token or token expired'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            idinfo = response.json()
+
+            # 2. Extract user info
+            email = idinfo.get('email')
+            if not email:
+                return Response({'error': 'Email not provided by Google'}, status=status.HTTP_400_BAD_REQUEST)
+                
+            first_name = idinfo.get('given_name', '')
+            last_name = idinfo.get('family_name', '')
+            
+            # Use email prefix as username if not exists, or generate unique
+            base_username = email.split('@')[0]
+            username = base_username
+            
+            # 3. Find or Create the user
+            try:
+                user = User.objects.get(email__iexact=email)
+                created = False
+            except User.DoesNotExist:
+                # Ensure username is unique
+                counter = 1
+                while User.objects.filter(username=username).exists():
+                    username = f"{base_username}{counter}"
+                    counter += 1
+                
+                user = User.objects.create_user(
+                    username=username,
+                    email=email,
+                    first_name=first_name,
+                    last_name=last_name
+                )
+                created = True
+
+            if created:
+                # Set a random password for social login users
+                user.set_unusable_password()
+                user.save()
+                
+                # Also ensure profile name is set
+                user.profile.full_name = f"{first_name} {last_name}".strip()
+                user.profile.save()
+
+            # 4. Generate JWT tokens
+            refresh = RefreshToken.for_user(user)
+            return Response({
+                'user': UserSerializer(user).data,
+                'token': str(refresh.access_token),
+                'refresh': str(refresh),
+                'is_new': created
+            })
+
+        except Exception as e:
+            print(f"Google Login Error: {str(e)}")
+            return Response({'error': f"Internal server error: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
     @action(detail=False, methods=['post'], authentication_classes=[JWTAuthentication], permission_classes=[IsAuthenticated])
     def change_password(self, request):
         """Update user password"""

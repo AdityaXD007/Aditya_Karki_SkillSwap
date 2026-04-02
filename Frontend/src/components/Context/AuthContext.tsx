@@ -39,6 +39,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
+  loginWithGoogle: (token: string) => Promise<void>;
   signup: (registrationData: any) => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (userData: Partial<User>) => void;
@@ -196,6 +197,51 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
+  // Google Login function
+  const loginWithGoogle = async (googleToken: string): Promise<void> => {
+    setLoading(true);
+    try {
+      const response = await authAPI.googleLogin(googleToken);
+      const token = response.data.token;
+      localStorage.setItem("auth_token", token);
+
+      // Fetch full profile details
+      const profileResponse = await authAPI.getProfile();
+      const userData = profileResponse.data;
+
+      const mappedUser: User = {
+        id: userData.id.toString(),
+        email: userData.email,
+        name: userData.full_name || userData.username,
+        username: userData.username,
+        avatar: userData.profile_image ? getMediaUrl(userData.profile_image) : undefined,
+        bio: userData.bio,
+        location: userData.location,
+        skillsTeaching: [],
+        skillsLearning: [],
+        userSkills: [],
+        rating: 5.0,
+        sessionsTaughtCount: userData.sessions_taught_count || 0,
+        sessionsLearnedCount: userData.sessions_learned_count || 0,
+        canCharge: userData.can_charge || false,
+        hourlyRate: parseFloat(userData.hourly_rate?.toString() || "0"),
+        availability: userData.availability
+          ? userData.availability.split(",").filter(Boolean)
+          : [],
+      };
+
+      setUser(mappedUser);
+      localStorage.setItem("user", JSON.stringify(mappedUser));
+      await refreshUserSkills();
+    } catch (error: any) {
+      console.error("Google Login Error:", error.response?.data);
+      const errorMsg = error.response?.data?.error || "Failed to login with Google";
+      throw new Error(errorMsg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Signup function
   const signup = async (registrationData: any): Promise<void> => {
     setLoading(true);
@@ -275,6 +321,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     isAuthenticated: !!user,
     loading,
     login,
+    loginWithGoogle,
     signup,
     logout,
     updateUser,
