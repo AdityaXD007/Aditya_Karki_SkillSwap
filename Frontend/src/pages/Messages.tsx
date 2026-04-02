@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { messagesApi, sessionsAPI, paymentAPI, getMediaUrl, type Conversation, type Message, type LearningSession } from "@/services";
 import { useAuth } from "@/components/Context/AuthContext";
-import { Send, Search, Phone, X, Mic, MicOff, Video as VideoIcon, VideoOff, MoreVertical, Reply, Smile, Trash2, Image as ImageIcon, ShieldCheck, CheckCircle2 } from "lucide-react";
+import { Send, Search, Phone, X, Mic, MicOff, Video as VideoIcon, VideoOff, MoreVertical, Reply, Smile, Trash2, Image as ImageIcon, ShieldCheck, CheckCircle2, Monitor } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
@@ -63,6 +63,8 @@ export const Messages: React.FC = () => {
   const [micOn, setMicOn] = useState(true);
   const [cameraOn, setCameraOn] = useState(true);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const screenStreamRef = useRef<MediaStream | null>(null);
   const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
   const remoteBackgroundVideoRef = useRef<HTMLVideoElement | null>(null);
 
@@ -678,6 +680,12 @@ const endCall = (sendSignal = true) => {
         peerConnectionRef.current.close();
         peerConnectionRef.current = null;
     }
+
+    if (screenStreamRef.current) {
+        screenStreamRef.current.getTracks().forEach(t => t.stop());
+        screenStreamRef.current = null;
+    }
+    setIsScreenSharing(false);
 };
 
 const toggleMic = () => {
@@ -692,6 +700,65 @@ const toggleCamera = () => {
         localStreamRef.current.getVideoTracks().forEach(track => track.enabled = !cameraOn);
         setCameraOn(!cameraOn);
     }
+};
+
+const toggleScreenShare = async () => {
+    if (!isInCall || !peerConnectionRef.current) return;
+
+    if (!isScreenSharing) {
+        try {
+            const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+            screenStreamRef.current = screenStream;
+            const screenTrack = screenStream.getVideoTracks()[0];
+
+            // Get existing video sender and replace track
+            const senders = peerConnectionRef.current.getSenders();
+            const videoSender = senders.find(s => s.track?.kind === 'video');
+            
+            if (videoSender) {
+                videoSender.replaceTrack(screenTrack);
+            }
+
+            // Professional behavior: turn off camera if it was on
+            if (cameraOn) {
+                if (localStreamRef.current) {
+                    localStreamRef.current.getVideoTracks().forEach(t => t.enabled = false);
+                    setCameraOn(false);
+                }
+            }
+
+            setIsScreenSharing(true);
+
+            // Revert when screen share stopped by browser UI
+            screenTrack.onended = () => {
+                stopScreenShare();
+            };
+
+        } catch (err) {
+            console.error("Screen share error:", err);
+        }
+    } else {
+        stopScreenShare();
+    }
+};
+
+const stopScreenShare = () => {
+    if (screenStreamRef.current) {
+        screenStreamRef.current.getTracks().forEach(t => t.stop());
+        screenStreamRef.current = null;
+    }
+
+    // Revert to camera track in peer connection
+    if (localStreamRef.current && peerConnectionRef.current) {
+        const videoTrack = localStreamRef.current.getVideoTracks()[0];
+        const senders = peerConnectionRef.current.getSenders();
+        const videoSender = senders.find(s => s.track?.kind === 'video');
+        if (videoSender) {
+            videoSender.replaceTrack(videoTrack).catch(err => console.error("Error reverting camera:", err));
+        }
+    }
+    
+    setIsScreenSharing(false);
 };
 
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -1102,6 +1169,14 @@ const toggleCamera = () => {
                                       title="End Call"
                                   >
                                       <Phone className="w-8 h-8 rotate-[135deg]" />
+                                  </button>
+
+                                  <button 
+                                      onClick={toggleScreenShare}
+                                      className={`p-4 rounded-2xl transition-all duration-300 ${isScreenSharing ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'bg-white/10 text-white hover:bg-white/20'}`}
+                                      title={isScreenSharing ? "Stop Screen Share" : "Share Screen"}
+                                  >
+                                      <Monitor className="w-6 h-6" />
                                   </button>
 
                                   <button 
