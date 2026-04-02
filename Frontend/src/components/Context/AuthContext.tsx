@@ -59,14 +59,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   // Check for stored user and token on mount
   useEffect(() => {
     const initAuth = async () => {
+      // 1. Check if tokens are in the URL (from GitHub/Social redirect)
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlToken = urlParams.get("token");
+      const urlRefresh = urlParams.get("refresh");
+
+      if (urlToken) {
+        localStorage.setItem("auth_token", urlToken);
+        if (urlRefresh) localStorage.setItem("refresh_token", urlRefresh);
+        // Clean URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+
       const storedUser = localStorage.getItem("user");
       const token = localStorage.getItem("auth_token");
 
-      if (storedUser && token) {
-        // Parse the stored user — but rewrite any stale localhost avatar URLs
-        const parsed = JSON.parse(storedUser);
-        if (parsed.avatar) parsed.avatar = getMediaUrl(parsed.avatar);
-        setUser(parsed);
+      if (token) {
+        // Parse the stored user if it exists
+        if (storedUser) {
+          const parsed = JSON.parse(storedUser);
+          if (parsed.avatar) parsed.avatar = getMediaUrl(parsed.avatar);
+          setUser(parsed);
+        }
         try {
           const response = await authAPI.getProfile();
           const userData = response.data;

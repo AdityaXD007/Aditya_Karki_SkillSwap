@@ -219,4 +219,9 @@ DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
 # Google OAuth Configuration
 GOOGLE_CLIENT_ID = config('GOOGLE_CLIENT_ID', default='')
+
+# GitHub OAuth Configuration
+GITHUB_CLIENT_ID = config('GITHUB_CLIENT_ID', default='')
+GITHUB_CLIENT_SECRET = config('GITHUB_CLIENT_SECRET', default='')
+FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:5173')
 

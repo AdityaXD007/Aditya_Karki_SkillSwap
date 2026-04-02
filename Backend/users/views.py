@@ -87,6 +87,96 @@ class AuthViewSet(viewsets.ViewSet):
             print(f"Google Login Error: {str(e)}")
             return Response({'error': f"Internal server error: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    @action(detail=False, methods=['get'], permission_classes=[AllowAny], url_path='github/callback')
+    def github_callback(self, request):
+        """Exchange GitHub code for token and return user tokens"""
+        code = request.GET.get('code')
+        if not code:
+            return Response({'error': 'No code provided'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            import requests as py_requests
+            # 1. Exchange code for access token
+            token_response = py_requests.post(
+                'https://github.com/login/oauth/access_token',
+                data={
+                    'client_id': settings.GITHUB_CLIENT_ID,
+                    'client_secret': settings.GITHUB_CLIENT_SECRET,
+                    'code': code,
+                },
+                headers={'Accept': 'application/json'}
+            )
+            
+            if token_response.status_code != 200:
+                return Response({'error': 'Failed to get GitHub token'}, status=status.HTTP_400_BAD_REQUEST)
+                
+            access_token = token_response.json().get('access_token')
+            if not access_token:
+                return Response({'error': 'No access token in GitHub response'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # 2. Get GitHub user profile
+            user_response = py_requests.get(
+                'https://api.github.com/user',
+                headers={'Authorization': f'token {access_token}'}
+            )
+            github_user = user_response.json()
+            
+            # 3. Get User Email (GitHub might hide the email unless we ask specifically)
+            email = github_user.get('email')
+            if not email:
+                emails_response = py_requests.get(
+                    'https://api.github.com/user/emails',
+                    headers={'Authorization': f'token {access_token}'}
+                )
+                emails = emails_response.json()
+                primary_email = next((e['email'] for e in emails if e['primary']), emails[0]['email'])
+                email = primary_email
+
+            first_name = github_user.get('name', '').split(' ')[0] if github_user.get('name') else ''
+            last_name = ' '.join(github_user.get('name', '').split(' ')[1:]) if github_user.get('name') and ' ' in github_user.get('name') else ''
+            username = github_user.get('login', email.split('@')[0])
+
+            # 4. Find or Create the user
+            try:
+                user = User.objects.get(email__iexact=email)
+                created = False
+            except User.DoesNotExist:
+                # Ensure username is unique
+                current_username = username
+                counter = 1
+                while User.objects.filter(username=current_username).exists():
+                    current_username = f"{username}{counter}"
+                    counter += 1
+                
+                user = User.objects.create_user(
+                    username=current_username,
+                    email=email,
+                    first_name=first_name,
+                    last_name=last_name
+                )
+                created = True
+
+            if created:
+                user.set_unusable_password()
+                user.save()
+                user.profile.full_name = github_user.get('name', username)
+                user.profile.save()
+
+            # 5. Generate JWT tokens
+            refresh = RefreshToken.for_user(user)
+            access = str(refresh.access_token)
+            
+            # 6. Redirect back to frontend with tokens as query params
+            # Note: In production, it's safer to use postMessage or a temporary page, 
+            # but this is standard for dev
+            from django.shortcuts import redirect
+            redirect_url = f"{settings.FRONTEND_URL}/dashboard?token={access}&refresh={refresh}"
+            return redirect(redirect_url)
+
+        except Exception as e:
+            print(f"GitHub Login Error: {str(e)}")
+            return Response({'error': f"Internal server error: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
     @action(detail=False, methods=['post'], authentication_classes=[JWTAuthentication], permission_classes=[IsAuthenticated])
     def change_password(self, request):
         """Update user password"""
