@@ -142,35 +142,35 @@ export const Messages: React.FC = () => {
   }, [user]);
 
   // Session Management & Timing
+  const currentPartnerId = conversations.find(c => c.id === selectedConversation)?.partnerId;
+
   useEffect(() => {
-    if (selectedConversation && user) {
+    if (selectedConversation && user && currentPartnerId) {
         const fetchCurrentSession = async () => {
             try {
                 const response = await sessionsAPI.getSessions();
-                const currentConv = conversations.find(c => c.id === selectedConversation);
-                
-                if (currentConv) {
-                    const session = response.data.find(s => {
-                        const isTeacher = Number(s.teacher) === Number(user.id);
-                        const isStudent = Number(s.student) === Number(user.id);
-                        const partnerId = Number(currentConv.partnerId);
-                        
-                        const statusMatch = s.status === 'SCHEDULED' || s.status === 'ONGOING';
-                        const participantMatch = (isTeacher && Number(s.student) === partnerId) || 
-                                                (isStudent && Number(s.teacher) === partnerId);
-                        
-                        return statusMatch && participantMatch;
-                    });
+                const session = response.data.find(s => {
+                    const isTeacher = Number(s.teacher) === Number(user.id);
+                    const isStudent = Number(s.student) === Number(user.id);
+                    const pId = Number(currentPartnerId);
                     
-                    setActiveSession(session || null);
-                }
+                    const statusMatch = s.status === 'SCHEDULED' || s.status === 'ONGOING';
+                    const participantMatch = (isTeacher && Number(s.student) === pId) || 
+                                            (isStudent && Number(s.teacher) === pId);
+                    
+                    return statusMatch && participantMatch;
+                });
+                
+                setActiveSession(session || null);
             } catch (err) {
                 console.error("Error fetching session:", err);
             }
         };
         fetchCurrentSession();
+    } else if (!selectedConversation || !currentPartnerId) {
+        setActiveSession(null);
     }
-  }, [selectedConversation, user?.id]);
+  }, [selectedConversation, user?.id, currentPartnerId]);
 
   useEffect(() => {
     if (activeSession?.status === 'ONGOING' && activeSession.actual_start_time) {

@@ -17,6 +17,7 @@ import { Landing } from '@/pages/Landing';
 import { Settings } from '@/pages/Settings';
 import { Feedback } from '@/pages/Feedback';
 import { PaymentCallback } from '@/pages/PaymentCallback';
+import { ResetPassword } from '@/pages/ResetPassword';
 
 // Home redirect component
 const HomeRedirect = () => {
@@ -36,6 +37,7 @@ export default function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
 
             {/* Protected Routes */}
             <Route

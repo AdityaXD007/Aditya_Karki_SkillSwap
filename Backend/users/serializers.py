@@ -100,3 +100,17 @@ class UserProfileSerializer(serializers.ModelSerializer):
         from skills.serializers import UserSkillSerializer
         skills = UserSkill.objects.filter(user=obj.user)
         return UserSkillSerializer(skills, many=True).data
+
+class ForgotPasswordSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+class ResetPasswordSerializer(serializers.Serializer):
+    uid = serializers.CharField()
+    token = serializers.CharField()
+    new_password = serializers.CharField(min_length=8)
+    confirm_password = serializers.CharField(min_length=8)
+    
+    def validate(self, data):
+        if data['new_password'] != data['confirm_password']:
+            raise serializers.ValidationError({"confirm_password": "Passwords do not match."})
+        return data

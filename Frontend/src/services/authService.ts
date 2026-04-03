@@ -29,4 +29,10 @@ export const authAPI = {
 
     changePassword: (data: any) =>
         apiClient.post('/auth/change_password/', data),
+
+    forgotPassword: (email: string) =>
+        apiClient.post('/auth/forgot_password/', { email }),
+
+    resetPassword: (data: any) =>
+        apiClient.post('/auth/reset_password/', data),
 };

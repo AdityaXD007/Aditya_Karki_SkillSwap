@@ -64,7 +64,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       const urlToken = urlParams.get("token");
       const urlRefresh = urlParams.get("refresh");
 
-      if (urlToken) {
+      if (urlToken && window.location.pathname !== '/reset-password') {
         localStorage.setItem("auth_token", urlToken);
         if (urlRefresh) localStorage.setItem("refresh_token", urlRefresh);
         // Clean URL
