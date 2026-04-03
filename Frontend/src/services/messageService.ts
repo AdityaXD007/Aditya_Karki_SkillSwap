@@ -29,7 +29,9 @@ export const messagesApi = {
             isRead: m.is_read,
             replyTo: m.reply_to_data,
             reactions: m.reactions,
-            isDeleted: m.is_deleted
+            isDeleted: m.is_deleted,
+            messageType: m.message_type,
+            callDuration: m.call_duration
         }));
     },
 

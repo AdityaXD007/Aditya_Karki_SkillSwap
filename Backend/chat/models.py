@@ -29,6 +29,7 @@ class Message(models.Model):
     ]
     message_type = models.CharField(max_length=20, choices=MESSAGE_TYPES, default='text')
     call_duration = models.IntegerField(null=True, blank=True) # in seconds
+    call_started_at = models.DateTimeField(null=True, blank=True)
     is_deleted = models.BooleanField(default=False)
     removed_by = models.ManyToManyField(User, related_name='removed_messages', blank=True)
 

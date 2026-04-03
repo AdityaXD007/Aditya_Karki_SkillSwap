@@ -1,6 +1,9 @@
 import json
+import time
+from django.core.cache import cache
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
+from django.utils import timezone
 from .models import Conversation, Message
 from django.contrib.auth import get_user_model
 import base64
@@ -155,7 +158,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
             )
         elif message_type in ['video_offer', 'video_answer', 'new_ice_candidate', 'end_call']:
             # Forward signaling messages to the group
-            # We add sender_id to avoid sending back to self in frontend
             await self.channel_layer.group_send(
                 self.room_group_name,
                 {
@@ -165,6 +167,15 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     'sender_id': self.scope['user'].id
                 }
             )
+            
+            # Start timer if call is answered (Save start time to DB)
+            if message_type == 'video_answer':
+                await self.mark_call_as_started()
+
+            # End timer and update message if call is ended
+            if message_type == 'end_call':
+                # Update the last call message in DB & Broadcast final results
+                await self.update_last_call_message()
             
             # Special case: Record call history on offer (Start of call)
             if message_type == 'video_offer':
@@ -394,3 +405,68 @@ class ChatConsumer(AsyncWebsocketConsumer):
             return list(conversation.participants.values_list('id', flat=True))
         except Conversation.DoesNotExist:
             return []
+
+    @database_sync_to_async
+    def mark_call_as_started(self):
+        last_call_msg = Message.objects.filter(
+            conversation_id=self.room_name, 
+            message_type='video_call'
+        ).order_by('-timestamp').first()
+        
+        if last_call_msg:
+            last_call_msg.call_started_at = timezone.now()
+            last_call_msg.save()
+
+    @database_sync_to_async
+    def update_last_call_message(self):
+        last_call_msg = Message.objects.filter(
+            conversation_id=self.room_name, 
+            message_type='video_call'
+        ).order_by('-timestamp').first()
+        
+        if last_call_msg:
+            duration = 0
+            if last_call_msg.call_started_at:
+                now = timezone.now()
+                duration = int((now - last_call_msg.call_started_at).total_seconds())
+                last_call_msg.call_started_at = None # Reset
+            
+            last_call_msg.call_duration = duration
+            if duration > 0:
+                mins = duration // 60
+                secs = duration % 60
+                last_call_msg.content = f"Video Call - {mins:02d}:{secs:02d}"
+            else:
+                last_call_msg.content = "Missed Call"
+            last_call_msg.save()
+
+            # Prepare broadcast data
+            update_data = {
+                'message_id': last_call_msg.id,
+                'call_duration': duration,
+                'status_text': last_call_msg.content
+            }
+            
+            # Broadcast update immediately
+            import asyncio
+            loop = asyncio.get_event_loop()
+            asyncio.run_coroutine_threadsafe(
+                self.channel_layer.group_send(
+                    self.room_group_name,
+                    {
+                        'type': 'call_log_update',
+                        **update_data
+                    }
+                ),
+                loop
+            )
+            return update_data
+        return None
+
+    async def call_log_update(self, event):
+        await self.send(text_data=json.dumps({
+            'type': 'call_log_update',
+            'message_id': event['message_id'],
+            'call_duration': event['call_duration'],
+            'status_text': event['status_text']
+        }))

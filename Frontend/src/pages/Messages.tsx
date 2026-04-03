@@ -471,6 +471,13 @@ export const Messages: React.FC = () => {
                   setMessages(prev => prev.map(m => ({ ...m, isRead: true })));
               }
           }
+
+          // Call Log Update
+          else if (data.type === 'call_log_update') {
+              setMessages(prev => prev.map(m => 
+                  m.id === data.message_id ? { ...m, callDuration: data.call_duration, text: data.status_text } : m
+              ));
+          }
     };
 
     socketRef.current = socket;
@@ -1256,13 +1263,32 @@ const stopScreenShare = () => {
                                                 />
                                             </div>
                                         )}
-                                        {msg.messageType === 'video_call' && (
-                                            <div className={`flex items-center space-x-2 py-1 mb-2 border-b ${isMe ? 'border-white/20' : 'border-gray-200 dark:border-slate-700'}`}>
-                                                <VideoIcon className="w-4 h-4 text-inherit" />
-                                                <span className="text-xs font-bold uppercase tracking-wider">Video Call</span>
-                                            </div>
-                                        )}
-                                        {msg.text && (
+                                        {msg.messageType === 'video_call' && (() => {
+                                            const isPickedUp = msg.callDuration && msg.callDuration > 0;
+                                            const colorClass = isPickedUp 
+                                                ? (isMe ? 'text-green-300' : 'text-green-600 dark:text-green-400') 
+                                                : (isMe ? 'text-red-300' : 'text-red-600 dark:text-red-400');
+                                            const bgColor = isMe ? 'bg-white/20' : (isPickedUp ? 'bg-green-50 dark:bg-green-900/20' : 'bg-red-50 dark:bg-red-900/20');
+
+                                            return (
+                                                <div className={`flex items-start space-x-3 py-2 mb-2 border-b ${isMe ? 'border-white/20' : 'border-gray-200 dark:border-slate-700'}`}>
+                                                    <div className={`p-2 rounded-full ${bgColor} ${colorClass}`}>
+                                                        <VideoIcon className="w-4 h-4" />
+                                                    </div>
+                                                    <div className="flex flex-col overflow-hidden">
+                                                        <span className="text-xs font-bold uppercase tracking-wider block">
+                                                            {isMe ? 'Outgoing' : 'Incoming'} Video Call
+                                                        </span>
+                                                        <span className={`text-[11px] font-bold truncate ${colorClass}`}>
+                                                            {isPickedUp 
+                                                                ? `Picked up • ${Math.floor(msg.callDuration! / 60)}:${(msg.callDuration! % 60).toString().padStart(2, '0')}` 
+                                                                : "Missed Call"}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })()}
+                                        {msg.text && msg.messageType !== 'video_call' && (
                                             <p className={`text-sm md:text-base leading-relaxed break-words ${msg.isDeleted ? 'italic opacity-70' : ''}`}>
                                                 {msg.text}
                                             </p>

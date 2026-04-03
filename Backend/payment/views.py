@@ -51,8 +51,8 @@ class InitiatePaymentView(views.APIView):
             )
 
             payload = {
-                "return_url": request.data.get('return_url', "http://localhost:5173/payment-callback"),
-                "website_url": "http://localhost:5173",
+                "return_url": request.data.get('return_url', f"{settings.FRONTEND_URL}/payment-callback"),
+                "website_url": settings.FRONTEND_URL,
                 "amount": paisa_amount,
                 "purchase_order_id": purchase_order_id,
                 "purchase_order_name": f"Session with {session.teacher.username}",
@@ -109,8 +109,8 @@ class InitiatePaymentView(views.APIView):
                         'quantity': 1,
                     }],
                     mode='payment',
-                    success_url=request.data.get('return_url', "http://localhost:5173/payment-callback") + "?session_id={CHECKOUT_SESSION_ID}",
-                    cancel_url="http://localhost:5173/messages",
+                    success_url=request.data.get('return_url', f"{settings.FRONTEND_URL}/payment-callback") + "?session_id={CHECKOUT_SESSION_ID}",
+                    cancel_url=f"{settings.FRONTEND_URL}/messages",
                     client_reference_id=str(session.id),
                     customer_email=request.user.email,
                 )

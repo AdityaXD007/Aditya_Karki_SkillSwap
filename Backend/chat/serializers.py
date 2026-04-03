@@ -99,7 +99,11 @@ class ConversationSerializer(serializers.ModelSerializer):
             if msg.is_deleted:
                 return "Message unsent"
             if msg.message_type == 'video_call':
-                return "Video Call"
+                if msg.call_duration:
+                    mins = msg.call_duration // 60
+                    secs = msg.call_duration % 60
+                    return f"Video Call ({mins}:{secs:02d})"
+                return "Missed Video Call"
             if msg.content:
                 return msg.content
             if msg.image:

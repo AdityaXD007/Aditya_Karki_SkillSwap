@@ -4,13 +4,15 @@ from django.utils.html import strip_tags
 from django.conf import settings
 from django.contrib.auth.models import User
 
-def send_skillswap_email(user, subject, template_name, context):
+def send_skillswap_email(user, subject, template_name, context, force=False):
     """
-    Sends an email to a user if they have enabled email notifications.
+    Sends an email to a user if they have enabled email notifications,
+    or if the email is critical (force=True).
     """
-    # Check if user has a profile and notifications are enabled
-    if not hasattr(user, 'profile') or not user.profile.email_notifications_enabled:
-        return False
+    # Check if user has a profile and notifications are enabled (only if not forced)
+    if not force:
+        if not hasattr(user, 'profile') or not user.profile.email_notifications_enabled:
+            return False
     
     if not user.email:
         return False

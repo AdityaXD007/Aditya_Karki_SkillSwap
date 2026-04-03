@@ -12,6 +12,7 @@ from .models import UserProfile
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
+from utils.email_sender import send_skillswap_email
 
 from django.conf import settings
 from google.oauth2 import id_token
@@ -192,19 +193,14 @@ class AuthViewSet(viewsets.ViewSet):
             user.set_password(serializer.validated_data['new_password'])
             user.save()
 
-            # SMTP feature: Notify user about password change
-            try:
-                subject = "Security Alert: Password Changed"
-                message = f"Hello {user.username},\n\nYour SkillSwap account password was recently changed. If you did not perform this action, please contact support immediately."
-                send_mail(
-                    subject,
-                    message,
-                    None, # Uses DEFAULT_FROM_EMAIL
-                    [user.email],
-                    fail_silently=False,
-                )
-            except Exception as e:
-                print(f"Error sending email: {e}")
+            # SMTP feature: Notify user about password change (FORCED Security Email)
+            send_skillswap_email(
+                user=user,
+                subject="Security Alert: Password Changed",
+                template_name="password_changed.html",
+                context={},
+                force=True
+            )
 
             return Response({'message': 'Password updated successfully'})
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -266,20 +262,13 @@ class AuthViewSet(viewsets.ViewSet):
                 uid = urlsafe_base64_encode(force_bytes(user.pk))
                 reset_url = f"{settings.FRONTEND_URL}/reset-password?uid={uid}&token={token}"
                 
-                subject = "SkillSwap: Password Reset Request"
-                message = f"Hello {user.username},\n\nYou requested a password reset for your SkillSwap account. Click the link below to set a new password:\n\n{reset_url}\n\nIf you did not request this, please ignore this email."
-                
-                try:
-                    send_mail(
-                        subject,
-                        message,
-                        settings.EMAIL_HOST_USER,
-                        [email],
-                        fail_silently=False,
-                    )
-                except Exception as e:
-                    print(f"Error sending reset email: {e}")
-                    return Response({'error': 'Error sending email. Please try again later.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                send_skillswap_email(
+                    user=user,
+                    subject="SkillSwap: Password Reset Request",
+                    template_name="password_reset.html",
+                    context={'reset_url': reset_url},
+                    force=True
+                )
                 
             # We return success even if user not found for security (prevent email guessing)
             return Response({'message': 'If an account exists with this email, a reset link has been sent.'})

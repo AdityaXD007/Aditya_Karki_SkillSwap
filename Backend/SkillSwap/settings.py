@@ -218,6 +218,9 @@ EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
+# Password Reset Token Timeout (in seconds)
+PASSWORD_RESET_TIMEOUT = 300 # 5 Minutes
+
 # Google OAuth Configuration
 GOOGLE_CLIENT_ID = config('GOOGLE_CLIENT_ID', default='')
 
