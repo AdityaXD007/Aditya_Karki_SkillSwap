@@ -14,6 +14,16 @@ class UserProfile(models.Model):
     sessions_taught_count = models.IntegerField(default=0)
     sessions_learned_count = models.IntegerField(default=0)
     hourly_rate = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, help_text="Hourly rate in NPR")
+    email_notifications_enabled = models.BooleanField(default=True)
+    last_activity = models.DateTimeField(null=True, blank=True)
+
+    @property
+    def is_active_now(self):
+        """Considered active if last_activity was within 15 minutes."""
+        if not self.last_activity:
+            return False
+        from django.utils import timezone
+        return (timezone.now() - self.last_activity).total_seconds() < 900
 
     @property
     def can_charge(self):

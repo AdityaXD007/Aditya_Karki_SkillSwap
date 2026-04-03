@@ -1,0 +1,21 @@
+{% extends "emails/base_email.html" %}
+{% block content %}
+<h2>New Message from @{{ sender_username }} ✉️</h2>
+<p>Hello <strong>{{ user.username }}</strong>,</p>
+<p>You have a new message waiting for you on SkillSwap.</p>
+
+<div class="details-box">
+    <div class="detail-item">
+        <span class="detail-label">Sender</span>
+        <span class="detail-value">@{{ sender_username }}</span>
+    </div>
+    <div class="detail-item">
+        <span class="detail-label">Message Preview</span>
+        <span class="detail-value" style="font-style: italic; color: #475569;">"{{ message_preview }}"...</span>
+    </div>
+</div>
+
+<p>Click below to jump right into the conversation and reply now!</p>
+
+<a href="{{ frontend_url }}/messages" class="button">Reply Now</a>
+{% endblock %}

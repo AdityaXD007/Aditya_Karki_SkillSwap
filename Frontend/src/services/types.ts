@@ -15,6 +15,7 @@ export interface UserProfile {
     sessions_learned_count?: number;
     can_charge?: boolean;
     hourly_rate?: string | number;
+    email_notifications_enabled?: boolean;
 }
 
 export interface Skill {

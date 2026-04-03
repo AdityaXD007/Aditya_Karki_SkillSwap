@@ -1,0 +1,25 @@
+{% extends "emails/base_email.html" %}
+{% block content %}
+<h2>New Skill Swap Request! ✨</h2>
+<p>Hello <strong>{{ user.username }}</strong>,</p>
+<p><strong>{{ requester_username }}</strong> wants to swap skills with you!</p>
+
+<div class="details-box">
+    <div class="detail-item">
+        <span class="detail-label">Skill they offer</span>
+        <span class="detail-value">{{ skill_offered }}</span>
+    </div>
+    <div class="detail-item">
+        <span class="detail-label">Skill they want</span>
+        <span class="detail-value">{{ skill_wanted }}</span>
+    </div>
+    <div class="detail-item">
+        <span class="detail-label">Profile</span>
+        <span class="detail-value"><a href="{{ frontend_url }}/profile/{{ requester_username }}">@{{ requester_username }}</a></span>
+    </div>
+</div>
+
+<p>Head over to your requests to respond and start swapping skills.</p>
+
+<a href="{{ frontend_url }}/sessions" class="button">View Request</a>
+{% endblock %}

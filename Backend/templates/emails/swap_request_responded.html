@@ -1,0 +1,25 @@
+{% extends "emails/base_email.html" %}
+{% block content %}
+<h2>Swap Request {{ outcome }}! 📬</h2>
+<p>Hello <strong>{{ user.username }}</strong>,</p>
+<p><strong>{{ responder_username }}</strong> has responded to your swap request.</p>
+
+<div class="details-box">
+    <div class="detail-item">
+        <span class="detail-label">Outcome</span>
+        <span class="detail-value" style="color: {% if outcome == 'Accepted' %}#10b981{% else %}#ef4444{% endif %}; font-weight: 700;">{{ outcome }}</span>
+    </div>
+    <div class="detail-item">
+        <span class="detail-label">Skill Swap Topic</span>
+        <span class="detail-value">{{ skill_topic }}</span>
+    </div>
+</div>
+
+{% if outcome == 'Accepted' %}
+<p>Great news! You can now proceed to book a session together and start exchanging knowledge.</p>
+{% else %}
+<p>Don't worry, there are plenty of other experts on SkillSwap. Keep exploring!</p>
+{% endif %}
+
+<a href="{{ frontend_url }}/sessions" class="button">View Next Steps</a>
+{% endblock %}

@@ -31,6 +31,7 @@ export interface User {
   sessionsLearnedCount: number;
   canCharge: boolean;
   hourlyRate: number;
+  emailNotificationsEnabled: boolean;
 }
 
 // Auth context type
@@ -105,6 +106,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             sessionsLearnedCount: userData.sessions_learned_count || 0,
             canCharge: userData.can_charge || false,
             hourlyRate: parseFloat(userData.hourly_rate?.toString() || "0"),
+            emailNotificationsEnabled: userData.email_notifications_enabled !== false,
           };
 
           setUser(mappedUser);
@@ -191,6 +193,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         availability: userData.availability
           ? userData.availability.split(",").filter(Boolean)
           : [],
+        emailNotificationsEnabled: userData.email_notifications_enabled !== false,
       };
 
       setUser(mappedUser);
@@ -242,6 +245,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         availability: userData.availability
           ? userData.availability.split(",").filter(Boolean)
           : [],
+        emailNotificationsEnabled: userData.email_notifications_enabled !== false,
       };
 
       setUser(mappedUser);
@@ -287,6 +291,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         availability: userData.availability
           ? userData.availability.split(",").filter(Boolean)
           : [],
+        emailNotificationsEnabled: userData.email_notifications_enabled !== false,
       };
 
       setUser(mappedUser);

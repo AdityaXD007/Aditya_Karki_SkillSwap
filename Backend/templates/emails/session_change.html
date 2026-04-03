@@ -1,0 +1,31 @@
+{% extends "emails/base_email.html" %}
+{% block content %}
+<h2>Session {{ action_type }} 🔔</h2>
+<p>Hello <strong>{{ user.username }}</strong>,</p>
+<p>There has been a change for your upcoming session with <strong>{{ changer_username }}</strong>.</p>
+
+<div class="details-box">
+    <div class="detail-item">
+        <span class="detail-label">Action</span>
+        <span class="detail-value" style="color: #ef4444;">{{ action_type }}</span>
+    </div>
+    <div class="detail-item">
+        <span class="detail-label">Skill Topic</span>
+        <span class="detail-value">{{ skill_topic }}</span>
+    </div>
+    <div class="detail-item">
+        <span class="detail-label">Time</span>
+        <span class="detail-value">{{ session_time|date:"D, M d, h:i A" }}</span>
+    </div>
+    {% if reason %}
+    <div class="detail-item">
+        <span class="detail-label">Reason</span>
+        <span class="detail-value">"{{ reason }}"</span>
+    </div>
+    {% endif %}
+</div>
+
+<p>You can view the details and take further action on your sessions page.</p>
+
+<a href="{{ frontend_url }}/sessions" class="button">View Details</a>
+{% endblock %}

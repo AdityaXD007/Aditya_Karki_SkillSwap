@@ -1,0 +1,33 @@
+{% extends "emails/base_email.html" %}
+{% block content %}
+<h2>Your Weekly SkillSwap Summary! 📊</h2>
+<p>Hello <strong>{{ user.username }}</strong>,</p>
+<p>Here’s what’s happening in your SkillSwap profile this week:</p>
+
+{% if upcoming_sessions %}
+<h3>🗓️ Upcoming Sessions</h3>
+<div class="details-box" style="padding-top: 10px;">
+    {% for session in upcoming_sessions %}
+    <div class="detail-item" style="border-bottom: 1px solid #f1f5f9; padding: 12px 0;">
+        <span class="detail-label" style="text-align: left;">
+            <strong>{{ session.skill.name }}</strong> with @{{ session.partner.username }}<br/>
+            <span style="font-weight: normal; font-size: 12px; color: #94a3b8;">{{ session.scheduled_time|date:"D, M d, h:i A" }}</span>
+        </span>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% if pending_requests %}
+<h3>✨ Pending Swap Requests</h3>
+<p>You have {{ pending_requests|length }} swap request{% if pending_requests|length > 1 %}s{% endif %} waiting for your response.</p>
+{% endif %}
+
+{% if not upcoming_sessions and not pending_requests %}
+<p>It's been a quiet week so far! Why not explore some new skills and find a swap partner?</p>
+{% endif %}
+
+<p>Stay active and keep learning!</p>
+
+<a href="{{ frontend_url }}/dashboard" class="button">Go to Dashboard</a>
+{% endblock %}

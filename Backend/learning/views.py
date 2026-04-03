@@ -6,6 +6,7 @@ from .models import SessionRequest, LearningSession
 from .serializers import SessionRequestSerializer, LearningSessionSerializer
 from django.db.models import Q
 from django.utils import timezone
+from utils.email_sender import send_skillswap_email
 
 class SessionRequestViewSet(viewsets.ModelViewSet):
     """
@@ -21,7 +22,18 @@ class SessionRequestViewSet(viewsets.ModelViewSet):
         ).order_by('-created_at')
 
     def perform_create(self, serializer):
-        serializer.save(requester=self.request.user)
+        instance = serializer.save(requester=self.request.user)
+        # Trigger 3: SKILL SWAP REQUEST RECEIVED
+        send_skillswap_email(
+            user=instance.partner,
+            subject=f"New Skill Swap Request from @{instance.requester.username}",
+            template_name="swap_request_received.html",
+            context={
+                'requester_username': instance.requester.username,
+                'skill_offered': instance.skill_to_teach.name if instance.skill_to_teach else "Unspecified",
+                'skill_wanted': instance.skill_to_learn.name,
+            }
+        )
 
     @action(detail=True, methods=['post'])
     def accept(self, request, pk=None):
@@ -51,7 +63,7 @@ class SessionRequestViewSet(viewsets.ModelViewSet):
             total_price = duration_hours * base_rate * 1.10 
             print(f"Calculated session price: {total_price} for {session_request.session_length} min at {base_rate}/hr + 10% fee")
 
-        LearningSession.objects.create(
+        session = LearningSession.objects.create(
             request=session_request,
             student=session_request.requester,
             teacher=session_request.partner,
@@ -82,6 +94,42 @@ class SessionRequestViewSet(viewsets.ModelViewSet):
         else:
             print(f"Conversation already exists between {session_request.requester} and {session_request.partner}")
 
+        # Trigger 4: SWAP REQUEST ACCEPTED
+        send_skillswap_email(
+            user=session_request.requester,
+            subject=f"Swap Request Accepted by @{session_request.partner.username}!",
+            template_name="swap_request_responded.html",
+            context={
+                'responder_username': session_request.partner.username,
+                'skill_topic': session_request.skill_to_learn.name,
+                'outcome': 'Accepted'
+            }
+        )
+
+        # Trigger 1: SESSION BOOKING CONFIRMED (To both)
+        # To Requester (Student)
+        send_skillswap_email(
+            user=session.student,
+            subject="Session Booking Confirmed!",
+            template_name="session_confirmed.html",
+            context={
+                'other_username': session.teacher.username,
+                'session_time': session.scheduled_time,
+                'skill_topic': session.skill.name
+            }
+        )
+        # To Partner (Teacher)
+        send_skillswap_email(
+            user=session.teacher,
+            subject="New Session Booked with You!",
+            template_name="session_confirmed.html",
+            context={
+                'other_username': session.student.username,
+                'session_time': session.scheduled_time,
+                'skill_topic': session.skill.name
+            }
+        )
+
         return Response({'status': 'Request accepted, session created'}, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['post'])
@@ -92,6 +140,19 @@ class SessionRequestViewSet(viewsets.ModelViewSet):
         
         session_request.status = 'REJECTED'
         session_request.save()
+
+        # Trigger 4: SWAP REQUEST REJECTED
+        send_skillswap_email(
+            user=session_request.requester,
+            subject=f"Update on your Swap Request to @{session_request.partner.username}",
+            template_name="swap_request_responded.html",
+            context={
+                'responder_username': session_request.partner.username,
+                'skill_topic': session_request.skill_to_learn.name,
+                'outcome': 'Rejected'
+            }
+        )
+
         return Response({'status': 'Request rejected'})
 
     @action(detail=True, methods=['patch'])
@@ -124,6 +185,75 @@ class LearningSessionViewSet(viewsets.ModelViewSet):
         return LearningSession.objects.filter(
             Q(student=self.request.user) | Q(teacher=self.request.user)
         ).order_by('scheduled_time')
+
+    @action(detail=True, methods=['post'])
+    def cancel(self, request, pk=None):
+        """Trigger 2: SESSION CANCELLED"""
+        session = self.get_object()
+        if session.status == 'CANCELLED':
+            return Response({'error': 'Session already cancelled'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        session.status = 'CANCELLED'
+        reason = request.data.get('reason', 'No reason provided')
+        session.notes = f"Cancelled by {request.user.username}. Reason: {reason}"
+        session.save()
+
+        # Send email to the OTHER party
+        other_user = session.teacher if session.student == request.user else session.student
+        send_skillswap_email(
+            user=other_user,
+            subject=f"Session Cancelled by @{request.user.username}",
+            template_name="session_change.html",
+            context={
+                'changer_username': request.user.username,
+                'action_type': 'Cancelled',
+                'skill_topic': session.skill.name,
+                'session_time': session.scheduled_time,
+                'reason': reason
+            }
+        )
+
+        return Response({'status': 'Session cancelled'})
+
+    @action(detail=True, methods=['post'])
+    def reschedule(self, request, pk=None):
+        """Trigger 2: SESSION RESCHEDULED"""
+        session = self.get_object()
+        new_time_str = request.data.get('new_time')
+        reason = request.data.get('reason', 'No reason provided')
+        
+        if not new_time_str:
+            return Response({'error': 'New time is required'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        try:
+            from django.utils.dateparse import parse_datetime
+            new_time = parse_datetime(new_time_str)
+            if not new_time:
+                raise ValueError("Invalid format")
+        except Exception:
+            return Response({'error': 'Invalid datetime format'}, status=status.HTTP_400_BAD_REQUEST)
+
+        old_time = session.scheduled_time
+        session.scheduled_time = new_time
+        session.notes = f"Rescheduled by {request.user.username}. Reason: {reason}"
+        session.save()
+
+        # Send email to the OTHER party
+        other_user = session.teacher if session.student == request.user else session.student
+        send_skillswap_email(
+            user=other_user,
+            subject=f"Session Rescheduled by @{request.user.username}",
+            template_name="session_change.html",
+            context={
+                'changer_username': request.user.username,
+                'action_type': 'Rescheduled',
+                'skill_topic': session.skill.name,
+                'session_time': new_time, # Show the NEW time
+                'reason': f"Rescheduled from {old_time.strftime('%b %d, %H:%I %p')}. Reason: {reason}"
+            }
+        )
+
+        return Response({'status': 'Session rescheduled', 'new_time': session.scheduled_time})
 
     # Add actions for cancelling, adding feedback etc.
     @action(detail=True, methods=['post'])

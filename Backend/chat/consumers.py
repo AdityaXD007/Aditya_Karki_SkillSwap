@@ -89,6 +89,10 @@ class ChatConsumer(AsyncWebsocketConsumer):
                             'reply_to_data': reply_to_data
                         }
                     )
+                    
+                    # Trigger 5: NEW MESSAGE RECEIVED (Delayed/Away)
+                    if pid != user.id: # Only for the recipient
+                        await self.handle_message_email_notification(pid, user.username, message_content or "Sent an attachment", self.room_name)
         elif message_type == 'add_reaction':
             message_id = text_data_json.get('message_id')
             reaction = text_data_json.get('reaction')
@@ -231,6 +235,57 @@ class ChatConsumer(AsyncWebsocketConsumer):
             'type': 'messages_read',
             'reader_id': event['reader_id']
         }))
+
+    async def handle_message_email_notification(self, recipient_id, sender_username, content, room_id):
+        """Helper to check if email notification should be sent."""
+        should_notify = await self.check_should_notify_away_user(recipient_id, room_id)
+        if should_notify:
+            await self.send_away_email(recipient_id, sender_username, content)
+
+    @database_sync_to_async
+    def check_should_notify_away_user(self, recipient_id, room_id):
+        from users.models import UserProfile
+        from django.utils import timezone
+        
+        try:
+            recipient = User.objects.get(id=recipient_id)
+            profile = recipient.profile
+            
+            # 1. Check if email notifications are enabled
+            if not profile.email_notifications_enabled:
+                return False
+                
+            # 2. Check if user has been active in the last 15 minutes
+            is_active = profile.is_active_now
+            if is_active:
+                return False
+                
+            # 3. Check if this is the only unread message (first of the thread)
+            unread_count = Message.objects.filter(
+                conversation_id=room_id,
+                is_read=False
+            ).exclude(sender=recipient).count()
+            
+            # If count is 1, it means this was the first message in this thread while they were away
+            return unread_count == 1
+            
+        except Exception:
+            return False
+
+    @database_sync_to_async
+    def send_away_email(self, recipient_id, sender_username, content):
+        from utils.email_sender import send_skillswap_email
+        recipient = User.objects.get(id=recipient_id)
+        preview = (content[:100] + '...') if len(content) > 100 else content
+        send_skillswap_email(
+            user=recipient,
+            subject=f"New Message from @{sender_username}",
+            template_name="new_message.html",
+            context={
+                'sender_username': sender_username,
+                'message_preview': preview
+            }
+        )
 
     @database_sync_to_async
     def is_participant(self, room_id, user):

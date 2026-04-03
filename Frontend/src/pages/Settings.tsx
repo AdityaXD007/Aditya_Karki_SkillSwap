@@ -38,9 +38,30 @@ export const Settings: React.FC = () => {
   const { user } = useAuth();
 
   // States for toggles
-  const [emailNotif, setEmailNotif] = useState(true);
+  const { updateUser } = useAuth();
+  const [emailNotif, setEmailNotif] = useState(user?.emailNotificationsEnabled ?? true);
   const [pushNotif, setPushNotif] = useState(false);
   const [isPublic, setIsPublic] = useState(true);
+
+  // Sync state when user data is available/changes
+  React.useEffect(() => {
+    if (user) {
+      setEmailNotif(user.emailNotificationsEnabled);
+    }
+  }, [user]);
+
+  const handleToggleEmail = async () => {
+    const newValue = !emailNotif;
+    setEmailNotif(newValue);
+    try {
+      await authAPI.updateProfile({ email_notifications_enabled: newValue });
+      updateUser({ emailNotificationsEnabled: newValue });
+    } catch (err) {
+      console.error("Failed to update notification preference:", err);
+      // Revert on failure
+      setEmailNotif(!newValue);
+    }
+  };
 
   // States for Password Change Modal
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
@@ -136,7 +157,7 @@ export const Settings: React.FC = () => {
           description: "Manage what you receive via email",
           toggle: true,
           active: emailNotif,
-          onToggle: () => setEmailNotif(!emailNotif),
+          onToggle: handleToggleEmail,
         },
         {
           icon: Bell,
