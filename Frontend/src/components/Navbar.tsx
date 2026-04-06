@@ -2,7 +2,9 @@ import React from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/components/Context/AuthContext";
 import { useTheme } from "@/components/theme-provider";
-import { requestsAPI } from "@/services";
+import { requestsAPI, type SessionRequest } from "@/services";
+import { formatDistanceToNow } from 'date-fns';
+import { toast } from "sonner";
 import {
   Menu,
   X,
@@ -21,7 +23,6 @@ import {
   ArrowLeft,
   Check,
   Monitor,
-  AlertCircle,
 } from "lucide-react";
 
 export const Navbar: React.FC = () => {
@@ -34,6 +35,8 @@ export const Navbar: React.FC = () => {
   const [isNotificationsOpen, setIsNotificationsOpen] = React.useState(false);
   const [showAppearanceMenu, setShowAppearanceMenu] = React.useState(false);
   const [pendingCount, setPendingCount] = React.useState(0);
+  const [pendingRequests, setPendingRequests] = React.useState<SessionRequest[]>([]);
+  const [hasNewNotifications, setHasNewNotifications] = React.useState(false);
   const userMenuRef = React.useRef<HTMLDivElement>(null);
   const notificationsRef = React.useRef<HTMLDivElement>(null);
 
@@ -44,15 +47,30 @@ export const Navbar: React.FC = () => {
       try {
         const response = await requestsAPI.getRequests();
         
-        if (Array.isArray(response.data)) {
-          const pending = response.data.filter(
-            (req: any) => {
-              return req.status === "PENDING" && req.partner_details?.username === user?.username;
-            }
-          );
-          setPendingCount(pending.length);
-        } else {
-          setPendingCount(0);
+        // 1. Filter pending requests sent to me
+        const pending = Array.isArray(response.data) 
+          ? response.data.filter(
+              (req: any) => req.status === "PENDING" && req.partner_details?.username === user?.username
+            )
+          : [];
+        
+        setPendingRequests(pending);
+
+        // 2. Update count
+        const currentCount = pending.length;
+        setPendingCount(currentCount);
+
+        // 3. Handle badge persistence
+        const lastSeenCount = parseInt(localStorage.getItem('lastSeenNotificationCount') || '0');
+        if (currentCount > lastSeenCount) {
+          setHasNewNotifications(true);
+        } else if (currentCount === 0) {
+          setHasNewNotifications(false);
+        }
+        
+        // Clear if we're on certain pages
+        if (location.pathname === '/bookings') {
+          localStorage.setItem('lastSeenNotificationCount', currentCount.toString());
         }
       } catch (e) {
         console.error("Failed to fetch notifications", e);
@@ -102,6 +120,26 @@ export const Navbar: React.FC = () => {
   ];
 
   const isActive = (path: string) => location.pathname === path;
+
+  const handleRequestAction = async (id: number, action: 'accept' | 'reject') => {
+    try {
+      if (action === 'accept') {
+        await requestsAPI.acceptRequest(id);
+        toast.success("Request accepted! Check your sessions.");
+      } else {
+        await requestsAPI.rejectRequest(id);
+        toast.error("Request rejected.");
+      }
+      
+      // Update local state and count
+      setPendingRequests(prev => prev.filter(req => req.id !== id));
+      setPendingCount(prev => Math.max(0, prev - 1));
+      
+    } catch (error) {
+      console.error(`Failed to ${action} request:`, error);
+      toast.error(`Failed to ${action} request.`);
+    }
+  };
 
   // Check if we're on the landing page for transparent navbar
   const isLandingPage =
@@ -157,11 +195,17 @@ export const Navbar: React.FC = () => {
                 {/* Notifications */}
                 <div className="relative" ref={notificationsRef}>
                   <button
-                    onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+                    onClick={() => {
+                      setIsNotificationsOpen(!isNotificationsOpen);
+                      if (!isNotificationsOpen) {
+                        setHasNewNotifications(false);
+                        localStorage.setItem('lastSeenNotificationCount', pendingCount.toString());
+                      }
+                    }}
                     className="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-900 rounded-full transition-colors relative group focus:outline-none"
                   >
                     <Bell className="w-5 h-5 group-hover:text-gray-900 dark:group-hover:text-white" />
-                    {pendingCount > 0 && (
+                    {hasNewNotifications && pendingCount > 0 && (
                       <span className="absolute top-2 right-2.5 w-4 h-4 bg-blue-600 rounded-full border-2 border-white dark:border-slate-900 text-[10px] text-white flex items-center justify-center font-bold">
                         {pendingCount}
                       </span>
@@ -179,33 +223,96 @@ export const Navbar: React.FC = () => {
                           </span>
                         )}
                       </div>
-                      <div className="max-h-96 overflow-y-auto">
-                        {pendingCount > 0 ? (
-                          <div className="p-4">
-                            <div className="flex items-start space-x-3 p-3 rounded-lg bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-800/50">
-                              <AlertCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-bold text-slate-900 dark:text-white">New Session Requests</p>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                                  You have {pendingCount} pending {pendingCount === 1 ? 'request' : 'requests'} to teach.
-                                </p>
-                                <Link
-                                  to="/bookings"
-                                  onClick={() => setIsNotificationsOpen(false)}
-                                  className="inline-block mt-2 text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline"
-                                >
-                                  View all requests
-                                </Link>
+                      <div className="max-h-[450px] overflow-y-auto custom-scrollbar">
+                        {pendingRequests.length > 0 ? (
+                          <div className="divide-y divide-gray-100 dark:divide-slate-800">
+                            {/* Show Session Requests */}
+                            {pendingRequests.map((req) => (
+                              <div
+                                key={req.id}
+                                className="p-4 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors group relative"
+                              >
+                                <div className="flex items-start space-x-3">
+                                  {/* Requester Avatar */}
+                                  <Link 
+                                    to={`/profile/${req.requester_details.id}`}
+                                    onClick={() => setIsNotificationsOpen(false)}
+                                    className="shrink-0"
+                                  >
+                                    {req.requester_details.profile_image_url || req.requester_details.profile_image ? (
+                                      <img
+                                        src={req.requester_details.profile_image_url || req.requester_details.profile_image || ''}
+                                        alt={req.requester_details.username}
+                                        className="w-10 h-10 rounded-full object-cover ring-2 ring-transparent group-hover:ring-blue-500 transition-all"
+                                      />
+                                    ) : (
+                                      <div className="w-10 h-10 bg-indigo-100 dark:bg-indigo-900/30 rounded-full flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold">
+                                        {req.requester_details.username[0].toUpperCase()}
+                                      </div>
+                                    )}
+                                  </Link>
+
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-tight">New Request</span>
+                                      <span className="text-[10px] text-gray-400 dark:text-gray-500">
+                                        {req.created_at ? formatDistanceToNow(new Date(req.created_at), { addSuffix: true }) : 'Just now'}
+                                      </span>
+                                    </div>
+                                    
+                                    <p className="text-sm text-gray-900 dark:text-white mt-0.5">
+                                      <span className="font-bold">{req.requester_details.full_name || req.requester_details.username}</span>
+                                      <span className="text-gray-500 dark:text-gray-400"> wants to learn </span>
+                                      <span className="font-bold">{req.skill_learn_details.name}</span>
+                                    </p>
+                                    
+                                    {req.message && (
+                                      <p className="text-xs text-gray-500 dark:text-gray-500 mt-1 line-clamp-1 italic">
+                                        "{req.message}"
+                                      </p>
+                                    )}
+
+                                    {/* Action Buttons */}
+                                    <div className="flex items-center space-x-2 mt-3">
+                                      <button
+                                        onClick={() => handleRequestAction(req.id, 'accept')}
+                                        className="flex-1 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
+                                      >
+                                        <Check className="w-3.5 h-3.5" />
+                                        Accept
+                                      </button>
+                                      <button
+                                        onClick={() => handleRequestAction(req.id, 'reject')}
+                                        className="flex-1 py-1.5 border border-gray-200 dark:border-slate-700 hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-700 dark:text-gray-300 rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
+                                      >
+                                        <X className="w-3.5 h-3.5" />
+                                        Decline
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
                               </div>
+                            ))}
+                            
+                            <div className="p-3 bg-gray-50/50 dark:bg-slate-800/30">
+                              <Link
+                                to="/bookings"
+                                onClick={() => setIsNotificationsOpen(false)}
+                                className="block w-full py-2 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-lg text-center text-xs font-bold text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                              >
+                                View Session History
+                              </Link>
                             </div>
                           </div>
                         ) : (
-                          <div className="py-8 flex flex-col items-center justify-center text-center px-4">
-                            <div className="w-12 h-12 bg-gray-50 dark:bg-slate-800 rounded-full flex items-center justify-center mb-3">
-                              <Bell className="w-6 h-6 text-gray-400" />
+                          <div className="py-12 flex flex-col items-center justify-center text-center px-6">
+                            <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/20 rounded-full flex items-center justify-center mb-4">
+                              <Bell className="w-8 h-8 text-blue-400 dark:text-blue-600" />
                             </div>
-                            <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">No notification for now</p>
-                            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">We'll notify you when something happens</p>
+                            <h4 className="text-sm font-bold text-gray-900 dark:text-white">All caught up!</h4>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 max-w-[180px]">
+                              No new notifications right now.
+                            </p>
                           </div>
                         )}
                       </div>
@@ -387,9 +494,20 @@ export const Navbar: React.FC = () => {
             {/* Mobile Menu Button */}
             <div className="flex items-center space-x-2 md:hidden">
               {isAuthenticated && (
-                <button className="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-900 rounded-full transition-colors relative focus:outline-none">
+                <button 
+                  onClick={() => {
+                    setIsNotificationsOpen(!isNotificationsOpen);
+                    if (!isNotificationsOpen) {
+                      setHasNewNotifications(false);
+                      localStorage.setItem('lastSeenNotificationCount', pendingCount.toString());
+                    }
+                  }}
+                  className="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-900 rounded-full transition-colors relative focus:outline-none"
+                >
                   <Bell className="w-6 h-6" />
-                  <span className="absolute top-2 right-2.5 w-2.5 h-2.5 bg-blue-600 rounded-full border-2 border-white dark:border-slate-950"></span>
+                  {hasNewNotifications && pendingCount > 0 && (
+                    <span className="absolute top-2 right-2.5 w-2.5 h-2.5 bg-blue-600 rounded-full border-2 border-white dark:border-slate-950"></span>
+                  )}
                 </button>
               )}
               <button
