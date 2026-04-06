@@ -319,6 +319,65 @@ class UserProfileViewSet(viewsets.ModelViewSet):
                 serializer.save()
                 return Response(serializer.data)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=['patch'], url_path='update', permission_classes=[IsAuthenticated])
+    def update_profile(self, request):
+        """Update profile specifically for onboarding (matches user requested endpoint)"""
+        profile, created = UserProfile.objects.get_or_create(user=request.user)
+        serializer = self.get_serializer(profile, data=request.data, partial=True, context={'request': request})
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=['post'], url_path='skills', permission_classes=[IsAuthenticated])
+    def update_onboarding_skills(self, request):
+        """Batch update skills to teach and learn during onboarding"""
+        skills_to_teach = request.data.get('teaching', [])
+        skills_to_learn = request.data.get('learning', [])
+        
+        from skills.models import Skill, UserSkill
+        
+        # Clear existing first to avoid duplicates during onboarding retries
+        UserSkill.objects.filter(user=request.user).delete()
+        
+        # Add teaching skills
+        for item in skills_to_teach:
+            # Handles both ID only or full object
+            skill_id = item.get('id') if isinstance(item, dict) else item
+            try:
+                skill = Skill.objects.get(id=skill_id)
+                UserSkill.objects.create(
+                    user=request.user,
+                    skill=skill,
+                    skill_type='TEACH',
+                    proficiency_level='BEGINNER',
+                    status='ACTIVE'
+                )
+            except (Skill.DoesNotExist, ValueError):
+                continue
+                
+        # Add learning skills
+        for item in skills_to_learn:
+            skill_id = item.get('id') if isinstance(item, dict) else item
+            try:
+                skill = Skill.objects.get(id=skill_id)
+                UserSkill.objects.create(
+                    user=request.user,
+                    skill=skill,
+                    skill_type='LEARN',
+                    proficiency_level='BEGINNER',
+                    status='ACTIVE'
+                )
+            except (Skill.DoesNotExist, ValueError):
+                continue
+                
+        # Mark as onboarded
+        profile = request.user.profile
+        profile.is_onboarded = True
+        profile.save()
+        
+        return Response({'message': 'Skills updated and onboarding completed successfully'})
     
     @action(detail=False, methods=['post'], url_path='upload-image', permission_classes=[IsAuthenticated])
     def upload_image(self, request):

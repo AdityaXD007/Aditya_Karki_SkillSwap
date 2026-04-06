@@ -18,11 +18,16 @@ import { Settings } from '@/pages/Settings';
 import { Feedback } from '@/pages/Feedback';
 import { PaymentCallback } from '@/pages/PaymentCallback';
 import { ResetPassword } from '@/pages/ResetPassword';
+import { OnboardingWizard } from '@/pages/OnboardingWizard';
 
 // Home redirect component
 const HomeRedirect = () => {
-  const { isAuthenticated } = useAuth();
-  return <Navigate to={isAuthenticated ? '/dashboard' : '/landing'} replace />;
+  const { isAuthenticated, user } = useAuth();
+  
+  if (!isAuthenticated) return <Navigate to="/landing" replace />;
+  if (user && !user.isOnboarded) return <Navigate to="/onboarding" replace />;
+  
+  return <Navigate to="/dashboard" replace />;
 };
 
 export default function App() {
@@ -45,6 +50,14 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/onboarding"
+              element={
+                <ProtectedRoute>
+                  <OnboardingWizard />
                 </ProtectedRoute>
               }
             />

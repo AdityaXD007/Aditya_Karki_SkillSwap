@@ -16,6 +16,7 @@ export interface UserProfile {
     can_charge?: boolean;
     hourly_rate?: string | number;
     email_notifications_enabled?: boolean;
+    is_onboarded?: boolean;
 }
 
 export interface Skill {
