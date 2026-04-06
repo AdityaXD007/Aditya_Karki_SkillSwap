@@ -46,6 +46,7 @@ class InitiatePaymentView(views.APIView):
                 student=request.user,
                 amount=amount_npr,
                 payment_method='KHALTI',
+                order_id=purchase_order_id,
                 khalti_purchase_order_id=purchase_order_id,
                 status='INITIATED'
             )
@@ -68,7 +69,9 @@ class InitiatePaymentView(views.APIView):
             }
 
             try:
-                response = requests.post(f'{settings.KHALTI_API_URL}/epayment/initiate/', json=payload, headers=headers)
+                url = f"{settings.KHALTI_API_URL.rstrip('/')}/epayment/initiate/"
+                print(f"Initiating Khalti payment at {url}")
+                response = requests.post(url, json=payload, headers=headers)
                 khalti_data = response.json()
 
                 if response.status_code == 200:
@@ -80,20 +83,20 @@ class InitiatePaymentView(views.APIView):
                         'payment_method': 'KHALTI'
                     })
                 else:
+                    print(f"Khalti initiation failed: {khalti_data}")
                     transaction.status = 'FAILED'
+                    # Store error in message field if possible, or just log
                     transaction.save()
                     return Response(khalti_data, status=status.HTTP_400_BAD_REQUEST)
             except Exception as e:
+                print(f"Internal error initiating Khalti: {str(e)}")
+                transaction.status = 'FAILED'
+                transaction.save()
                 return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         elif payment_method == 'STRIPE':
             # Stripe Logic
             try:
-                # We'll use 1 NPR = 0.0075 USD (rough conversion if needed, but Stripe supports NPR partly?)
-                # Actually Stripe supports NPR in some regions, but let's assume we use USD or fixed conversion for simplicity
-                # Stripe amount is in cents
-                # For now let's use the amount directly in NPR if supported, else convert to USD
-                # NPR is supported by Stripe: https://stripe.com/docs/currencies
                 amount_cents = int(amount_npr * 100)
                 
                 checkout_session = stripe.checkout.Session.create(
@@ -120,7 +123,7 @@ class InitiatePaymentView(views.APIView):
                     student=request.user,
                     amount=amount_npr,
                     payment_method='STRIPE',
-                    khalti_purchase_order_id=purchase_order_id, # Reused for unique ID
+                    order_id=purchase_order_id,
                     stripe_session_id=checkout_session.id,
                     status='INITIATED'
                 )
@@ -131,6 +134,7 @@ class InitiatePaymentView(views.APIView):
                     'payment_method': 'STRIPE'
                 })
             except Exception as e:
+                print(f"Stripe setup error: {str(e)}")
                 return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         else:
@@ -151,17 +155,23 @@ class VerifyPaymentView(views.APIView):
             }
 
             try:
-                print(f"Verifying Khalti payment with pidx: {pidx}")
-                response = requests.post(f'{settings.KHALTI_API_URL}/epayment/lookup/', json={'pidx': pidx}, headers=headers)
+                url = f"{settings.KHALTI_API_URL.rstrip('/')}/epayment/lookup/"
+                print(f"Verifying Khalti payment at {url} with pidx: {pidx}")
+                response = requests.post(url, json={'pidx': pidx}, headers=headers)
                 data = response.json()
 
                 if data.get('status') == 'Completed':
                     try:
                         transaction = Transaction.objects.get(pidx=pidx)
                         transaction.status = 'COMPLETED'
-                        transaction.khalti_transaction_id = data.get('transaction_id')
+                        # Capture Khalti's ID from multiple possible keys
+                        transaction.khalti_transaction_id = (
+                            data.get('transaction_id') or 
+                            data.get('khalti_transaction_id') or 
+                            data.get('id')
+                        )
                         transaction.save()
-
+                        
                         # Mark session as paid
                         session = transaction.session
                         session.is_paid = True

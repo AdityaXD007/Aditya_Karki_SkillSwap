@@ -402,20 +402,67 @@ input[type=text], input[type=password], input[type=email], input[type=url], inpu
     padding: 8px 12px !important;
 }
 
+/* Most Aggressive Button Overrides */
+input[type=submit], 
+input[type=button], 
+.button, 
+.submit-row input, 
+.submit-row a, 
+.submit-row button,
+.btn, 
+.btn-primary, 
+.btn-danger, 
+.btn-info, 
+.btn-success, 
+.btn-warning,
+.deletelink,
+.historylink {
+    color: #ffffff !important;
+    font-weight: 700 !important;
+}
+
 .submit-row {
     background: var(--sidebar-bg) !important;
     border: 1px solid var(--border-color) !important;
     border-radius: 12px !important;
+    padding: 15px !important;
+    display: flex !important;
+    gap: 10px !important;
+    flex-wrap: wrap !important;
 }
 
-.button, input[type=submit] {
-    background: var(--primary-color) !important;
-    border: none !important;
+/* Global Button & Link Color Override */
+.btn, 
+.button, 
+button, 
+input[type="submit"], 
+input[type="button"], 
+.submit-row input, 
+.submit-row a, 
+.card-footer a, 
+.card-body a.btn,
+.deletelink,
+.historylink,
+[class*="btn-"],
+.sidebar-nav a {
+    color: #ffffff !important;
+    text-shadow: none !important;
+}
+
+/* Specific Sidebar / Card Button Consistency */
+.card-body .btn, .card-footer .btn {
     border-radius: 8px !important;
     font-weight: 700 !important;
+    padding: 8px 20px !important;
 }
 
-/* Dashboard Default Content Adjustments */
+/* Hide Unwanted Admin Actions */
+input[name="_addanother"], 
+button[name="_addanother"],
+.btn-save-and-add-another,
+.add-another-btn {
+    display: none !important;
+}
 .default-admin-content a {
     color: var(--accent-color) !important;
 }
