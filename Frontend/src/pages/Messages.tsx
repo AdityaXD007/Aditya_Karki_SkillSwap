@@ -1049,16 +1049,24 @@ const stopScreenShare = () => {
                                     </button>
                                 )}
                                 {activeSession.status === 'ONGOING' && (
-                                    <button 
-                                        onClick={activeSession.is_paused ? handleResumeSession : handlePauseSession}
-                                        className={`px-4 py-2 text-white text-xs font-bold rounded-lg transition-all shadow-lg ${
-                                            activeSession.is_paused 
-                                            ? 'bg-blue-500 hover:bg-blue-600 shadow-blue-500/20' 
-                                            : 'bg-yellow-500 hover:bg-yellow-600 shadow-yellow-500/20'
-                                        }`}
-                                    >
-                                        {activeSession.is_paused ? 'Resume' : 'Pause'}
-                                    </button>
+                                    <>
+                                        <button 
+                                            onClick={activeSession.is_paused ? handleResumeSession : handlePauseSession}
+                                            className={`px-4 py-2 text-white text-xs font-bold rounded-lg transition-all shadow-lg ${
+                                                activeSession.is_paused 
+                                                ? 'bg-blue-500 hover:bg-blue-600 shadow-blue-500/20' 
+                                                : 'bg-yellow-500 hover:bg-yellow-600 shadow-yellow-500/20'
+                                            }`}
+                                        >
+                                            {activeSession.is_paused ? 'Resume' : 'Pause'}
+                                        </button>
+                                        <button 
+                                            onClick={() => handleEndSession(false)}
+                                            className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-xs font-bold rounded-lg transition-all shadow-lg shadow-red-500/20"
+                                        >
+                                            End Session
+                                        </button>
+                                    </>
                                 )}
                             </>
                         )}
@@ -1159,6 +1167,26 @@ const stopScreenShare = () => {
                                       </div>
                                   </div>
                               </div>
+
+                              {/* Session Timer in Video Call */}
+                              {activeSession?.status === 'ONGOING' && timeLeft !== null && (
+                                  <div className="absolute top-8 right-8 z-30">
+                                      <div className={`px-4 py-2 rounded-2xl backdrop-blur-2xl border font-mono font-bold text-sm flex items-center gap-2 shadow-lg transition-all ${
+                                          activeSession.is_paused
+                                              ? 'bg-yellow-500/20 border-yellow-400/30 text-yellow-300'
+                                              : timeLeft < 300
+                                              ? 'bg-red-500/20 border-red-400/30 text-red-300 animate-pulse'
+                                              : 'bg-white/10 border-white/10 text-white'
+                                      }`}>
+                                          <div className={`w-2 h-2 rounded-full ${
+                                              activeSession.is_paused ? 'bg-yellow-400' :
+                                              timeLeft < 300 ? 'bg-red-400' : 'bg-green-400 animate-pulse'
+                                          }`} />
+                                          {activeSession.is_paused && <span className="text-xs">PAUSED</span>}
+                                          <span>{Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}</span>
+                                      </div>
+                                  </div>
+                              )}
 
                               {/* Floating Glass Controls */}
                               <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-40 px-6 py-4 bg-white/10 backdrop-blur-2xl rounded-3xl border border-white/10 flex items-center space-x-6 transition-all duration-300 hover:bg-white/15 hover:scale-105 shadow-[0_20px_50px_rgba(0,0,0,0.3)]">
