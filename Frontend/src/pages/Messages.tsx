@@ -91,6 +91,9 @@ export const Messages: React.FC = () => {
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [confirmingEnd, setConfirmingEnd] = useState(false);
+  const [confirmCountdown, setConfirmCountdown] = useState(5);
+  const confirmTimerRef = useRef<any>(null);
 
   const socketRef = useRef<WebSocket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -1052,20 +1055,63 @@ const stopScreenShare = () => {
                                     <>
                                         <button 
                                             onClick={activeSession.is_paused ? handleResumeSession : handlePauseSession}
+                                            disabled={confirmingEnd}
                                             className={`px-4 py-2 text-white text-xs font-bold rounded-lg transition-all shadow-lg ${
-                                                activeSession.is_paused 
+                                                confirmingEnd
+                                                ? 'opacity-40 cursor-not-allowed bg-gray-400 shadow-none'
+                                                : activeSession.is_paused 
                                                 ? 'bg-blue-500 hover:bg-blue-600 shadow-blue-500/20' 
                                                 : 'bg-yellow-500 hover:bg-yellow-600 shadow-yellow-500/20'
                                             }`}
                                         >
                                             {activeSession.is_paused ? 'Resume' : 'Pause'}
                                         </button>
-                                        <button 
-                                            onClick={() => handleEndSession(false)}
-                                            className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-xs font-bold rounded-lg transition-all shadow-lg shadow-red-500/20"
-                                        >
-                                            End Session
-                                        </button>
+                                        {!confirmingEnd ? (
+                                            <button 
+                                                onClick={() => {
+                                                    setConfirmingEnd(true);
+                                                    setConfirmCountdown(5);
+                                                    let count = 5;
+                                                    if (confirmTimerRef.current) clearInterval(confirmTimerRef.current);
+                                                    confirmTimerRef.current = setInterval(() => {
+                                                        count--;
+                                                        setConfirmCountdown(count);
+                                                        if (count <= 0) {
+                                                            clearInterval(confirmTimerRef.current);
+                                                            confirmTimerRef.current = null;
+                                                            setConfirmingEnd(false);
+                                                        }
+                                                    }, 1000);
+                                                }}
+                                                className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-xs font-bold rounded-lg transition-all shadow-lg shadow-red-500/20"
+                                            >
+                                                End Session
+                                            </button>
+                                        ) : (
+                                            <div className="flex items-center gap-2 bg-red-50 dark:bg-red-900/20 px-3 py-1.5 rounded-lg border border-red-200 dark:border-red-800 animate-in fade-in duration-200">
+                                                <span className="text-xs font-bold text-red-600 dark:text-red-400 whitespace-nowrap">Are you sure?</span>
+                                                <button
+                                                    onClick={() => {
+                                                        if (confirmTimerRef.current) { clearInterval(confirmTimerRef.current); confirmTimerRef.current = null; }
+                                                        setConfirmingEnd(false);
+                                                        handleEndSession(false);
+                                                    }}
+                                                    className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-md transition-all shadow-sm whitespace-nowrap"
+                                                >
+                                                    Yes, End
+                                                </button>
+                                                <button
+                                                    onClick={() => {
+                                                        if (confirmTimerRef.current) { clearInterval(confirmTimerRef.current); confirmTimerRef.current = null; }
+                                                        setConfirmingEnd(false);
+                                                    }}
+                                                    className="px-3 py-1.5 bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-gray-300 text-xs font-bold rounded-md hover:bg-gray-300 dark:hover:bg-slate-600 transition-all flex items-center gap-1.5"
+                                                >
+                                                    Cancel
+                                                    <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-gray-300 dark:bg-slate-600 text-[10px] font-mono font-bold text-gray-600 dark:text-gray-300">{confirmCountdown}</span>
+                                                </button>
+                                            </div>
+                                        )}
                                     </>
                                 )}
                             </>
