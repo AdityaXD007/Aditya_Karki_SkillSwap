@@ -51,9 +51,17 @@ class InitiatePaymentView(views.APIView):
                 status='INITIATED'
             )
 
+            # Dynamic frontend URL for payment callbacks
+            host = request.get_host()
+            frontend_url = settings.FRONTEND_URL
+            if 'devtunnels.ms' in host:
+                frontend_url = 'https://' + host.replace('-8000', '-5173').replace(':8000', '')
+            elif 'localhost' in host:
+                frontend_url = 'http://localhost:5173'
+
             payload = {
-                "return_url": request.data.get('return_url', f"{settings.FRONTEND_URL}/payment-callback"),
-                "website_url": settings.FRONTEND_URL,
+                "return_url": request.data.get('return_url', f"{frontend_url}/payment-callback"),
+                "website_url": frontend_url,
                 "amount": paisa_amount,
                 "purchase_order_id": purchase_order_id,
                 "purchase_order_name": f"Session with {session.teacher.username}",
@@ -112,8 +120,9 @@ class InitiatePaymentView(views.APIView):
                         'quantity': 1,
                     }],
                     mode='payment',
-                    success_url=request.data.get('return_url', f"{settings.FRONTEND_URL}/payment-callback") + "?session_id={CHECKOUT_SESSION_ID}",
-                    cancel_url=f"{settings.FRONTEND_URL}/messages",
+                    # Dynamic frontend URL for Stripe callbacks
+                    success_url=request.data.get('return_url', f"{frontend_url}/payment-callback") + "?session_id={CHECKOUT_SESSION_ID}",
+                    cancel_url=f"{frontend_url}/messages",
                     client_reference_id=str(session.id),
                     customer_email=request.user.email,
                 )

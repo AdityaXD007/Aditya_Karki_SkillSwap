@@ -173,8 +173,17 @@ class AuthViewSet(viewsets.ViewSet):
             # 6. Redirect back to frontend with tokens as query params
             # Note: In production, it's safer to use postMessage or a temporary page, 
             # but this is standard for dev
+            # Dynamic redirect back to frontend (supports both tunnel and localhost)
+            host = request.get_host()
+            frontend_url = settings.FRONTEND_URL
+            if 'devtunnels.ms' in host:
+                # Swap backend port (8000) for frontend port (5173) in the subdomain or host
+                frontend_url = 'https://' + host.replace('-8000', '-5173').replace(':8000', '')
+            elif 'localhost' in host:
+                frontend_url = 'http://localhost:5173'
+
             from django.shortcuts import redirect
-            redirect_url = f"{settings.FRONTEND_URL}/dashboard?token={access}&refresh={refresh}"
+            redirect_url = f"{frontend_url}/dashboard?token={access}&refresh={refresh}"
             return redirect(redirect_url)
 
         except Exception as e:
@@ -260,7 +269,15 @@ class AuthViewSet(viewsets.ViewSet):
             if user:
                 token = default_token_generator.make_token(user)
                 uid = urlsafe_base64_encode(force_bytes(user.pk))
-                reset_url = f"{settings.FRONTEND_URL}/reset-password?uid={uid}&token={token}"
+                # Dynamic reset link (supports both tunnel and localhost)
+                host = request.get_host()
+                frontend_url = settings.FRONTEND_URL
+                if 'devtunnels.ms' in host:
+                    frontend_url = 'https://' + host.replace('-8000', '-5173').replace(':8000', '')
+                elif 'localhost' in host:
+                    frontend_url = 'http://localhost:5173'
+
+                reset_url = f"{frontend_url}/reset-password?uid={uid}&token={token}"
                 
                 send_skillswap_email(
                     user=user,
