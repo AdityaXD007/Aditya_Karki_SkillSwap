@@ -174,8 +174,17 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
             # End timer and update message if call is ended
             if message_type == 'end_call':
-                # Update the last call message in DB & Broadcast final results
-                await self.update_last_call_message()
+                # Update the last call message in DB
+                update_data = await self.update_last_call_message()
+                # Broadcast final results in async context
+                if update_data:
+                    await self.channel_layer.group_send(
+                        self.room_group_name,
+                        {
+                            'type': 'call_log_update',
+                            **update_data
+                        }
+                    )
             
             # Special case: Record call history on offer (Start of call)
             if message_type == 'video_offer':
@@ -440,27 +449,11 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 last_call_msg.content = "Missed Call"
             last_call_msg.save()
 
-            # Prepare broadcast data
-            update_data = {
+            return {
                 'message_id': last_call_msg.id,
                 'call_duration': duration,
                 'status_text': last_call_msg.content
             }
-            
-            # Broadcast update immediately
-            import asyncio
-            loop = asyncio.get_event_loop()
-            asyncio.run_coroutine_threadsafe(
-                self.channel_layer.group_send(
-                    self.room_group_name,
-                    {
-                        'type': 'call_log_update',
-                        **update_data
-                    }
-                ),
-                loop
-            )
-            return update_data
         return None
 
     async def call_log_update(self, event):

@@ -14,7 +14,7 @@ class SessionRequestSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'requester', 'partner', 'requester_details', 'partner_details',
             'skill_to_learn', 'skill_to_teach', 'skill_learn_details', 'skill_teach_details',
-            'session_length', 'message', 'status', 'created_at'
+            'session_length', 'proposed_time', 'message', 'status', 'created_at'
         ]
         read_only_fields = ['id', 'requester', 'status', 'created_at']
     

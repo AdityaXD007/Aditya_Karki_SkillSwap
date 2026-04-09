@@ -176,12 +176,16 @@ export const Messages: React.FC = () => {
   }, [selectedConversation, user?.id, currentPartnerId]);
 
   useEffect(() => {
+    // Clear timer whenever active session changes (e.g. switching conversations)
+    if (sessionTimerRef.current) clearInterval(sessionTimerRef.current);
+    setTimeLeft(null);
+
     if (activeSession?.status === 'ONGOING' && activeSession.actual_start_time) {
         if (activeSession.is_paused) {
             setTimeLeft(activeSession.remaining_duration_seconds || 0);
-            if (sessionTimerRef.current) clearInterval(sessionTimerRef.current);
             return;
         }
+
 
         const startTime = new Date(activeSession.actual_start_time).getTime();
         const durationMs = activeSession.duration * 60 * 1000;
@@ -201,11 +205,8 @@ export const Messages: React.FC = () => {
         updateTimer();
         sessionTimerRef.current = setInterval(updateTimer, 1000);
         return () => { if (sessionTimerRef.current) clearInterval(sessionTimerRef.current); };
-    } else {
-        setTimeLeft(null);
-        if (sessionTimerRef.current) clearInterval(sessionTimerRef.current);
     }
-  }, [activeSession]);
+  }, [activeSession?.id, activeSession?.status, activeSession?.is_paused, activeSession?.actual_start_time]);
 
   const handlePauseSession = async () => {
     if (!activeSession) return;

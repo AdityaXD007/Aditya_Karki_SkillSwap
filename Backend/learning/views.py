@@ -49,7 +49,20 @@ class SessionRequestViewSet(viewsets.ModelViewSet):
         session_request.status = 'ACCEPTED'
         session_request.save()
 
-        # 2. Create Learning Session
+        # 2. Determine scheduled time
+        # Priority: explicit scheduled_time from teacher > student's proposed_time > default (tomorrow)
+        scheduled_time_str = request.data.get('scheduled_time')
+        if scheduled_time_str:
+            from django.utils.dateparse import parse_datetime
+            scheduled_time = parse_datetime(scheduled_time_str)
+            if not scheduled_time:
+                scheduled_time = timezone.now() + timezone.timedelta(days=1)
+        elif session_request.proposed_time:
+            scheduled_time = session_request.proposed_time
+        else:
+            scheduled_time = timezone.now() + timezone.timedelta(days=1)
+
+        # 3. Create Learning Session
         # Check if teacher has taught 5+ sessions; if not, mark it as free session
         teacher_profile = session_request.partner.profile
         is_free_session = not teacher_profile.can_charge
@@ -69,7 +82,7 @@ class SessionRequestViewSet(viewsets.ModelViewSet):
             teacher=session_request.partner,
             skill=session_request.skill_to_learn,
             duration=session_request.session_length,
-            scheduled_time=timezone.now() + timezone.timedelta(days=1), # Default: Tomorrow
+            scheduled_time=scheduled_time,
             status='SCHEDULED',
             is_paid=is_free_session,
             is_free=is_free_session,
@@ -217,7 +230,7 @@ class LearningSessionViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def reschedule(self, request, pk=None):
-        """Trigger 2: SESSION RESCHEDULED"""
+        """Phase 1: Propose a Reschedule"""
         session = self.get_object()
         new_time_str = request.data.get('new_time')
         reason = request.data.get('reason', 'No reason provided')
@@ -233,27 +246,105 @@ class LearningSessionViewSet(viewsets.ModelViewSet):
         except Exception:
             return Response({'error': 'Invalid datetime format'}, status=status.HTTP_400_BAD_REQUEST)
 
-        old_time = session.scheduled_time
-        session.scheduled_time = new_time
-        session.notes = f"Rescheduled by {request.user.username}. Reason: {reason}"
+        # Save the request rather than updating the time immediately
+        session.reschedule_requested_time = new_time
+        session.reschedule_reason = reason
+        session.reschedule_requested_by = request.user
         session.save()
 
-        # Send email to the OTHER party
+        # Send email to the OTHER party to inform them they have a request to review
         other_user = session.teacher if session.student == request.user else session.student
         send_skillswap_email(
             user=other_user,
-            subject=f"Session Rescheduled by @{request.user.username}",
+            subject=f"Reschedule Request from @{request.user.username}",
             template_name="session_change.html",
             context={
                 'changer_username': request.user.username,
-                'action_type': 'Rescheduled',
+                'action_type': 'Requested a Reschedule',
                 'skill_topic': session.skill.name,
-                'session_time': new_time, # Show the NEW time
-                'reason': f"Rescheduled from {old_time.strftime('%b %d, %H:%I %p')}. Reason: {reason}"
+                'session_time': new_time,
+                'reason': f"Wants to reschedule the session. Reason: {reason}. Please go to your bookings to accept or reject."
             }
         )
 
-        return Response({'status': 'Session rescheduled', 'new_time': session.scheduled_time})
+        return Response({'status': 'Reschedule request sent', 'requested_time': session.reschedule_requested_time})
+
+    @action(detail=True, methods=['post'])
+    def accept_reschedule(self, request, pk=None):
+        """Phase 2: Finalize Reschedule"""
+        session = self.get_object()
+        
+        if not session.reschedule_requested_time:
+            return Response({'error': 'No pending reschedule request found'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if session.reschedule_requested_by == request.user:
+            return Response({'error': 'You cannot accept your own reschedule request'}, status=status.HTTP_400_BAD_REQUEST)
+
+        old_time = session.scheduled_time
+        new_time = session.reschedule_requested_time
+        
+        # Finalize the move
+        session.scheduled_time = new_time
+        session.notes += f"\nRescheduled to {new_time} from {old_time}. Request by {session.reschedule_requested_by.username} accepted by {request.user.username}."
+        
+        # Clear request fields
+        session.reschedule_requested_time = None
+        session.reschedule_reason = ""
+        session.reschedule_requested_by = None
+        session.save()
+
+        # Notify both parties
+        for user in [session.teacher, session.student]:
+            send_skillswap_email(
+                user=user,
+                subject="Session Reschedule Confirmed!",
+                template_name="session_change.html",
+                context={
+                    'changer_username': request.user.username,
+                    'action_type': 'Reschedule Confirmed',
+                    'skill_topic': session.skill.name,
+                    'session_time': session.scheduled_time,
+                    'reason': f"The reschedule from {old_time.strftime('%b %d, %H:%M %p')} has been accepted."
+                }
+            )
+
+        return Response({'status': 'Reschedule accepted', 'new_time': session.scheduled_time})
+
+    @action(detail=True, methods=['post'])
+    def reject_reschedule(self, request, pk=None):
+        """Phase 2: Reject Reschedule Request"""
+        session = self.get_object()
+        
+        if not session.reschedule_requested_time:
+            return Response({'error': 'No pending reschedule request found'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if session.reschedule_requested_by == request.user:
+            return Response({'error': 'You cannot reject your own reschedule request'}, status=status.HTTP_400_BAD_REQUEST)
+
+        requester = session.reschedule_requested_by
+        requested_time = session.reschedule_requested_time
+
+        # Clear request fields
+        session.reschedule_requested_time = None
+        session.reschedule_reason = ""
+        session.reschedule_requested_by = None
+        session.save()
+
+        # Notify the requester
+        send_skillswap_email(
+            user=requester,
+            subject="Reschedule Request Rejected",
+            template_name="session_change.html",
+            context={
+                'changer_username': request.user.username,
+                'action_type': 'Reschedule Rejected',
+                'skill_topic': session.skill.name,
+                'session_time': session.scheduled_time, # Keep original time
+                'reason': f"The request to move the session to {requested_time.strftime('%b %d, %H:%M %p')} was rejected by @{request.user.username}."
+            }
+        )
+
+        return Response({'status': 'Reschedule request rejected'})
 
     # Add actions for cancelling, adding feedback etc.
     @action(detail=True, methods=['post'])
@@ -267,6 +358,14 @@ class LearningSessionViewSet(viewsets.ModelViewSet):
 
         if not session.is_paid:
             return Response({'error': 'Session cannot be started until student has paid the fee'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Prevent starting a new session if the user already has an ongoing one
+        existing_ongoing = LearningSession.objects.filter(
+            Q(teacher=request.user) | Q(student=request.user),
+            status='ONGOING'
+        ).exclude(pk=session.pk).exists()
+        if existing_ongoing:
+            return Response({'error': 'You already have an active session in progress. Please end it before starting a new one.'}, status=status.HTTP_400_BAD_REQUEST)
 
         session.status = 'ONGOING'
         session.actual_start_time = timezone.now()

@@ -8,10 +8,12 @@ export const requestsAPI = {
         partner: number;
         skill_to_learn: number;
         session_length: number;
-        message: string
+        message: string;
+        proposed_time?: string;
     }) => apiClient.post('/requests/', data),
 
-    acceptRequest: (id: number) => apiClient.post(`/requests/${id}/accept/`),
+    acceptRequest: (id: number, data?: { scheduled_time?: string }) =>
+        apiClient.post(`/requests/${id}/accept/`, data || {}),
 
     rejectRequest: (id: number) => apiClient.post(`/requests/${id}/reject/`),
     withdrawRequest: (id: number) => apiClient.patch(`/requests/${id}/withdraw/`),

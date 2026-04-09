@@ -22,6 +22,7 @@ class SessionRequest(models.Model):
     skill_to_teach = models.ForeignKey(Skill, on_delete=models.SET_NULL, null=True, blank=True, related_name='requests_to_teach')
     
     session_length = models.IntegerField(help_text="Duration in minutes", default=60)
+    proposed_time = models.DateTimeField(null=True, blank=True, help_text="Optional proposed meeting time by the requester")
     message = models.TextField()
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -72,6 +73,11 @@ class LearningSession(models.Model):
     rating_by_teacher = models.IntegerField(null=True, blank=True)
     feedback_by_student = models.TextField(blank=True)
     feedback_by_teacher = models.TextField(blank=True)
+
+    # Reschedule Request Fields
+    reschedule_requested_time = models.DateTimeField(null=True, blank=True)
+    reschedule_reason = models.TextField(blank=True)
+    reschedule_requested_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='reschedule_requests_sent')
 
     created_at = models.DateTimeField(auto_now_add=True)
 

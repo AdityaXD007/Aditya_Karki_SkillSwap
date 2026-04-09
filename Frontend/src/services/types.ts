@@ -84,6 +84,7 @@ export interface SessionRequest {
     partner_details: UserProfile;
     skill_learn_details: Skill;
     session_length: number;
+    proposed_time: string | null;
     message: string;
     status: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'CANCELLED';
     created_at: string;
