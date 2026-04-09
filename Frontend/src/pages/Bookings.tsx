@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { sessionsAPI, requestsAPI } from "@/services";
 import { useAuth } from "@/components/Context/AuthContext";
 import {
@@ -15,6 +16,8 @@ import {
   Ban,
   MessageSquare,
   Star,
+  ExternalLink,
+  Wallet,
 } from "lucide-react";
 
 // Unified type for display
@@ -49,6 +52,11 @@ interface DisplayBooking {
   // Session IDs for teacher/student
   studentId?: number;
   teacherId?: number;
+  partnerId?: number;
+
+  // Pricing
+  price?: number | string;
+  isFree?: boolean;
 }
 
 export const Bookings: React.FC = () => {
@@ -138,6 +146,9 @@ export const Bookings: React.FC = () => {
           status: req.status,
           requesterUsername: req.requester_details?.username || "",
           proposedTime: req.proposed_time,
+          partnerId: partner?.id,
+          price: 0,
+          isFree: true,
         });
       });
 
@@ -175,6 +186,9 @@ export const Bookings: React.FC = () => {
           feedbackByTeacher: sess.feedback_by_teacher,
           studentId: sess.student,
           teacherId: sess.teacher,
+          partnerId: isTeacher ? sess.student : sess.teacher,
+          price: sess.total_price,
+          isFree: sess.is_free,
         });
       });
 
@@ -335,15 +349,29 @@ export const Bookings: React.FC = () => {
     }
   };
 
+  const handleEndSession = async (id: number) => {
+    if (!window.confirm("Are you sure you want to end this session?")) return;
+    try {
+      await sessionsAPI.endSession(id);
+      fetchData();
+    } catch (e) {
+      console.error("Failed to end session", e);
+    }
+  };
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
   const upcomingItems = items.filter((b) => {
     if (b.status === "EXPIRED" || b.status === "WITHDRAWN") return false;
+
+    // Hide accepted requests to avoid duplicates with actual session cards
+    if (b.isRequest && b.status === "ACCEPTED") return false;
+
     const itemDate = new Date(b.date);
     itemDate.setHours(0, 0, 0, 0);
     return (
-      itemDate >= today && (b.status === "PENDING" || b.status === "ACCEPTED")
+      itemDate >= today && (b.status === "PENDING" || b.status === "ACCEPTED" || b.status === "ONGOING")
     );
   });
 
@@ -353,8 +381,8 @@ export const Bookings: React.FC = () => {
     // Hide completed requests to avoid duplicates with actual session cards
     if (b.isRequest && b.status === "COMPLETED") return false;
 
-    // Always show COMPLETED sessions in Past tab
-    if (b.status === "COMPLETED") return true;
+    // Always show COMPLETED, CANCELLED, REJECTED sessions in Past tab
+    if (b.status === "COMPLETED" || b.status === "CANCELLED" || b.status === "REJECTED") return true;
     
     const itemDate = new Date(b.date);
     itemDate.setHours(0, 0, 0, 0);
@@ -380,6 +408,10 @@ export const Bookings: React.FC = () => {
         return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400";
       case "CANCELLED":
         return "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400";
+      case "REJECTED":
+        return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400";
+      case "ONGOING":
+        return "bg-green-100 text-green-700 dark:bg-green-900/10 dark:text-green-400 border border-green-200 dark:border-green-800";
       default:
         return "bg-gray-100 text-gray-700 dark:bg-slate-800 dark:text-slate-400";
     }
@@ -536,9 +568,17 @@ export const Bookings: React.FC = () => {
                                   {item.time} ({item.duration} min)
                                 </span>
                               </div>
-                              <div className="flex items-center space-x-2 col-span-2">
+                              <div className="flex items-center space-x-2">
                                 <MapPin className="w-4 h-4" />
                                 <span>{item.location}</span>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <Wallet className="w-4 h-4" />
+                                <span>
+                                  {item.isFree
+                                    ? "Free"
+                                    : `Rs. ${item.price || 0}`}
+                                </span>
                               </div>
                             </div>
                           </div>
@@ -550,10 +590,16 @@ export const Bookings: React.FC = () => {
                                 Expired
                               </span>
                             )}
-                            <span
-                              className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(item.status)}`}
+                             <span
+                              className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1.5 ${getStatusColor(item.status)}`}
                             >
-                              {item.status}
+                              {item.status === "ONGOING" && (
+                                <span className="relative flex h-2 w-2">
+                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                                </span>
+                              )}
+                              {item.status === "ONGOING" ? "LIVE" : item.status}
                             </span>
                           </div>
 
@@ -607,6 +653,32 @@ export const Bookings: React.FC = () => {
                                     </p>
                                   )}
                                 </div>
+                              )}
+
+                            {/* Go to Chat Button */}
+                            {(item.status === "ACCEPTED" ||
+                              item.status === "ONGOING" ||
+                              item.status === "PENDING") &&
+                              item.partnerId && (
+                                <Link
+                                  to="/messages"
+                                  className="text-sm bg-blue-50 text-blue-600 px-3 py-1.5 rounded-md hover:bg-blue-100 transition-colors flex items-center gap-1.5 font-medium border border-blue-100 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-400 mt-2"
+                                >
+                                  <ExternalLink className="w-3.5 h-3.5" />
+                                  Go to Chat
+                                </Link>
+                              )}
+
+                            {/* End Session Button for Teacher */}
+                            {item.status === "ONGOING" &&
+                              item.type === "teaching" && (
+                                <button
+                                  onClick={() => handleEndSession(item.id)}
+                                  className="text-sm bg-red-50 text-red-600 px-3 py-1.5 rounded-md hover:bg-red-100 transition-colors flex items-center gap-1.5 font-medium border border-red-100 dark:bg-red-900/20 dark:border-red-800 dark:text-red-400 mt-2"
+                                >
+                                  <Ban className="w-3.5 h-3.5" />
+                                  End Session
+                                </button>
                               )}
 
                             {item.status === "PENDING" &&
