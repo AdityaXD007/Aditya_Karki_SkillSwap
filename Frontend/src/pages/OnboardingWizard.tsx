@@ -32,8 +32,8 @@ export const OnboardingWizard: React.FC = () => {
   const [formData, setFormData] = useState({
     full_name: user?.name || '',
     bio: user?.bio || '',
-    teaching: [] as number[],
-    learning: [] as number[],
+    teaching: [] as { id: number, proficiency_level: string }[],
+    learning: [] as { id: number, proficiency_level: string }[],
   });
 
   // Discovery State
@@ -86,13 +86,22 @@ export const OnboardingWizard: React.FC = () => {
   const toggleSkill = (skillId: number, type: 'teaching' | 'learning') => {
     setFormData(prev => {
       const current = prev[type];
-      const exists = current.includes(skillId);
+      const exists = current.some(item => item.id === skillId);
       if (exists) {
-        return { ...prev, [type]: current.filter(id => id !== skillId) };
+        return { ...prev, [type]: current.filter(item => item.id !== skillId) };
       } else {
-        return { ...prev, [type]: [...current, skillId] };
+        return { ...prev, [type]: [...current, { id: skillId, proficiency_level: 'BEGINNER' }] };
       }
     });
+  };
+
+  const updateProficiency = (skillId: number, type: 'teaching' | 'learning', level: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [type]: prev[type].map(item => 
+        item.id === skillId ? { ...item, proficiency_level: level } : item
+      )
+    }));
   };
 
   const handleSubmit = async () => {
@@ -311,7 +320,7 @@ export const OnboardingWizard: React.FC = () => {
                         {filteredSkills.length > 0 ? (
                           filteredSkills.map((skill) => {
                             const type = currentStep === 2 ? 'teaching' : 'learning';
-                            const isSelected = formData[type].includes(skill.id);
+                            const isSelected = formData[type].some(item => item.id === skill.id);
                             
                             return (
                               <Badge
@@ -353,12 +362,39 @@ export const OnboardingWizard: React.FC = () => {
                         </Button>
                       </div>
                       <div className="flex flex-wrap gap-2 min-h-[36px]">
-                        {(currentStep === 2 ? formData.teaching : formData.learning).map(id => {
-                          const skill = availableSkills.find(s => s.id === id);
+                        {(currentStep === 2 ? formData.teaching : formData.learning).map(item => {
+                          const skill = availableSkills.find(s => s.id === item.id);
+                          const type = currentStep === 2 ? 'teaching' : 'learning';
+                          
                           return skill ? (
-                            <Badge key={id} variant="secondary" className="bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 border-transparent">
-                              {skill.name}
-                            </Badge>
+                            <div key={item.id} className="flex flex-col gap-2 p-3 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 w-full sm:w-auto min-w-[200px]">
+                              <div className="flex justify-between items-center">
+                                <span className="font-medium text-sm text-slate-700 dark:text-slate-200">{skill.name}</span>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="h-6 w-6 text-slate-400 hover:text-red-500"
+                                  onClick={() => toggleSkill(skill.id, type)}
+                                >
+                                  <Check className="w-3 h-3" />
+                                </Button>
+                              </div>
+                              <div className="flex gap-1">
+                                {['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'EXPERT'].map((level) => (
+                                  <button
+                                    key={level}
+                                    onClick={() => updateProficiency(skill.id, type, level)}
+                                    className={`text-[10px] px-2 py-1 rounded-md transition-all ${
+                                      item.proficiency_level === level
+                                        ? 'bg-indigo-600 text-white'
+                                        : 'bg-white dark:bg-slate-900 text-slate-500 border border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+                                    }`}
+                                  >
+                                    {level.charAt(0) + level.slice(1).toLowerCase()}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
                           ) : null;
                         })}
                         {(currentStep === 2 ? formData.teaching : formData.learning).length === 0 && (

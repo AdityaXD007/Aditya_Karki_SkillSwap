@@ -24,8 +24,10 @@ export const authAPI = {
     onboardingUpdate: (data: { full_name?: string, bio?: string }) =>
         apiClient.patch<UserProfile>('/profiles/update/', data),
 
-    onboardingSkills: (data: { teaching: number[], learning: number[] }) =>
-        apiClient.post('/profiles/skills/', data),
+    onboardingSkills: (data: { 
+        teaching: (number | { id: number, proficiency_level: string })[], 
+        learning: (number | { id: number, proficiency_level: string })[] 
+    }) => apiClient.post('/profiles/skills/', data),
 
     uploadProfileImage: (formData: FormData) =>
         apiClient.post("/profiles/upload-image/", formData, {

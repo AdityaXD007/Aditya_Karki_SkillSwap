@@ -362,13 +362,14 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         for item in skills_to_teach:
             # Handles both ID only or full object
             skill_id = item.get('id') if isinstance(item, dict) else item
+            proficiency = item.get('proficiency_level', 'BEGINNER') if isinstance(item, dict) else 'BEGINNER'
             try:
                 skill = Skill.objects.get(id=skill_id)
                 UserSkill.objects.create(
                     user=request.user,
                     skill=skill,
                     skill_type='TEACH',
-                    proficiency_level='BEGINNER',
+                    proficiency_level=proficiency,
                     status='ACTIVE'
                 )
             except (Skill.DoesNotExist, ValueError):
@@ -377,13 +378,14 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         # Add learning skills
         for item in skills_to_learn:
             skill_id = item.get('id') if isinstance(item, dict) else item
+            proficiency = item.get('proficiency_level', 'BEGINNER') if isinstance(item, dict) else 'BEGINNER'
             try:
                 skill = Skill.objects.get(id=skill_id)
                 UserSkill.objects.create(
                     user=request.user,
                     skill=skill,
                     skill_type='LEARN',
-                    proficiency_level='BEGINNER',
+                    proficiency_level=proficiency,
                     status='ACTIVE'
                 )
             except (Skill.DoesNotExist, ValueError):
