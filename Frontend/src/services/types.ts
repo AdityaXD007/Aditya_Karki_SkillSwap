@@ -110,4 +110,8 @@ export interface LearningSession {
     total_price: number | string;
     admin_confirmed: boolean;
     payout_completed: boolean;
+    rating_by_student?: number | null;
+    rating_by_teacher?: number | null;
+    feedback_by_student?: string;
+    feedback_by_teacher?: string;
 }

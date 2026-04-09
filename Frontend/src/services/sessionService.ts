@@ -11,4 +11,6 @@ export const sessionsAPI = {
     rescheduleSession: (id: number, newTime: string, reason: string) => apiClient.post(`/sessions/${id}/reschedule/`, { new_time: newTime, reason }),
     acceptReschedule: (id: number) => apiClient.post(`/sessions/${id}/accept_reschedule/`),
     rejectReschedule: (id: number) => apiClient.post(`/sessions/${id}/reject_reschedule/`),
+    submitFeedback: (id: number, rating: number, feedback: string, submittedBy: 'student' | 'teacher') =>
+        apiClient.post(`/sessions/${id}/submit_feedback/`, { rating, feedback, submitted_by: submittedBy }),
 };

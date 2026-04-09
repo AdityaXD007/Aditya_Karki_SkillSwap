@@ -14,6 +14,7 @@ class UserProfile(models.Model):
     sessions_taught_count = models.IntegerField(default=0)
     sessions_learned_count = models.IntegerField(default=0)
     hourly_rate = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, help_text="Hourly rate in NPR")
+    rating = models.FloatField(default=0.0, help_text="Average teacher rating from student feedback")
     email_notifications_enabled = models.BooleanField(default=True)
     is_onboarded = models.BooleanField(default=False)
     last_activity = models.DateTimeField(null=True, blank=True)

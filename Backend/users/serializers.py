@@ -72,7 +72,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
     profile_image_url = serializers.SerializerMethodField()
     full_name = serializers.SerializerMethodField()
     user_skills = serializers.SerializerMethodField()
-    rating = serializers.FloatField(default=5.0, read_only=True)
+    rating = serializers.FloatField(read_only=True)
 
     class Meta:
         model = UserProfile

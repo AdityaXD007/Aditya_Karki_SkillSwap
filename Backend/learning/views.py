@@ -4,9 +4,11 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from .models import SessionRequest, LearningSession
 from .serializers import SessionRequestSerializer, LearningSessionSerializer
-from django.db.models import Q
+from django.db.models import Q, Avg
 from django.utils import timezone
 from utils.email_sender import send_skillswap_email
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
 
 class SessionRequestViewSet(viewsets.ModelViewSet):
     """
@@ -400,6 +402,24 @@ class LearningSessionViewSet(viewsets.ModelViewSet):
         student_profile.sessions_learned_count += 1
         student_profile.save()
 
+        # Broadcast session ended via WebSocket
+        try:
+            from chat.models import Conversation
+            conversation = Conversation.objects.filter(participants=session.student).filter(participants=session.teacher).first()
+            if conversation:
+                channel_layer = get_channel_layer()
+                async_to_sync(channel_layer.group_send)(
+                    f'chat_{conversation.id}',
+                    {
+                        'type': 'signal_message',
+                        'signal_type': 'session_ended',
+                        'data': {'session_id': session.id},
+                        'sender_id': request.user.id
+                    }
+                )
+        except Exception as e:
+            print(f"Error broadcasting session end: {e}")
+
         return Response({'status': 'Session completed'})
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
@@ -466,3 +486,67 @@ class LearningSessionViewSet(viewsets.ModelViewSet):
         session.save()
 
         return Response({'status': 'Session resumed', 'actual_start_time': session.actual_start_time})
+
+    @action(detail=True, methods=['post'])
+    def submit_feedback(self, request, pk=None):
+        """Submit rating and feedback for a completed session."""
+        session = self.get_object()
+
+        if session.status != 'COMPLETED':
+            return Response({'error': 'Feedback can only be submitted for completed sessions'}, status=status.HTTP_400_BAD_REQUEST)
+
+        rating = request.data.get('rating')
+        feedback = request.data.get('feedback', '')
+        submitted_by = request.data.get('submitted_by')
+
+        # Validate rating
+        if rating is None:
+            return Response({'error': 'Rating is required'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            rating = int(rating)
+            if rating < 1 or rating > 5:
+                raise ValueError
+        except (ValueError, TypeError):
+            return Response({'error': 'Rating must be an integer between 1 and 5'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Validate submitted_by
+        if submitted_by not in ('student', 'teacher'):
+            return Response({'error': 'submitted_by must be "student" or "teacher"'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Verify the user matches the role they claim
+        if submitted_by == 'student' and session.student != request.user:
+            return Response({'error': 'You are not the student of this session'}, status=status.HTTP_403_FORBIDDEN)
+        if submitted_by == 'teacher' and session.teacher != request.user:
+            return Response({'error': 'You are not the teacher of this session'}, status=status.HTTP_403_FORBIDDEN)
+
+        # Check for duplicate feedback
+        if submitted_by == 'student' and session.rating_by_student is not None:
+            return Response({'error': 'You have already rated this session'}, status=status.HTTP_400_BAD_REQUEST)
+        if submitted_by == 'teacher' and session.rating_by_teacher is not None:
+            return Response({'error': 'You have already rated this session'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Save feedback
+        if submitted_by == 'student':
+            session.rating_by_student = rating
+            session.feedback_by_student = feedback
+        else:
+            session.rating_by_teacher = rating
+            session.feedback_by_teacher = feedback
+
+        session.save()
+
+        # Recalculate teacher's average rating from all student ratings
+        teacher_profile = session.teacher.profile
+        avg = LearningSession.objects.filter(
+            teacher=session.teacher,
+            status='COMPLETED',
+            rating_by_student__isnull=False
+        ).aggregate(avg_rating=Avg('rating_by_student'))
+
+        teacher_profile.rating = avg['avg_rating'] or 0.0
+        teacher_profile.save()
+
+        return Response({
+            'status': 'Feedback submitted successfully',
+            'average_rating': teacher_profile.rating
+        })

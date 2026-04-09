@@ -14,6 +14,7 @@ import {
   CalendarClock,
   Ban,
   MessageSquare,
+  Star,
 } from "lucide-react";
 
 // Unified type for display
@@ -38,6 +39,16 @@ interface DisplayBooking {
   rescheduleRequestedTime?: string;
   rescheduleReason?: string;
   rescheduleRequestedBy?: number;
+
+  // Feedback fields
+  ratingByStudent?: number | null;
+  ratingByTeacher?: number | null;
+  feedbackByStudent?: string;
+  feedbackByTeacher?: string;
+
+  // Session IDs for teacher/student
+  studentId?: number;
+  teacherId?: number;
 }
 
 export const Bookings: React.FC = () => {
@@ -80,6 +91,15 @@ export const Bookings: React.FC = () => {
   const [acceptLoading, setAcceptLoading] = useState(false);
   const [acceptError, setAcceptError] = useState<string | null>(null);
   const [acceptingItem, setAcceptingItem] = useState<DisplayBooking | null>(null);
+
+  // Rating modal state
+  const [showRatingModal, setShowRatingModal] = useState<number | null>(null);
+  const [ratingValue, setRatingValue] = useState(0);
+  const [ratingHover, setRatingHover] = useState(0);
+  const [feedbackText, setFeedbackText] = useState("");
+  const [ratingLoading, setRatingLoading] = useState(false);
+  const [ratingError, setRatingError] = useState<string | null>(null);
+  const [ratedSessions, setRatedSessions] = useState<Set<number>>(new Set());
 
   const fetchData = async () => {
     try {
@@ -148,6 +168,13 @@ export const Bookings: React.FC = () => {
           rescheduleRequestedTime: sess.reschedule_requested_time,
           rescheduleReason: sess.reschedule_reason,
           rescheduleRequestedBy: sess.reschedule_requested_by,
+
+          ratingByStudent: sess.rating_by_student,
+          ratingByTeacher: sess.rating_by_teacher,
+          feedbackByStudent: sess.feedback_by_student,
+          feedbackByTeacher: sess.feedback_by_teacher,
+          studentId: sess.student,
+          teacherId: sess.teacher,
         });
       });
 
@@ -322,10 +349,17 @@ export const Bookings: React.FC = () => {
 
   const pastItems = items.filter((b) => {
     if (b.status === "EXPIRED" || b.status === "WITHDRAWN") return false;
+    
+    // Hide completed requests to avoid duplicates with actual session cards
+    if (b.isRequest && b.status === "COMPLETED") return false;
+
+    // Always show COMPLETED sessions in Past tab
+    if (b.status === "COMPLETED") return true;
+    
     const itemDate = new Date(b.date);
     itemDate.setHours(0, 0, 0, 0);
     return (
-      itemDate < today && (b.status === "ACCEPTED" || b.status === "COMPLETED")
+      itemDate < today && b.status === "ACCEPTED"
     );
   });
 
@@ -626,6 +660,49 @@ export const Bookings: React.FC = () => {
                                 </button>
                               </div>
                             )}
+
+                            {/* Rate Session button for COMPLETED sessions */}
+                            {item.status === "COMPLETED" && !item.isRequest && (() => {
+                              const isStudent = Number(user?.id) === Number(item.studentId);
+                              const isTeacher = Number(user?.id) === Number(item.teacherId);
+                              const hasRated = isStudent
+                                ? (item.ratingByStudent != null || ratedSessions.has(item.id))
+                                : isTeacher
+                                ? (item.ratingByTeacher != null || ratedSessions.has(item.id))
+                                : true;
+                              
+                              if (hasRated) {
+                                const myRating = isStudent ? item.ratingByStudent : item.ratingByTeacher;
+                                return (
+                                  <div className="flex items-center gap-1.5 mt-1 px-3 py-1.5 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                                    <CheckCircle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                                    <span className="text-xs font-medium text-amber-700 dark:text-amber-400">Rated</span>
+                                    {myRating && (
+                                      <span className="flex items-center gap-0.5 ml-1">
+                                        {[1,2,3,4,5].map(s => (
+                                          <Star key={s} className={`w-3 h-3 ${s <= myRating ? 'text-amber-500 fill-amber-500' : 'text-gray-300 dark:text-gray-600'}`} />
+                                        ))}
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              }
+                              return (
+                                <button
+                                  onClick={() => {
+                                    setShowRatingModal(item.id);
+                                    setRatingValue(0);
+                                    setRatingHover(0);
+                                    setFeedbackText("");
+                                    setRatingError(null);
+                                  }}
+                                  className="px-3 py-1.5 text-xs font-medium text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30 rounded-lg transition-colors flex items-center gap-1.5 border border-amber-200 dark:border-amber-800 mt-1"
+                                >
+                                  <Star className="w-3.5 h-3.5" />
+                                  Rate Session
+                                </button>
+                              );
+                            })()}
                           </div>
                         </div>
                       </div>
@@ -901,6 +978,126 @@ export const Bookings: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Rating Modal */}
+      {showRatingModal !== null && (() => {
+        const ratingItem = items.find(i => !i.isRequest && i.id === showRatingModal);
+        const isStudent = Number(user?.id) === Number(ratingItem?.studentId);
+        const submittedBy = isStudent ? 'student' as const : 'teacher' as const;
+
+        const handleSubmitRating = async () => {
+          if (!ratingValue) return;
+          try {
+            setRatingLoading(true);
+            setRatingError(null);
+            await sessionsAPI.submitFeedback(showRatingModal, ratingValue, feedbackText.trim(), submittedBy);
+            setRatedSessions(prev => new Set(prev).add(showRatingModal));
+            // Update the item in local state
+            setItems(prev => prev.map(it => {
+              if (!it.isRequest && it.id === showRatingModal) {
+                return isStudent
+                  ? { ...it, ratingByStudent: ratingValue, feedbackByStudent: feedbackText }
+                  : { ...it, ratingByTeacher: ratingValue, feedbackByTeacher: feedbackText };
+              }
+              return it;
+            }));
+            setShowRatingModal(null);
+          } catch (e: any) {
+            setRatingError(e?.response?.data?.error || 'Failed to submit rating. Please try again.');
+          } finally {
+            setRatingLoading(false);
+          }
+        };
+
+        return (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-slate-800 w-full max-w-md animate-in zoom-in-95 duration-200">
+              <div className="flex items-center justify-between p-5 border-b border-gray-200 dark:border-slate-800">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                    <Star className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">Rate Session</h3>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">How was your experience?</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => { setShowRatingModal(null); setRatingError(null); }}
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg"
+                >
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+              <div className="p-5 space-y-5">
+                {/* Star Selector */}
+                <div className="flex flex-col items-center gap-2">
+                  <div className="flex gap-1">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        onClick={() => setRatingValue(star)}
+                        onMouseEnter={() => setRatingHover(star)}
+                        onMouseLeave={() => setRatingHover(0)}
+                        className="p-1 transition-transform hover:scale-110"
+                      >
+                        <Star
+                          className={`w-8 h-8 transition-colors ${
+                            star <= (ratingHover || ratingValue)
+                              ? 'text-amber-500 fill-amber-500 drop-shadow-[0_0_6px_rgba(245,158,11,0.5)]'
+                              : 'text-gray-300 dark:text-gray-600'
+                          }`}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                    {ratingValue === 1 ? 'Poor' : ratingValue === 2 ? 'Fair' : ratingValue === 3 ? 'Good' : ratingValue === 4 ? 'Very Good' : ratingValue === 5 ? 'Excellent' : 'Select a rating'}
+                  </p>
+                </div>
+
+                {/* Feedback Text */}
+                <textarea
+                  value={feedbackText}
+                  onChange={(e) => setFeedbackText(e.target.value)}
+                  rows={3}
+                  placeholder="Share your experience (optional)..."
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-amber-500 text-sm resize-none outline-none transition-all"
+                />
+
+                {ratingError && (
+                  <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 p-2 rounded-lg">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    {ratingError}
+                  </div>
+                )}
+              </div>
+              <div className="flex gap-3 p-5 border-t dark:border-slate-800 font-bold">
+                <button
+                  onClick={() => setShowRatingModal(null)}
+                  className="flex-1 px-4 py-2.5 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-slate-800 rounded-xl hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors"
+                >
+                  Skip
+                </button>
+                <button
+                  onClick={handleSubmitRating}
+                  disabled={!ratingValue || ratingLoading}
+                  className="flex-1 px-4 py-2.5 text-white bg-amber-600 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 hover:bg-amber-700 transition-colors disabled:opacity-50"
+                >
+                  {ratingLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Star className="w-4 h-4" />
+                      Submit Rating
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </>
   );
 };

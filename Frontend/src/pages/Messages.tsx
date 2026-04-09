@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { messagesApi, sessionsAPI, paymentAPI, getMediaUrl, type Conversation, type Message, type LearningSession } from "@/services";
 import { useAuth } from "@/components/Context/AuthContext";
-import { Send, Search, Phone, X, Mic, MicOff, Video as VideoIcon, VideoOff, MoreVertical, Reply, Smile, Trash2, Image as ImageIcon, ShieldCheck, CheckCircle2, Monitor } from "lucide-react";
+import { Send, Search, Phone, X, Mic, MicOff, Video as VideoIcon, VideoOff, MoreVertical, Reply, Smile, Trash2, Image as ImageIcon, ShieldCheck, CheckCircle2, Monitor, Star, AlertCircle, Loader2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
@@ -94,6 +94,16 @@ export const Messages: React.FC = () => {
   const [confirmingEnd, setConfirmingEnd] = useState(false);
   const [confirmCountdown, setConfirmCountdown] = useState(5);
   const confirmTimerRef = useRef<any>(null);
+
+  // Rating modal state
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [ratingSessionId, setRatingSessionId] = useState<number | null>(null);
+  const [ratingValue, setRatingValue] = useState(0);
+  const [ratingHover, setRatingHover] = useState(0);
+  const [feedbackText, setFeedbackText] = useState("");
+  const [ratingLoading, setRatingLoading] = useState(false);
+  const [ratingError, setRatingError] = useState<string | null>(null);
+  const [ratingRole, setRatingRole] = useState<'student' | 'teacher'>('student');
 
   const socketRef = useRef<WebSocket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -256,14 +266,20 @@ export const Messages: React.FC = () => {
     if (!isAuto && !window.confirm("Are you sure you want to end the session early?")) return;
     
     try {
-        await sessionsAPI.endSession(activeSession.id);
+        const endedSessionId = activeSession.id;
+        const isTeacher = Number(activeSession.teacher) === Number(user?.id);
+        await sessionsAPI.endSession(endedSessionId);
         setActiveSession(null);
         setTimeLeft(null);
-        if (isAuto) {
-            alert("Time's up! Session completed.");
-        } else {
-            alert("Session ended early.");
-        }
+
+        // Show rating modal
+        setRatingSessionId(endedSessionId);
+        setRatingRole(isTeacher ? 'teacher' : 'student');
+        setRatingValue(0);
+        setRatingHover(0);
+        setFeedbackText("");
+        setRatingError(null);
+        setShowRatingModal(true);
     } catch (err) {
         console.error("Failed to end session:", err);
     }
@@ -481,6 +497,21 @@ export const Messages: React.FC = () => {
               setMessages(prev => prev.map(m => 
                   m.id === data.message_id ? { ...m, callDuration: data.call_duration, text: data.status_text } : m
               ));
+          }
+
+          // Session Ended Update (via WebSocket nudge)
+          else if (data.type === 'session_ended') {
+              if (Number(data.sender_id) !== Number(user?.id)) {
+                  setShowRatingModal(true);
+                  setRatingSessionId(data.data.session_id);
+                  setRatingRole('student'); // The recipient of the nudge is always the student
+                  setRatingValue(0);
+                  setRatingHover(0);
+                  setFeedbackText("");
+                  setRatingError(null);
+                  setActiveSession(null);
+                  setTimeLeft(null);
+              }
           }
     };
 
@@ -1658,6 +1689,108 @@ const stopScreenShare = () => {
         </DialogContent>
       </Dialog>
     </div>
+
+    {/* Session Rating Modal */}
+    {showRatingModal && ratingSessionId && (
+      <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" style={{ animation: 'fadeIn 0.2s ease-out' }}>
+        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-slate-800 w-full max-w-md" style={{ animation: 'scaleIn 0.2s ease-out' }}>
+          <div className="flex items-center justify-between p-5 border-b border-gray-200 dark:border-slate-800">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                <Star className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Session Complete!</h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400">How was your experience?</p>
+              </div>
+            </div>
+            <button
+              onClick={() => { setShowRatingModal(false); setRatingError(null); }}
+              className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg"
+            >
+              <X className="w-5 h-5 text-gray-500" />
+            </button>
+          </div>
+          <div className="p-5 space-y-5">
+            {/* Star Selector */}
+            <div className="flex flex-col items-center gap-2">
+              <div className="flex gap-1">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    onClick={() => setRatingValue(star)}
+                    onMouseEnter={() => setRatingHover(star)}
+                    onMouseLeave={() => setRatingHover(0)}
+                    className="p-1 transition-transform hover:scale-110"
+                  >
+                    <Star
+                      className={`w-8 h-8 transition-colors ${
+                        star <= (ratingHover || ratingValue)
+                          ? 'text-amber-500 fill-amber-500 drop-shadow-[0_0_6px_rgba(245,158,11,0.5)]'
+                          : 'text-gray-300 dark:text-gray-600'
+                      }`}
+                    />
+                  </button>
+                ))}
+              </div>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                {ratingValue === 1 ? 'Poor' : ratingValue === 2 ? 'Fair' : ratingValue === 3 ? 'Good' : ratingValue === 4 ? 'Very Good' : ratingValue === 5 ? 'Excellent' : 'Select a rating'}
+              </p>
+            </div>
+
+            {/* Feedback Text */}
+            <textarea
+              value={feedbackText}
+              onChange={(e) => setFeedbackText(e.target.value)}
+              rows={3}
+              placeholder="Share your experience (optional)..."
+              className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-amber-500 text-sm resize-none outline-none transition-all"
+            />
+
+            {ratingError && (
+              <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 p-2 rounded-lg">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                {ratingError}
+              </div>
+            )}
+          </div>
+          <div className="flex gap-3 p-5 border-t dark:border-slate-800 font-bold">
+            <button
+              onClick={() => setShowRatingModal(false)}
+              className="flex-1 px-4 py-2.5 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-slate-800 rounded-xl hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors"
+            >
+              Skip
+            </button>
+            <button
+              onClick={async () => {
+                if (!ratingValue || !ratingSessionId) return;
+                try {
+                  setRatingLoading(true);
+                  setRatingError(null);
+                  await sessionsAPI.submitFeedback(ratingSessionId, ratingValue, feedbackText.trim(), ratingRole);
+                  setShowRatingModal(false);
+                } catch (e: any) {
+                  setRatingError(e?.response?.data?.error || 'Failed to submit rating.');
+                } finally {
+                  setRatingLoading(false);
+                }
+              }}
+              disabled={!ratingValue || ratingLoading}
+              className="flex-1 px-4 py-2.5 text-white bg-amber-600 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 hover:bg-amber-700 transition-colors disabled:opacity-50"
+            >
+              {ratingLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <>
+                  <Star className="w-4 h-4" />
+                  Submit Rating
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     </>
   );
 };
