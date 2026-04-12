@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { sessionsAPI, requestsAPI } from "@/services";
+import { sessionsAPI, requestsAPI, paymentAPI, type LearningSession } from "@/services";
 import { useAuth } from "@/components/Context/AuthContext";
 import {
   Calendar,
@@ -57,6 +57,7 @@ interface DisplayBooking {
   // Pricing
   price?: number | string;
   isFree?: boolean;
+  isPaid?: boolean;
 }
 
 export const Bookings: React.FC = () => {
@@ -109,6 +110,10 @@ export const Bookings: React.FC = () => {
   const [ratingError, setRatingError] = useState<string | null>(null);
   const [ratedSessions, setRatedSessions] = useState<Set<number>>(new Set());
 
+  // Payment state
+  const [showPaymentModal, setShowPaymentModal] = useState<number | null>(null);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -147,6 +152,7 @@ export const Bookings: React.FC = () => {
           requesterUsername: req.requester_details?.username || "",
           proposedTime: req.proposed_time,
           partnerId: partner?.id,
+          location: partner?.location || "Online",
           price: 0,
           isFree: true,
         });
@@ -171,7 +177,8 @@ export const Bookings: React.FC = () => {
             minute: "2-digit",
           }),
           duration: sess.duration,
-          location: sess.meeting_link || "Online",
+          meetingLink: sess.meeting_link,
+          location: sess.meeting_link || partner?.location || "Online",
           type: isTeacher ? "teaching" : "learning",
           status: sess.status === "SCHEDULED" ? "ACCEPTED" : sess.status,
           requesterUsername: sess.student_username || "",
@@ -189,6 +196,7 @@ export const Bookings: React.FC = () => {
           partnerId: isTeacher ? sess.student : sess.teacher,
           price: sess.total_price,
           isFree: sess.is_free,
+          isPaid: sess.is_paid,
         });
       });
 
@@ -356,6 +364,23 @@ export const Bookings: React.FC = () => {
       fetchData();
     } catch (e) {
       console.error("Failed to end session", e);
+    }
+  };
+
+  const handleInitiatePayment = async (sessionId: number, method: string) => {
+    setIsProcessingPayment(true);
+    try {
+      const response = await paymentAPI.initiatePayment(sessionId, 1000, method);
+      if (response.data && response.data.payment_url) {
+        window.location.href = response.data.payment_url;
+      } else {
+        alert("Failed to initiate payment. Please try again.");
+        setIsProcessingPayment(false);
+      }
+    } catch (err) {
+      console.error("Payment initiation error:", err);
+      alert("An error occurred while initiating payment.");
+      setIsProcessingPayment(false);
     }
   };
 
@@ -705,35 +730,50 @@ export const Bookings: React.FC = () => {
                               )}
 
                             {item.status === "ACCEPTED" && !item.isRequest && (
-                              <div className="flex items-center gap-2 mt-1">
-                                {!isIRequestedReschedule && (
-                                  <button
-                                    onClick={() => {
-                                      setShowRescheduleModal(item.id);
-                                      setRescheduleError(null);
-                                      setRescheduleReason("");
-                                      setRescheduleDate("");
-                                      setRescheduleTime("");
-                                    }}
-                                    disabled={hasRescheduleProposal}
-                                    className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors flex items-center gap-1.5 border ${hasRescheduleProposal ? "opacity-50 cursor-not-allowed bg-gray-100 text-gray-500" : "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 border-blue-200 dark:border-blue-800"}`}
-                                  >
-                                    <CalendarClock className="w-3.5 h-3.5" />
-                                    Reschedule
-                                  </button>
-                                )}
-                                <button
-                                  onClick={() => {
-                                    setShowCancelModal(item.id);
-                                    setCancelError(null);
-                                    setCancelReason("");
-                                  }}
-                                  className="px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors flex items-center gap-1.5 border border-red-200 dark:border-red-800"
-                                >
-                                  <Ban className="w-3.5 h-3.5" />
-                                  Cancel
-                                </button>
-                              </div>
+                               <div className="flex items-center gap-2 mt-1">
+                                 {item.type === "learning" && !item.isPaid && !item.isFree && (
+                                    <button
+                                      onClick={() => setShowPaymentModal(item.id)}
+                                      className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition-all shadow-lg shadow-blue-500/20 flex items-center gap-2"
+                                    >
+                                      <Wallet className="w-4 h-4" />
+                                      Pay Rs. {item.price}
+                                    </button>
+                                 )}
+                                 {item.type === "learning" && item.isPaid && !item.isFree && (
+                                    <div className="px-3 py-1.5 bg-green-100 text-green-700 text-xs font-bold rounded-lg border border-green-200 flex items-center gap-2">
+                                        <CheckCircle className="w-3.5 h-3.5" />
+                                        Paid
+                                    </div>
+                                 )}
+                                 {!isIRequestedReschedule && (
+                                   <button
+                                     onClick={() => {
+                                       setShowRescheduleModal(item.id);
+                                       setRescheduleError(null);
+                                       setRescheduleReason("");
+                                       setRescheduleDate("");
+                                       setRescheduleTime("");
+                                     }}
+                                     disabled={hasRescheduleProposal}
+                                     className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors flex items-center gap-1.5 border ${hasRescheduleProposal ? "opacity-50 cursor-not-allowed bg-gray-100 text-gray-500" : "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 border-blue-200 dark:border-blue-800"}`}
+                                   >
+                                     <CalendarClock className="w-3.5 h-3.5" />
+                                     Reschedule
+                                   </button>
+                                 )}
+                                 <button
+                                   onClick={() => {
+                                     setShowCancelModal(item.id);
+                                     setCancelError(null);
+                                     setCancelReason("");
+                                   }}
+                                   className="px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors flex items-center gap-1.5 border border-red-200 dark:border-red-800"
+                                 >
+                                   <Ban className="w-3.5 h-3.5" />
+                                   Cancel
+                                 </button>
+                               </div>
                             )}
 
                             {/* Rate Session button for COMPLETED sessions */}
@@ -1173,6 +1213,72 @@ export const Bookings: React.FC = () => {
           </div>
         );
       })()}
+
+      {/* Payment Modal */}
+      {showPaymentModal !== null && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-slate-800 w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-300">
+            <div className="p-6 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center bg-gray-50 dark:bg-slate-800/50">
+              <div>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white">Secure Payment</h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Choose your payment method</p>
+              </div>
+              <button 
+                onClick={() => setShowPaymentModal(null)} 
+                className="p-2 hover:bg-gray-200 dark:hover:bg-slate-700 rounded-full transition-colors"
+                aria-label="Close"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              {isProcessingPayment ? (
+                <div className="flex flex-col items-center justify-center py-8 space-y-4">
+                  <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Redirecting to payment gateway...</p>
+                </div>
+              ) : (
+                <>
+                  <button
+                    onClick={() => handleInitiatePayment(showPaymentModal, 'KHALTI')}
+                    className="w-full flex items-center justify-between p-4 rounded-xl border-2 border-purple-100 dark:border-purple-900/20 hover:border-purple-500 dark:hover:border-purple-500 bg-purple-50/50 dark:bg-purple-900/10 transition-all group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-purple-600 rounded-lg flex items-center justify-center shadow-lg shadow-purple-600/20 group-hover:scale-110 transition-transform">
+                        <span className="text-white font-bold text-xs font-sans">K</span>
+                      </div>
+                      <div className="text-left">
+                        <p className="font-bold text-gray-900 dark:text-white">Khalti</p>
+                        <p className="text-[10px] text-gray-500">Pay via Khalti Wallet / SDK</p>
+                      </div>
+                    </div>
+                    <ExternalLink className="w-4 h-4 text-purple-400 group-hover:translate-x-1 transition-transform" />
+                  </button>
+
+                  <button
+                    onClick={() => handleInitiatePayment(showPaymentModal, 'STRIPE')}
+                    className="w-full flex items-center justify-between p-4 rounded-xl border-2 border-blue-100 dark:border-blue-900/20 hover:border-blue-500 dark:hover:border-blue-500 bg-blue-50/50 dark:bg-blue-900/10 transition-all group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-black rounded-lg flex items-center justify-center shadow-lg shadow-black/20 group-hover:scale-110 transition-transform">
+                        <span className="text-white font-bold text-xs font-sans">S</span>
+                      </div>
+                      <div className="text-left">
+                        <p className="font-bold text-gray-900 dark:text-white">Stripe / Card</p>
+                        <p className="text-[10px] text-gray-500">Global Credit/Debit Cards</p>
+                      </div>
+                    </div>
+                    <ExternalLink className="w-4 h-4 text-blue-400 group-hover:translate-x-1 transition-transform" />
+                  </button>
+                </>
+              )}
+            </div>
+            <div className="p-4 bg-gray-50 dark:bg-slate-800/50 text-center">
+              <p className="text-[10px] text-gray-400 font-medium">Your payment is secured and encrypted</p>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

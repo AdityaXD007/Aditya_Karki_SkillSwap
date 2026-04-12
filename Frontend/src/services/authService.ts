@@ -21,7 +21,7 @@ export const authAPI = {
         apiClient.patch<UserProfile>('/profiles/me/', data),
 
     // Onboarding specific endpoints
-    onboardingUpdate: (data: { full_name?: string, bio?: string }) =>
+    onboardingUpdate: (data: { full_name?: string, bio?: string, location?: string }) =>
         apiClient.patch<UserProfile>('/profiles/update/', data),
 
     onboardingSkills: (data: { 

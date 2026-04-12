@@ -49,6 +49,7 @@ export const Profile: React.FC = () => {
   const [formData, setFormData] = useState({
     name: "",
     bio: "",
+    location: "",
     hourlyRate: 0,
   });
 
@@ -85,6 +86,7 @@ export const Profile: React.FC = () => {
               icon_class: s.skill_details?.icon_class || "",
               color_class: s.skill_details?.color_class || "",
             })) : [],
+            experienceTitle: profileData.experience_title || "Newcomer",
             sessionsTaughtCount: profileData.sessions_taught_count || 0,
             sessionsLearnedCount: profileData.sessions_learned_count || 0,
             canCharge: profileData.can_charge || false,
@@ -95,6 +97,7 @@ export const Profile: React.FC = () => {
         setFormData({
             name: normalized.name,
             bio: normalized.bio || "",
+            location: normalized.location || "",
             hourlyRate: normalized.hourlyRate,
         });
         setError(null);
@@ -206,17 +209,20 @@ export const Profile: React.FC = () => {
       await authAPI.updateProfile({
         full_name: formData.name,
         bio: formData.bio,
+        location: formData.location,
         hourly_rate: formData.hourlyRate,
       });
       updateUser({
         name: formData.name,
         bio: formData.bio,
+        location: formData.location,
         hourlyRate: formData.hourlyRate,
       });
       setProfileUser((prev: any) => ({ 
         ...prev, 
         name: formData.name, 
         bio: formData.bio,
+        location: formData.location,
         hourlyRate: formData.hourlyRate
       }));
       toast.success("Profile updated successfully");
@@ -443,9 +449,17 @@ export const Profile: React.FC = () => {
                       </h1>
                     )}
                     {!isEditing && (
-                      <Badge variant="outline" className="text-[10px] bg-blue-50/50 text-blue-600 border-blue-200 uppercase tracking-widest px-2 py-0">
-                        Me
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-[10px] bg-blue-50/50 text-blue-600 border-blue-200 uppercase tracking-widest px-2 py-0">
+                          Me
+                        </Badge>
+                        {profileUser?.experienceTitle && (
+                          <Badge className="text-[10px] bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800 uppercase tracking-tighter px-2 py-0 flex items-center gap-1">
+                            <Award className="w-2.5 h-2.5" />
+                            {profileUser.experienceTitle}
+                          </Badge>
+                        )}
+                      </div>
                     )}
                   </div>
                   <p className="text-slate-500 dark:text-slate-400 font-medium mt-1">
@@ -485,11 +499,21 @@ export const Profile: React.FC = () => {
                     {profileUser?.rating?.toFixed(1) || "5.0"}
                   </span>
                 </div>
-                <div className="flex items-center space-x-1.5 text-slate-600 dark:text-slate-400">
-                  <MapPin className="w-4 h-4 text-blue-500" />
-                  <span className="text-sm font-medium">
-                    {profileUser?.location || "Remote"}
-                  </span>
+                <div className={`flex items-center space-x-1.5 transition-all ${isEditing ? 'bg-blue-50 dark:bg-blue-900/20 px-3 py-1 rounded-full border border-blue-400' : 'text-slate-600 dark:text-slate-400'}`}>
+                  <MapPin className={`w-4 h-4 ${isEditing ? 'text-blue-600' : 'text-blue-500'}`} />
+                  {isEditing ? (
+                    <input
+                      type="text"
+                      value={formData.location}
+                      onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                      placeholder="City, Country"
+                      className="bg-transparent border-none focus:ring-0 text-sm font-bold text-blue-800 dark:text-blue-300 p-0 placeholder:text-blue-300"
+                    />
+                  ) : (
+                    <span className="text-sm font-medium">
+                      {profileUser?.location || "Remote"}
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center space-x-1.5 text-slate-600 dark:text-slate-400">
                   <Clock className="w-4 h-4 text-purple-500" />
@@ -976,7 +1000,7 @@ export const Profile: React.FC = () => {
                       </div>
                       <div>
                          <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Location</p>
-                         <p className="font-bold text-slate-900 dark:text-white">{profileUser?.location || "Remote / Earth"}</p>
+                         <p className="font-bold text-slate-900 dark:text-white">{profileUser?.location || "Remote"}</p>
                       </div>
                    </div>
                    <div className="flex items-center gap-4 p-4 rounded-2xl bg-purple-50/50 dark:bg-purple-900/10 border border-purple-100/50 dark:border-purple-800/30">
@@ -985,7 +1009,7 @@ export const Profile: React.FC = () => {
                       </div>
                       <div>
                          <p className="text-[10px] font-black text-purple-400 uppercase tracking-widest">Experience</p>
-                         <p className="font-bold text-slate-900 dark:text-white">Expert Level</p>
+                         <p className="font-bold text-slate-900 dark:text-white">{profileUser?.experienceTitle || "Newcomer"}</p>
                       </div>
                    </div>
                 </div>

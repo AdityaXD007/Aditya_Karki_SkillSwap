@@ -34,6 +34,7 @@ export const OnboardingWizard: React.FC = () => {
     bio: user?.bio || '',
     teaching: [] as { id: number, proficiency_level: string }[],
     learning: [] as { id: number, proficiency_level: string }[],
+    location: user?.location || '',
   });
 
   // Discovery State
@@ -111,7 +112,8 @@ export const OnboardingWizard: React.FC = () => {
       await Promise.all([
         authAPI.onboardingUpdate({
           full_name: formData.full_name,
-          bio: formData.bio
+          bio: formData.bio,
+          location: formData.location
         }),
         authAPI.onboardingSkills({
           teaching: formData.teaching,
@@ -145,6 +147,7 @@ export const OnboardingWizard: React.FC = () => {
     updateUser({
       name: formData.full_name,
       bio: formData.bio,
+      location: formData.location,
       isOnboarded: true
     });
 
@@ -294,6 +297,19 @@ export const OnboardingWizard: React.FC = () => {
                         className="min-h-[150px] resize-none text-base"
                       />
                       <p className="text-xs text-slate-400">Briefly describe your interests and goals.</p>
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                      <label className="text-sm font-medium">Location</label>
+                      <div className="relative">
+                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <Input 
+                          placeholder="City, Country" 
+                          value={formData.location}
+                          onChange={(e) => setFormData({...formData, location: e.target.value})}
+                          className="pl-10 h-12"
+                        />
+                      </div>
                     </div>
                   </div>
                 )}

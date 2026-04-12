@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { Star, Calendar, BookOpen, User, Users } from "lucide-react";
+import { Star, Calendar, BookOpen, User, Users, MapPin, Award } from "lucide-react";
 import type { Match } from "@/services";
 
 interface SkillCardProps {
@@ -37,10 +37,16 @@ export const SkillCard: React.FC<SkillCardProps> = ({
         {/* Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between mb-2">
-            <Link to={`/profile/${teacher.id}`} className="group">
+            <Link to={`/profile/${teacher.id}`} className="group flex items-center gap-2">
               <h3 className="font-semibold text-lg text-gray-900 dark:text-white truncate group-hover:text-blue-600 transition-colors">
                 {teacher.username}
               </h3>
+              {teacher.experience_title && (
+                <span className="flex items-center gap-1 text-[10px] font-bold bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-800 uppercase tracking-tighter">
+                  <Award className="w-2.5 h-2.5" />
+                  {teacher.experience_title}
+                </span>
+              )}
             </Link>
             <div className="flex items-center space-x-1 text-sm bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-1 rounded-full border border-green-100 dark:border-green-800">
               <span className="font-medium text-[10px] uppercase tracking-wider">Active</span>
@@ -60,6 +66,14 @@ export const SkillCard: React.FC<SkillCardProps> = ({
               <span className="text-xs font-bold text-blue-700 dark:text-blue-300">
                 {teacher.sessions_taught_count || 0} Taught
               </span>
+            </div>
+          </div>
+
+          {/* Location */}
+          <div className="flex items-center gap-2 mb-3 text-xs text-gray-500 dark:text-gray-400">
+            <div className="flex items-center gap-1 bg-gray-100 dark:bg-slate-800 px-2 py-1 rounded-md">
+              <MapPin className="w-3 h-3" />
+              {teacher.location || "Remote"}
             </div>
           </div>
 

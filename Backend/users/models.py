@@ -31,6 +31,22 @@ class UserProfile(models.Model):
     def can_charge(self):
         return self.sessions_taught_count >= 5
 
+    @property
+    def experience_title(self):
+        """Analyze user activity and ratings to assign a dynamic title."""
+        taught = self.sessions_taught_count
+        rating = self.rating or 0.0
+
+        if taught == 0:
+            return "Newcomer"
+        if taught < 5:
+            return "Rising Star" if rating >= 4.0 else "Novice Mentor"
+        if taught < 20:
+            return "SkillSwap Veteran" if rating >= 4.5 else "Experienced Tutor"
+        if taught < 50:
+            return "Expert Mentor" if rating >= 4.5 else "Senior Teacher"
+        return "Master Teacher"
+
     def __str__(self):
         return f"{self.user.username}'s Profile"
 
