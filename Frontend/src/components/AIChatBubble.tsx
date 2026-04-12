@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { MessageCircle, X, Send, Bot, User, Loader2, Sparkles } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
+import { useAuth } from '@/components/Context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,7 +11,24 @@ import type { Message } from '@/services/aiService';
 import { cn } from '@/lib/utils';
 
 export const AIChatBubble: React.FC = () => {
+  const { isAuthenticated } = useAuth();
+  const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
+  
+  // Define routes where the AI assistant should NOT appear
+  const hideOnRoutes = [
+    '/landing',
+    '/login',
+    '/signup',
+    '/forgot-password',
+    '/reset-password',
+    '/onboarding',
+    '/messages', // Hidden on messages to prevent interference with chat UI and video calls
+  ];
+
+  // Visibility logic: Must be authenticated and not on a blacklisted route
+  const isVisible = isAuthenticated && !hideOnRoutes.includes(location.pathname);
+
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -49,6 +68,8 @@ export const AIChatBubble: React.FC = () => {
       setIsLoading(false);
     }
   };
+
+  if (!isVisible) return null;
 
   return (
     <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">

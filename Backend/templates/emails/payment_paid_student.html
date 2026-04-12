@@ -1,0 +1,32 @@
+{% extends 'emails/base_email.html' %}
+
+{% block content %}
+<div style="text-align: center;">
+    <h2 style="color: #10b981; margin-bottom: 20px;">Payment Successful!</h2>
+    <p>Hi {{ user.username }},</p>
+    <p>We've successfully received your payment for your upcoming session. Your learning journey is ready to proceed!</p>
+    
+    <div class="details-box">
+        <div class="detail-item">
+            <span class="detail-label">Teacher</span>
+            <span class="detail-value">{{ session.teacher.username }}</span>
+        </div>
+        <div class="detail-item">
+            <span class="detail-label">Skill</span>
+            <span class="detail-value">{{ session.skill.name }}</span>
+        </div>
+        <div class="detail-item">
+            <span class="detail-label">Amount Paid</span>
+            <span class="detail-value">{{ session.total_price }} NPR</span>
+        </div>
+        <div class="detail-item" style="border-bottom: none;">
+            <span class="detail-label">Time</span>
+            <span class="detail-value">{{ session.scheduled_time|date:"DATETIME_FORMAT" }}</span>
+        </div>
+    </div>
+
+    <p>You can now access the chat and preparation materials for this session.</p>
+    
+    <a href="{{ frontend_url }}/messages" class="button">Go to Messages</a>
+</div>
+{% endblock %}

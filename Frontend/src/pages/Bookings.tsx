@@ -370,9 +370,12 @@ export const Bookings: React.FC = () => {
 
     const itemDate = new Date(b.date);
     itemDate.setHours(0, 0, 0, 0);
-    return (
-      itemDate >= today && (b.status === "PENDING" || b.status === "ACCEPTED" || b.status === "ONGOING")
-    );
+    
+    // ACCEPTED and ONGOING are always "Active" sessions, keep them in upcoming regardless of date
+    if (b.status === "ACCEPTED" || b.status === "ONGOING") return true;
+
+    // For PENDING, show only if it's today or in the future
+    return itemDate >= today && b.status === "PENDING";
   });
 
   const pastItems = items.filter((b) => {
@@ -381,14 +384,14 @@ export const Bookings: React.FC = () => {
     // Hide completed requests to avoid duplicates with actual session cards
     if (b.isRequest && b.status === "COMPLETED") return false;
 
-    // Always show COMPLETED, CANCELLED, REJECTED sessions in Past tab
+    // Always show terminal states in Past tab
     if (b.status === "COMPLETED" || b.status === "CANCELLED" || b.status === "REJECTED") return true;
     
     const itemDate = new Date(b.date);
     itemDate.setHours(0, 0, 0, 0);
-    return (
-      itemDate < today && b.status === "ACCEPTED"
-    );
+
+    // PENDING requests that are old go to past
+    return itemDate < today && b.status === "PENDING";
   });
 
   const displayedItems = activeTab === "upcoming" ? upcomingItems : pastItems;

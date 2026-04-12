@@ -1,0 +1,33 @@
+{% extends 'emails/base_email.html' %}
+
+{% block content %}
+<div style="text-align: center;">
+    <div style="font-size: 48px; margin-bottom: 10px;">💰</div>
+    <h2 style="color: #10b981; margin-bottom: 20px;">Funds Released!</h2>
+    <p>Hi {{ user.username }},</p>
+    <p>Great job! The payment for your session has been confirmed and released to you by our administrator.</p>
+    
+    <div class="details-box">
+        <div class="detail-item">
+            <span class="detail-label">Session ID</span>
+            <span class="detail-value">#{{ session.id }}</span>
+        </div>
+        <div class="detail-item">
+            <span class="detail-label">Skill Taught</span>
+            <span class="detail-value">{{ session.skill.name }}</span>
+        </div>
+        <div class="detail-item">
+            <span class="detail-label">Amount Released</span>
+            <span class="detail-value" style="color: #10b981; font-weight: 800;">{{ session.total_price }} NPR</span>
+        </div>
+        <div class="detail-item" style="border-bottom: none;">
+            <span class="detail-label">Confirmed At</span>
+            <span class="detail-value">{{ now|date:"DATETIME_FORMAT" }}</span>
+        </div>
+    </div>
+
+    <p>Thank you for contributing to the SkillSwap community. Hope to see you in more sessions!</p>
+    
+    <a href="{{ frontend_url }}/profile" class="button">View My Profile</a>
+</div>
+{% endblock %}

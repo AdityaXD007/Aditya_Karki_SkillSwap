@@ -1,0 +1,35 @@
+{% extends 'emails/base_email.html' %}
+
+{% block content %}
+<div style="text-align: center;">
+    <h2 style="color: #3b82f6; margin-bottom: 20px;">Payment Received!</h2>
+    <p>Hi {{ user.username }},</p>
+    <p>Good news! Your student, <strong>{{ session.student.username }}</strong>, has completed the payment for your upcoming session.</p>
+    
+    <div class="details-box">
+        <p style="font-size: 14px; color: #64748b; margin-bottom: 15px; text-align: left;">
+            <i style="color: #f59e0b;">Status: Waiting for Admin Approval after session completion.</i>
+        </p>
+        <div class="detail-item">
+            <span class="detail-label">Student</span>
+            <span class="detail-value">{{ session.student.username }}</span>
+        </div>
+        <div class="detail-item">
+            <span class="detail-label">Skill</span>
+            <span class="detail-value">{{ session.skill.name }}</span>
+        </div>
+        <div class="detail-item">
+            <span class="detail-label">Your Earnings</span>
+            <span class="detail-value">{{ session.total_price }} NPR</span>
+        </div>
+        <div class="detail-item" style="border-bottom: none;">
+            <span class="detail-label">Scheduled For</span>
+            <span class="detail-value">{{ session.scheduled_time|date:"DATETIME_FORMAT" }}</span>
+        </div>
+    </div>
+
+    <p>The funds are securely held by SkillSwap. Once you complete the session and our admin confirms it, the money will be released to you.</p>
+    
+    <a href="{{ frontend_url }}/messages" class="button">Message your Student</a>
+</div>
+{% endblock %}

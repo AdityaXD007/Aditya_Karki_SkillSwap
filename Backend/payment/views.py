@@ -7,6 +7,7 @@ from rest_framework.permissions import IsAuthenticated
 from .models import Transaction
 from learning.models import LearningSession
 from .serializers import TransactionSerializer
+from utils.email_sender import send_skillswap_email
 
 import stripe
 from django.conf import settings
@@ -186,6 +187,24 @@ class VerifyPaymentView(views.APIView):
                         session.is_paid = True
                         session.save()
 
+                        # --- Notifications ---
+                        # 1. To Student (Confirmation)
+                        send_skillswap_email(
+                            user=request.user,
+                            subject="Payment Successful - SkillSwap",
+                            template_name="payment_paid_student.html",
+                            context={'session': session},
+                            force=True
+                        )
+                        # 2. To Teacher (Notification)
+                        send_skillswap_email(
+                            user=session.teacher,
+                            subject="Payment Received - SkillSwap",
+                            template_name="payment_received_teacher.html",
+                            context={'session': session},
+                            force=True
+                        )
+
                         return Response({'status': 'Payment verified and session unlocked', 'method': 'KHALTI'})
                     except Transaction.DoesNotExist:
                         return Response({'error': 'Transaction not found'}, status=status.HTTP_404_NOT_FOUND)
@@ -211,6 +230,24 @@ class VerifyPaymentView(views.APIView):
                         session = transaction.session
                         session.is_paid = True
                         session.save()
+
+                        # --- Notifications ---
+                        # 1. To Student
+                        send_skillswap_email(
+                            user=request.user,
+                            subject="Payment Successful - SkillSwap",
+                            template_name="payment_paid_student.html",
+                            context={'session': session},
+                            force=True
+                        )
+                        # 2. To Teacher
+                        send_skillswap_email(
+                            user=session.teacher,
+                            subject="Payment Received - SkillSwap",
+                            template_name="payment_received_teacher.html",
+                            context={'session': session},
+                            force=True
+                        )
 
                         return Response({'status': 'Payment verified and session unlocked', 'method': 'STRIPE'})
                     except Transaction.DoesNotExist:
