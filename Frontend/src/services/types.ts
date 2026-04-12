@@ -54,6 +54,7 @@ export interface Conversation {
     userAvatar: string;
     lastMessage: string;
     lastMessageTime: string;
+    lastMessageAt?: string; // Track for sorting
     unreadCount: number;
 }
 

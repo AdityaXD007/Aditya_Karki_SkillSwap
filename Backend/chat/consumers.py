@@ -88,7 +88,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                             'audio': saved_message.audio.url if saved_message.audio else None,
                             'sender': user.username,
                             'sender_id': user.id,
-                            'timestamp': str(saved_message.timestamp),
+                            'timestamp': saved_message.timestamp.isoformat(),
                             'reply_to_data': reply_to_data
                         }
                     )
@@ -207,7 +207,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                             'message_type': 'video_call',
                             'sender': user.username,
                             'sender_id': user.id,
-                            'timestamp': str(saved_message.timestamp)
+                            'timestamp': saved_message.timestamp.isoformat()
                         }
                     )
 

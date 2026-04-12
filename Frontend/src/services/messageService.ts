@@ -11,6 +11,7 @@ export const messagesApi = {
             userAvatar: c.partner_avatar || `https://ui-avatars.com/api/?name=${c.partner_name}&background=random`,
             lastMessage: c.last_message || 'Start a conversation',
             lastMessageTime: c.updated_at,
+            lastMessageAt: c.updated_at,
             unreadCount: c.unread_count || 0,
         }));
     },

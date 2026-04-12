@@ -48,6 +48,7 @@ const ICE_SERVERS = {
 export const Messages: React.FC = () => {
   const { user } = useAuth();
   const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [allSessions, setAllSessions] = useState<LearningSession[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<number | null>(() => {
     const saved = localStorage.getItem("selected_conversation_id");
     return saved ? Number(saved) : null;
@@ -126,31 +127,43 @@ export const Messages: React.FC = () => {
     if (user?.id) {
         console.log("👤 My User ID is:", user.id, "(Type:", typeof user.id, ")");
     }
-    const fetchConversations = async () => {
+    const fetchData = async () => {
       try {
-        const data = await messagesApi.getConversations();
-        setConversations(data);
+        const [convData, sessionsResponse] = await Promise.all([
+            messagesApi.getConversations(),
+            sessionsAPI.getSessions()
+        ]);
         
-        if (data.length > 0) {
-            // Priority: 1. Locally saved ID (if it exists in data) 2. First conversation in list
+        setAllSessions(sessionsResponse.data);
+        
+        // Sort conversations by lastMessageAt (descending)
+        const sortedData = [...convData].sort((a, b) => {
+            const timeA = new Date(a.lastMessageAt || a.lastMessageTime).getTime();
+            const timeB = new Date(b.lastMessageAt || b.lastMessageTime).getTime();
+            return timeB !== timeA ? timeB - timeA : a.id - b.id;
+        });
+
+        setConversations(sortedData);
+        
+        if (sortedData.length > 0) {
             const savedId = localStorage.getItem("selected_conversation_id");
-            if (savedId && data.some(c => c.id === Number(savedId))) {
+            if (savedId && sortedData.some(c => c.id === Number(savedId))) {
                if (selectedConversation !== Number(savedId)) {
                    setSelectedConversation(Number(savedId));
                }
             } else if (!selectedConversation) {
-                setSelectedConversation(data[0].id);
+                setSelectedConversation(sortedData[0].id);
             }
         }
       } catch (error) {
-        console.error("Error fetching conversations:", error);
+        console.error("Error fetching initial data:", error);
       } finally {
         setLoading(false);
       }
     };
 
     if (user) {
-        fetchConversations();
+        fetchData();
     }
   }, [user]);
 
@@ -374,22 +387,35 @@ export const Messages: React.FC = () => {
              // Update conversation list for ALL rooms (sidebar sync)
              setConversations(prev => {
                  const convIndex = prev.findIndex(c => Number(c.id) === Number(roomId));
-                 if (convIndex === -1) return prev;
-                 
-                 const targetConv = prev[convIndex];
-                 const isSelected = Number(roomId) === Number(selectedConversation);
-                 const isFromMe = Number(data.sender_id) === Number(user?.id);
+                 let updatedList = [...prev];
+                 let targetConv;
 
-                 const updatedConv = {
-                     ...targetConv,
-                     lastMessage: data.message,
-                     lastMessageTime: data.timestamp || new Date().toISOString(),
-                     // Increment unread count ONLY if it's not the active chat AND not from me
-                     unreadCount: isSelected ? 0 : (isFromMe ? targetConv.unreadCount : targetConv.unreadCount + 1)
-                 };
+                 if (convIndex === -1) {
+                     // If conversation doesn't exist, we might need to fetch it or just ignore for now
+                     // But usually it should exist if we are in chat.
+                     return prev;
+                 } else {
+                     targetConv = prev[convIndex];
+                     const isSelected = Number(roomId) === Number(selectedConversation);
+                     const isFromMe = Number(data.sender_id) === Number(user?.id);
+
+                     const updatedConv = {
+                         ...targetConv,
+                         lastMessage: data.message,
+                         lastMessageTime: data.timestamp || new Date().toISOString(),
+                         lastMessageAt: data.timestamp || new Date().toISOString(),
+                         unreadCount: isSelected ? 0 : (isFromMe ? targetConv.unreadCount : targetConv.unreadCount + 1)
+                     };
+                     
+                     updatedList[convIndex] = updatedConv;
+                 }
                  
-                 const filtered = prev.filter(c => Number(c.id) !== Number(roomId));
-                 return [updatedConv, ...filtered];
+                 // Sort strictly by lastMessageAt (descending)
+                 return updatedList.sort((a, b) => {
+                     const timeA = new Date(a.lastMessageAt || a.lastMessageTime).getTime();
+                     const timeB = new Date(b.lastMessageAt || b.lastMessageTime).getTime();
+                     return timeB !== timeA ? timeB - timeA : a.id - b.id;
+                 });
              });
          }
          
@@ -995,8 +1021,18 @@ const stopScreenShare = () => {
                             alt={conv.userName}
                             className="w-12 h-12 rounded-full"
                           />
+                          {/* Active Session / Online Status Indicator */}
+                          {allSessions.some(s => 
+                            (Number(s.teacher) === Number(user?.id) && Number(s.student) === Number(conv.partnerId) ||
+                             Number(s.student) === Number(user?.id) && Number(s.teacher) === Number(conv.partnerId)) &&
+                            (s.status === 'ONGOING' || s.status === 'SCHEDULED')
+                          ) && (
+                            <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-white dark:border-slate-900 rounded-full shadow-sm z-10">
+                              <div className="absolute inset-0 bg-green-500 rounded-full animate-ping opacity-75" />
+                            </div>
+                          )}
                           {conv.unreadCount > 0 && (
-                            <span className="absolute -top-1 -right-1 bg-blue-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                            <span className="absolute -top-1 -right-1 bg-blue-600 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center border-2 border-white dark:border-slate-900 shadow-sm z-10 transition-transform scale-110">
                               {conv.unreadCount}
                             </span>
                           )}

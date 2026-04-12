@@ -39,3 +39,13 @@ class Message(models.Model):
 
     def __str__(self):
         return f"Message from {self.sender} at {self.timestamp}"
+
+# Signals to update conversation timestamp
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+
+@receiver(post_save, sender=Message)
+def update_conversation_timestamp(sender, instance, **kwargs):
+    # Use update_fields to only update updated_at and avoid triggering other signals if any
+    # This also helps efficiency. Conversation auto_now updated_at will handle the rest.
+    instance.conversation.save(update_fields=['updated_at'])
