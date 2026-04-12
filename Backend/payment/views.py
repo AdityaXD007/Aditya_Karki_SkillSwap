@@ -39,6 +39,14 @@ class InitiatePaymentView(views.APIView):
         purchase_order_id = str(uuid.uuid4())
         amount_npr = float(session.total_price)
 
+        # Dynamic frontend URL for payment callbacks
+        host = request.get_host()
+        frontend_url = settings.FRONTEND_URL
+        if 'devtunnels.ms' in host:
+            frontend_url = 'https://' + host.replace('-8000', '-5173').replace(':8000', '')
+        elif 'localhost' in host:
+            frontend_url = 'http://localhost:5173'
+
         if payment_method == 'KHALTI':
             # Khalti Logic
             paisa_amount = int(amount_npr * 100)
@@ -52,13 +60,6 @@ class InitiatePaymentView(views.APIView):
                 status='INITIATED'
             )
 
-            # Dynamic frontend URL for payment callbacks
-            host = request.get_host()
-            frontend_url = settings.FRONTEND_URL
-            if 'devtunnels.ms' in host:
-                frontend_url = 'https://' + host.replace('-8000', '-5173').replace(':8000', '')
-            elif 'localhost' in host:
-                frontend_url = 'http://localhost:5173'
 
             payload = {
                 "return_url": request.data.get('return_url', f"{frontend_url}/payment-callback"),
