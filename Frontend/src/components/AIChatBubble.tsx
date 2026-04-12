@@ -15,19 +15,19 @@ export const AIChatBubble: React.FC = () => {
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   
-  // Define routes where the AI assistant should NOT appear
-  const hideOnRoutes = [
-    '/landing',
-    '/login',
-    '/signup',
-    '/forgot-password',
-    '/reset-password',
-    '/onboarding',
-    '/messages', // Hidden on messages to prevent interference with chat UI and video calls
+  // Define routes where the AI assistant IS allowed to appear
+  const allowedRoutes = [
+    '/dashboard',
+    '/matches',
+    '/bookings',
+    '/settings',
+    '/feedback',
+    '/profile',
   ];
 
-  // Visibility logic: Must be authenticated and not on a blacklisted route
-  const isVisible = isAuthenticated && !hideOnRoutes.includes(location.pathname);
+  // Visibility logic: Must be authenticated and on an allowed route
+  // We check if the current pathname starts with any of the allowed routes (to handle sub-routes like /profile/1)
+  const isVisible = isAuthenticated && allowedRoutes.some(path => location.pathname.startsWith(path));
 
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState<Message[]>([

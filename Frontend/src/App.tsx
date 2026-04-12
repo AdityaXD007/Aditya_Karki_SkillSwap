@@ -19,6 +19,7 @@ import { Feedback } from '@/pages/Feedback';
 import { PaymentCallback } from '@/pages/PaymentCallback';
 import { ResetPassword } from '@/pages/ResetPassword';
 import { OnboardingWizard } from '@/pages/OnboardingWizard';
+import { ErrorPage } from '@/pages/ErrorPage';
 
 // Home redirect component
 const HomeRedirect = () => {
@@ -126,9 +127,11 @@ export default function App() {
               }
             />
 
-            {/* Root and 404 Routes */}
+            {/* Root and Error Routes */}
+            <Route path="/500" element={<ErrorPage code={500} />} />
+            <Route path="/error" element={<ErrorPage />} />
             <Route path="/" element={<HomeRedirect />} />
-            <Route path="*" element={<HomeRedirect />} />
+            <Route path="*" element={<ErrorPage code={404} />} />
           </Routes>
           <AIChatBubble />
         </div>
