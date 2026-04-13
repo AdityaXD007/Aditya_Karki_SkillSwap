@@ -155,8 +155,8 @@ export const Navbar: React.FC = () => {
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
             <Link to="/" className="flex items-center space-x-2 group shrink-0">
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center transform group-hover:rotate-6 transition-transform">
-                <span className="text-white font-bold text-sm">SS</span>
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center transform group-hover:rotate-6 transition-transform">
+                <img src="/favicon.png" alt="SkillSwap" className="w-full h-full object-cover" />
               </div>
               <span className="font-bold text-xl text-gray-900 dark:text-white">SkillSwap</span>
             </Link>
@@ -193,10 +193,10 @@ export const Navbar: React.FC = () => {
           <div className="flex items-center">
             <Link
               to={isAuthenticated ? "/dashboard" : "/landing"}
-              className="flex items-center space-x-2"
+              className="flex items-center space-x-2 group"
             >
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold">SS</span>
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center transform group-hover:rotate-6 transition-transform">
+                <img src="/favicon.png" alt="SkillSwap" className="w-full h-full object-cover" />
               </div>
               <span className="font-bold text-xl text-gray-900 dark:text-white transition-colors">SkillSwap</span>
             </Link>

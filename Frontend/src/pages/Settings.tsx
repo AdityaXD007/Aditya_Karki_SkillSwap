@@ -11,6 +11,7 @@ import {
   Key,
   AlertCircle,
   CheckCircle2,
+  FileText,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/components/Context/AuthContext";
@@ -185,6 +186,12 @@ export const Settings: React.FC = () => {
           label: "Connected Accounts",
           description: "Google, Github, etc.",
           count: 1,
+        },
+        {
+          icon: FileText,
+          label: "Terms and Conditions",
+          description: "Review your platform agreement",
+          link: "/terms",
         },
       ],
     },

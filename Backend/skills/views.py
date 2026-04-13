@@ -6,6 +6,8 @@ from .models import Skill, UserSkill
 from .serializers import SkillSerializer, UserSkillSerializer, MatchSerializer, AggregatedMatchSerializer
 from django.db import models
 from django.db.models import Avg, Count, Q
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_page
 
 class SkillViewSet(viewsets.ModelViewSet):
     """
@@ -18,6 +20,10 @@ class SkillViewSet(viewsets.ModelViewSet):
         if self.action in ['list', 'retrieve']:
             return [AllowAny()]
         return [IsAuthenticated()]
+
+    @method_decorator(cache_page(60 * 15))  # Cache for 15 minutes
+    def dispatch(self, *args, **kwargs):
+        return super().dispatch(*args, **kwargs)
 
 class UserSkillViewSet(viewsets.ModelViewSet):
     """

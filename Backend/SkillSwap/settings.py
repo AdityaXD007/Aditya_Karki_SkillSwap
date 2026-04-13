@@ -255,4 +255,4 @@ JAZZMIN_SETTINGS = {
     "default_icon_children": "fas fa-circle",
     "custom_css": "admin/css/custom_admin.css",  # ADD THIS LINE
 }
-
+

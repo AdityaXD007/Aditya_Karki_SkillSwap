@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/components/Context/AuthContext';
-import { Mail, User as UserIcon, Lock, AlertCircle, Eye, EyeOff, ArrowRight, Github, CheckCircle2 } from 'lucide-react';
+import { Mail, User as UserIcon, Lock, AlertCircle, Eye, EyeOff, ArrowRight, Github, CheckCircle2, X } from 'lucide-react';
 import { useGoogleLogin } from "@react-oauth/google";
 import { motion, AnimatePresence } from 'framer-motion';
+import { TermsContent } from './Terms';
 
 export const Signup: React.FC = () => {
   const [username, setUsername] = useState('');
@@ -12,11 +13,13 @@ export const Signup: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<{ [key: string]: string }>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
 
   const { signup, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
@@ -83,6 +86,11 @@ export const Signup: React.FC = () => {
 
     if (password !== confirmPassword) {
       errors.confirmPassword = "Passwords do not match";
+      isValid = false;
+    }
+
+    if (!agreedToTerms) {
+      errors.terms = "You must agree to the Terms and Conditions";
       isValid = false;
     }
 
@@ -388,6 +396,25 @@ export const Signup: React.FC = () => {
                 </div>
               </div>
 
+              <div className="flex flex-col space-y-1 mt-3 ml-2">
+                <div className="flex items-start space-x-2">
+                  <input
+                    type="checkbox"
+                    id="terms"
+                    checked={agreedToTerms}
+                    onChange={(e) => {
+                      setAgreedToTerms(e.target.checked);
+                      if (fieldErrors.terms) setFieldErrors({ ...fieldErrors, terms: "" });
+                    }}
+                    className="mt-0.5 w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                  />
+                  <label htmlFor="terms" className="text-xs text-slate-500 dark:text-slate-400 font-medium leading-tight select-none">
+                    I agree to the <button type="button" onClick={() => setShowTermsModal(true)} className="text-blue-600 font-bold hover:underline bg-transparent border-none p-0 cursor-pointer">Terms and Conditions</button>
+                  </label>
+                </div>
+                {fieldErrors.terms && <p className="text-[10px] font-bold text-red-500">{fieldErrors.terms}</p>}
+              </div>
+
               <button
                 type="submit"
                 disabled={isLoading}
@@ -444,6 +471,53 @@ export const Signup: React.FC = () => {
           </div>
         </motion.div>
       </div>
+
+      <AnimatePresence>
+        {showTermsModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={() => setShowTermsModal(false)}
+              className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ duration: 0.3 }}
+              className="relative w-full max-w-2xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden border border-white/20 dark:border-slate-800 flex flex-col max-h-[90vh]"
+            >
+              <div className="flex items-center justify-between p-6 border-b border-slate-100 dark:border-slate-800 shrink-0">
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white">
+                  Terms and Conditions
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setShowTermsModal(false)}
+                  className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors"
+                >
+                  <X className="w-5 h-5 text-slate-500" />
+                </button>
+              </div>
+              <div className="p-6 overflow-y-auto no-scrollbar">
+                <TermsContent />
+              </div>
+              <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowTermsModal(false)}
+                  className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition-all shadow-lg shadow-blue-500/30"
+                >
+                  I Understand
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

@@ -14,6 +14,7 @@ import { Bookings } from '@/pages/Bookings';
 import { Messages } from '@/pages/Messages';
 import { ForgotPassword } from '@/pages/ForgotPassword';
 import { Contact } from '@/pages/Contact';
+import { Terms } from '@/pages/Terms';
 import { Landing } from '@/pages/Landing';
 import { Settings } from '@/pages/Settings';
 import { Feedback } from '@/pages/Feedback';
@@ -44,6 +45,7 @@ export default function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Signup />} />
             <Route path="/contact" element={<Contact />} />
+            <Route path="/terms" element={<Terms />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
 
