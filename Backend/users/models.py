@@ -17,6 +17,7 @@ class UserProfile(models.Model):
     rating = models.FloatField(default=0.0, help_text="Average teacher rating from student feedback")
     email_notifications_enabled = models.BooleanField(default=True)
     is_onboarded = models.BooleanField(default=False)
+    is_email_verified = models.BooleanField(default=False)
     last_activity = models.DateTimeField(null=True, blank=True)
 
     @property

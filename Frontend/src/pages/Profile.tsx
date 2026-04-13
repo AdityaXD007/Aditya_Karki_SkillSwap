@@ -998,7 +998,13 @@ export const Profile: React.FC = () => {
 
                 <div className="p-6 space-y-3 bg-slate-50/50 dark:bg-slate-800/20">
                   <Button 
-                    onClick={() => setIsRequestModalOpen(true)} 
+                    onClick={() => {
+                      if (currentUser && !currentUser.isEmailVerified) {
+                        toast.error("Please verify your email to unlock connection requests!");
+                        return;
+                      }
+                      setIsRequestModalOpen(true);
+                    }} 
                     className="w-full bg-blue-600 hover:bg-blue-700 h-12 text-sm font-bold rounded-xl shadow-lg shadow-blue-600/20 transition-all hover:scale-[1.02]"
                   >
                     <MessageSquare className="w-4 h-4 mr-2" />
@@ -1007,7 +1013,13 @@ export const Profile: React.FC = () => {
                   <Button 
                     variant="outline" 
                     className="w-full h-12 text-sm font-bold rounded-xl border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
-                    onClick={() => toast.info("Messaging feature coming soon!")}
+                    onClick={() => {
+                      if (currentUser && !currentUser.isEmailVerified) {
+                        toast.error("Please verify your email to unlock messaging!");
+                        return;
+                      }
+                      toast.info("Messaging feature coming soon!");
+                    }}
                   >
                     Send Private Message
                   </Button>

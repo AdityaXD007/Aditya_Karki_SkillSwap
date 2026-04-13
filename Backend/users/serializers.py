@@ -79,9 +79,9 @@ class UserProfileSerializer(serializers.ModelSerializer):
         fields = ['id', 'username', 'email', 'full_name', 'profile_image', 'profile_image_url', 
                   'location', 'bio', 'languages', 'availability', 'user_skills', 'rating',
                   'experience_title', 'sessions_taught_count', 'sessions_learned_count', 
-                  'can_charge', 'hourly_rate', 'email_notifications_enabled', 'is_onboarded']
+                  'can_charge', 'hourly_rate', 'email_notifications_enabled', 'is_onboarded', 'is_email_verified']
         read_only_fields = ['id', 'username', 'email', 'full_name', 'rating', 'experience_title',
-                           'sessions_taught_count', 'sessions_learned_count', 'can_charge']
+                           'sessions_taught_count', 'sessions_learned_count', 'can_charge', 'is_email_verified']
     
     def get_full_name(self, obj):
         # Return full_name from UserProfile if available, otherwise use Django User's first_name

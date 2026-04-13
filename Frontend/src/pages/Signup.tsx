@@ -115,7 +115,7 @@ export const Signup: React.FC = () => {
         password,
         password_confirm: confirmPassword
       });
-      navigate('/dashboard');
+      navigate('/check-email', { state: { email } });
     } catch (err: any) {
       setError(err.message || 'Failed to create account. Please try again.');
     } finally {

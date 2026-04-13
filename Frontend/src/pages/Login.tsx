@@ -12,6 +12,9 @@ export const Login: React.FC = () => {
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState({ email: "", password: "" });
   const [isLoading, setIsLoading] = useState(false);
+  const [errorCode, setErrorCode] = useState("");
+  const [isResending, setIsResending] = useState(false);
+  const [resendMessage, setResendMessage] = useState("");
 
   const { login, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
@@ -65,6 +68,8 @@ export const Login: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setErrorCode("");
+    setResendMessage("");
     
     if (!validate()) return;
 
@@ -75,9 +80,34 @@ export const Login: React.FC = () => {
       navigate("/dashboard");
     } catch (err: any) {
       console.error("Login attempt failed:", err);
-      setError("Incorrect email or password. Please try again.");
+      if (err.code === "EMAIL_NOT_VERIFIED") {
+        setError(err.message || "Please verify your email before logging in.");
+        setErrorCode("EMAIL_NOT_VERIFIED");
+      } else {
+        setError(err.message || "Incorrect email or password. Please try again.");
+      }
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleResend = async () => {
+    setIsResending(true);
+    setResendMessage("");
+    try {
+      const response = await fetch('http://localhost:8000/api/resend-verification/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+      const data = await response.json();
+      setResendMessage(data.message || "Verification email sent.");
+    } catch (err) {
+      setResendMessage("Failed to send verification email. Try again later.");
+    } finally {
+      setIsResending(false);
     }
   };
 
@@ -211,10 +241,29 @@ export const Login: React.FC = () => {
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  className="mb-6 flex items-center space-x-3 p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-xl text-red-600 dark:text-red-400 text-xs font-semibold"
+                  className="mb-6 flex flex-col space-y-2 p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-xl text-red-600 dark:text-red-400 text-xs font-semibold"
                 >
-                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                  <span>{error}</span>
+                  <div className="flex items-center space-x-3">
+                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                    <span>{error}</span>
+                  </div>
+                  {errorCode === "EMAIL_NOT_VERIFIED" && (
+                    <div className="pt-2">
+                       <button 
+                         type="button" 
+                         onClick={handleResend}
+                         disabled={isResending}
+                         className="px-3 py-1.5 bg-red-100 hover:bg-red-200 dark:bg-red-900/40 dark:hover:bg-red-800/60 rounded border border-red-200 dark:border-red-800 transition-colors"
+                       >
+                         {isResending ? "Sending..." : "Resend verification email"}
+                       </button>
+                    </div>
+                  )}
+                   {resendMessage && (
+                    <div className="pt-1 text-green-600 dark:text-green-400 font-medium">
+                      {resendMessage}
+                    </div>
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>

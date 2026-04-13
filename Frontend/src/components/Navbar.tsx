@@ -180,6 +180,15 @@ export const Navbar: React.FC = () => {
   }
   
   return (
+    <>
+    {isAuthenticated && user && !user.isEmailVerified && (
+      <div className="bg-blue-600 dark:bg-blue-600 text-white px-4 py-2 text-center text-sm font-bold shadow-md z-[60] relative">
+         <span className="flex items-center justify-center gap-2">
+           <Mail className="w-4 h-4" />
+           Please verify your email address to unlock all SkillSwap features. Check your inbox!
+         </span>
+      </div>
+    )}
     <nav
       className={`sticky top-0 z-50 transition-all duration-300 ${
         isLandingPage
@@ -650,5 +659,6 @@ export const Navbar: React.FC = () => {
         </div>
       )}
     </nav>
+    </>
   );
 };

@@ -33,6 +33,7 @@ export interface User {
   hourlyRate: number;
   emailNotificationsEnabled: boolean;
   isOnboarded: boolean;
+  isEmailVerified: boolean;
 }
 
 // Auth context type
@@ -109,6 +110,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             hourlyRate: parseFloat(userData.hourly_rate?.toString() || "0"),
             emailNotificationsEnabled: userData.email_notifications_enabled !== false,
             isOnboarded: !!userData.is_onboarded,
+            isEmailVerified: !!userData.is_email_verified,
           };
 
           setUser(mappedUser);
@@ -197,6 +199,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           : [],
         emailNotificationsEnabled: userData.email_notifications_enabled !== false,
         isOnboarded: !!userData.is_onboarded,
+        isEmailVerified: !!userData.is_email_verified,
       };
 
       setUser(mappedUser);
@@ -207,6 +210,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       if (!error.response) {
           throw new Error("Cannot connect to server. Check if your backend is running.");
       }
+      
+      if (error.response?.data?.code === "EMAIL_NOT_VERIFIED") {
+        const err: any = new Error(error.response.data.error);
+        err.code = "EMAIL_NOT_VERIFIED";
+        throw err;
+      }
+      
       const errorMsg = error.response?.data?.error || 
                        error.response?.data?.email?.[0] || 
                        error.response?.data?.password?.[0] || 
@@ -250,6 +260,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           : [],
         emailNotificationsEnabled: userData.email_notifications_enabled !== false,
         isOnboarded: !!userData.is_onboarded,
+        isEmailVerified: !!userData.is_email_verified,
       };
 
       setUser(mappedUser);
@@ -268,45 +279,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const signup = async (registrationData: any): Promise<void> => {
     setLoading(true);
     try {
-      const response = await authAPI.register(registrationData);
-      const token = response.data.token;
-      localStorage.setItem("auth_token", token);
-
-      // Fetch the newly created profile (which should exist via signal)
-      const profileResponse = await authAPI.getProfile();
-      const userData = profileResponse.data;
-
-      const mappedUser: User = {
-        id: userData.id.toString(),
-        email: userData.email,
-        name: userData.full_name || userData.username,
-        username: userData.username,
-        avatar: userData.profile_image ? getMediaUrl(userData.profile_image) : undefined,
-        bio: userData.bio,
-        location: userData.location,
-        skillsTeaching: [],
-        skillsLearning: [],
-        userSkills: [],
-        rating: 5.0,
-        sessionsTaughtCount: userData.sessions_taught_count || 0,
-        sessionsLearnedCount: userData.sessions_learned_count || 0,
-        canCharge: userData.can_charge || false,
-        hourlyRate: parseFloat(userData.hourly_rate?.toString() || "0"),
-        availability: userData.availability
-          ? userData.availability.split(",").filter(Boolean)
-          : [],
-        emailNotificationsEnabled: userData.email_notifications_enabled !== false,
-        isOnboarded: !!userData.is_onboarded,
-      };
-
-      setUser(mappedUser);
-      localStorage.setItem("user", JSON.stringify(mappedUser));
-      await refreshUserSkills();
+      await authAPI.register(registrationData);
+      // Wait for email verification, do not log user in
     } catch (error: any) {
       const errorMsg =
         error.response?.data?.username?.[0] ||
         error.response?.data?.email?.[0] ||
         error.response?.data?.password?.[0] ||
+        error.response?.data?.error ||
         "Failed to create account";
       throw new Error(errorMsg);
     } finally {

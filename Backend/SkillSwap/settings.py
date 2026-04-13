@@ -210,13 +210,14 @@ STRIPE_PUBLISHABLE_KEY = config('STRIPE_PUBLISHABLE_KEY', default='')
 STRIPE_SECRET_KEY = config('STRIPE_SECRET_KEY', default='')
 
 # Email Configuration
+# EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
-DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+DEFAULT_FROM_EMAIL = 'noreply@aditivgravity.com'
 
 # Password Reset Token Timeout (in seconds)
 PASSWORD_RESET_TIMEOUT = 300 # 5 Minutes
@@ -227,7 +228,7 @@ GOOGLE_CLIENT_ID = config('GOOGLE_CLIENT_ID', default='')
 # GitHub OAuth Configuration
 GITHUB_CLIENT_ID = config('GITHUB_CLIENT_ID', default='')
 GITHUB_CLIENT_SECRET = config('GITHUB_CLIENT_SECRET', default='')
-FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:5173')
+FRONTEND_URL = 'http://localhost:5173'
 BACKEND_URL = config('BACKEND_URL', default='http://localhost:8000')
 
 # Jazzmin Admin UI Settings

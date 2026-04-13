@@ -1214,9 +1214,6 @@ const stopScreenShare = () => {
                         <button onClick={startCall} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 text-blue-600 dark:text-blue-400 transition-colors">
                             <VideoIcon className="w-5 h-5" />
                         </button>
-                        <button className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 text-blue-600 dark:text-blue-400 transition-colors">
-                            <Phone className="w-5 h-5" />
-                        </button>
                     </div>
                   </div>
 

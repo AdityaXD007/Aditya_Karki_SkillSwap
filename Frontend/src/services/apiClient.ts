@@ -91,11 +91,18 @@ apiClient.interceptors.response.use(
     },
     (error) => {
         if (error.response?.status === 401) {
-            // Don't redirect if this is a login or register attempt
-            const isAuthEndpoint = error.config?.url?.includes('/auth/login/') ||
-                error.config?.url?.includes('/auth/register/');
+            // Don't redirect if this is a login, register or public verification attempt
+            const url = error.config?.url || '';
+            const isAuthEndpoint = url.includes('/auth/login/') ||
+                url.includes('/auth/register/') ||
+                url.includes('/verify/') ||
+                url.includes('/resend-verification/');
 
-            if (!isAuthEndpoint) {
+            // Also check current page to avoid interrupting verification flow
+            const publicPages = ['/login', '/register', '/signup', '/verify-email', '/check-email'];
+            const isPublicPage = publicPages.some(page => window.location.pathname.startsWith(page));
+
+            if (!isAuthEndpoint && !isPublicPage) {
                 localStorage.removeItem('auth_token');
                 localStorage.removeItem('user');
                 window.location.href = '/login';

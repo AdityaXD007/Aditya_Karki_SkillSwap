@@ -22,6 +22,8 @@ import { PaymentCallback } from '@/pages/PaymentCallback';
 import { ResetPassword } from '@/pages/ResetPassword';
 import { OnboardingWizard } from '@/pages/OnboardingWizard';
 import { ErrorPage } from '@/pages/ErrorPage';
+import { CheckEmail } from '@/pages/CheckEmail';
+import { VerifyEmail } from '@/pages/VerifyEmail';
 
 // Home redirect component
 const HomeRedirect = () => {
@@ -44,6 +46,8 @@ export default function App() {
             <Route path="/landing" element={<Landing />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Signup />} />
+            <Route path="/check-email" element={<CheckEmail />} />
+            <Route path="/verify-email" element={<VerifyEmail />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
