@@ -182,7 +182,7 @@ export const AIChatBubble: React.FC = () => {
               </div>
               <div className="mt-2 text-[10px] text-center text-slate-400 dark:text-slate-500 flex items-center justify-center gap-1">
                 <Sparkles size={10} />
-                Powered by Groq & SkillSwap AI
+                Powered by SkillSwap AI
               </div>
             </form>
           </motion.div>

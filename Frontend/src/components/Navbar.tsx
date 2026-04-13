@@ -23,6 +23,7 @@ import {
   ArrowLeft,
   Check,
   Monitor,
+  Mail,
 } from "lucide-react";
 
 export const Navbar: React.FC = () => {
@@ -141,10 +142,43 @@ export const Navbar: React.FC = () => {
     }
   };
 
-  // Check if we're on the landing page for transparent navbar
+  // Check if we're on an auth page or landing page
   const isLandingPage =
     location.pathname === "/landing" || location.pathname === "/";
+  
+  const isAuthPage = location.pathname === "/login" || location.pathname === "/register" || location.pathname === "/signup";
 
+  if (isAuthPage) {
+    return (
+      <nav className="sticky top-0 z-50 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md border-b border-gray-200/50 dark:border-slate-800/50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            {/* Logo */}
+            <Link to="/" className="flex items-center space-x-2 group shrink-0">
+              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center transform group-hover:rotate-6 transition-transform">
+                <span className="text-white font-bold text-sm">SS</span>
+              </div>
+              <span className="font-bold text-xl text-gray-900 dark:text-white">SkillSwap</span>
+            </Link>
+
+            {/* Auth Toggle */}
+            <div className="flex items-center space-x-4">
+              <span className="text-sm font-medium text-slate-500 dark:text-slate-400 hidden sm:inline">
+                {location.pathname === "/login" ? "Don't have an account?" : "Already have an account?"}
+              </span>
+              <Link
+                to={location.pathname === "/login" ? "/register" : "/login"}
+                className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl shadow-lg shadow-blue-500/20 transform hover:-translate-y-0.5 transition-all duration-300 whitespace-nowrap"
+              >
+                {location.pathname === "/login" ? "Sign Up" : "Sign In"}
+              </Link>
+            </div>
+          </div>
+        </div>
+      </nav>
+    );
+  }
+  
   return (
     <nav
       className={`sticky top-0 z-50 transition-all duration-300 ${
@@ -418,6 +452,14 @@ export const Navbar: React.FC = () => {
                               <MessageCircle className="w-5 h-5 mr-3 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-200" />
                               <span className="flex-1 text-left">Send feedback</span>
                             </Link>
+                            <Link
+                              to="/contact"
+                              onClick={() => setIsUserMenuOpen(false)}
+                              className="w-full flex items-center px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors group"
+                            >
+                              <Mail className="w-5 h-5 mr-3 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-200" />
+                              <span className="flex-1 text-left">Contact Us</span>
+                            </Link>
                           </div>
                         </>
                       ) : (
@@ -477,13 +519,19 @@ export const Navbar: React.FC = () => {
             ) : (
               <div className="hidden md:flex items-center space-x-4">
                 <Link
+                  to="/contact"
+                  className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+                >
+                  Contact
+                </Link>
+                <Link
                   to="/login"
                   className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
                 >
                   Login
                 </Link>
                 <Link
-                  to="/signup"
+                  to="/register"
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/20"
                 >
                   Sign Up
@@ -547,6 +595,14 @@ export const Navbar: React.FC = () => {
                   </Link>
                 ))}
                 <Link
+                  to="/contact"
+                  onClick={() => setIsMenuOpen(false)}
+                  className="flex items-center space-x-2 px-3 py-2 rounded-md text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-900 transition-colors"
+                >
+                  <Mail className="w-5 h-5" />
+                  <span>Contact</span>
+                </Link>
+                <Link
                   to="/profile"
                   onClick={() => setIsMenuOpen(false)}
                   className="flex items-center space-x-2 px-3 py-2 rounded-md text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-900 transition-colors"
@@ -568,6 +624,13 @@ export const Navbar: React.FC = () => {
             ) : (
               <>
                 <Link
+                  to="/contact"
+                  onClick={() => setIsMenuOpen(false)}
+                  className="block px-3 py-2 rounded-md text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-900 transition-colors"
+                >
+                  Contact
+                </Link>
+                <Link
                   to="/login"
                   onClick={() => setIsMenuOpen(false)}
                   className="block px-3 py-2 rounded-md text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-900 transition-colors"
@@ -575,7 +638,7 @@ export const Navbar: React.FC = () => {
                   Login
                 </Link>
                 <Link
-                  to="/signup"
+                  to="/register"
                   onClick={() => setIsMenuOpen(false)}
                   className="block px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/20"
                 >

@@ -187,7 +187,7 @@ export const Landing: React.FC = () => {
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <Link
-                to="/signup"
+                to="/register"
                 className="group px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 flex items-center gap-2 shadow-xl"
               >
                 Get Started Free
@@ -452,7 +452,7 @@ export const Landing: React.FC = () => {
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <Link
-                to="/signup"
+                to="/register"
                 className="group px-8 py-4 bg-white text-purple-600 rounded-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 flex items-center gap-2"
               >
                 Create Free Account

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Check, ChevronRight, ChevronLeft, Sparkles, User, GraduationCap, Microscope, Rocket, Search } from 'lucide-react';
+import { Check, ChevronRight, ChevronLeft, Sparkles, User, GraduationCap, Microscope, Rocket, Search, MapPin } from 'lucide-react';
 import { useAuth } from '@/components/Context/AuthContext';
 import { authAPI, skillsAPI, matchesApi } from '@/services';
 import type { Skill, Match } from '@/services/types';

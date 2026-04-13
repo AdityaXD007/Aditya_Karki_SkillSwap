@@ -1,9 +1,14 @@
 import React, { useState } from "react";
 import { MessageSquare, Send, ThumbsUp, Heart, Bug, Lightbulb } from "lucide-react";
 
+import { supportAPI } from '@/services';
+
 export const Feedback: React.FC = () => {
   const [selectedType, setSelectedType] = useState("general");
+  const [subject, setSubject] = useState("");
+  const [message, setMessage] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const feedbackTypes = [
     { id: "general", label: "General", icon: MessageSquare, color: "blue" },
@@ -12,9 +17,21 @@ export const Feedback: React.FC = () => {
     { id: "love", label: "Praise", icon: Heart, color: "pink" },
   ];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
+    setIsLoading(true);
+    try {
+      await supportAPI.submitFeedback({
+        type: selectedType,
+        subject,
+        message
+      });
+      setSubmitted(true);
+    } catch (err) {
+      console.error("Failed to submit feedback", err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (submitted) {
@@ -94,6 +111,8 @@ export const Feedback: React.FC = () => {
                     type="text"
                     id="subject"
                     required
+                    value={subject}
+                    onChange={(e) => setSubject(e.target.value)}
                     className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border-none rounded-xl focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white placeholder-gray-400 transition-all font-medium"
                     placeholder="Brief summary of your feedback"
                   />
@@ -107,6 +126,8 @@ export const Feedback: React.FC = () => {
                     id="message"
                     required
                     rows={5}
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
                     className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border-none rounded-xl focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white placeholder-gray-400 transition-all font-medium resize-none"
                     placeholder="Tell us more about it..."
                   ></textarea>
@@ -115,10 +136,11 @@ export const Feedback: React.FC = () => {
 
               <button
                 type="submit"
-                className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl font-bold flex items-center justify-center gap-2 transform active:scale-[0.98] transition-all shadow-xl shadow-blue-500/20"
+                disabled={isLoading}
+                className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:opacity-75 text-white rounded-xl font-bold flex items-center justify-center gap-2 transform active:scale-[0.98] transition-all shadow-xl shadow-blue-500/20"
               >
                 <Send className="w-5 h-5" />
-                Submit Feedback
+                {isLoading ? "Submitting..." : "Submit Feedback"}
               </button>
             </form>
           </div>

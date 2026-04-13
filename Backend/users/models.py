@@ -59,3 +59,31 @@ def create_user_profile(sender, instance, created, **kwargs):
 def save_user_profile(sender, instance, **kwargs):
     if hasattr(instance, 'profile'):
         instance.profile.save()
+
+class ContactMessage(models.Model):
+    full_name = models.CharField(max_length=255)
+    email = models.EmailField()
+    subject = models.CharField(max_length=200)
+    message = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_resolved = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.subject} from {self.email}"
+
+class FeedbackMessage(models.Model):
+    FEEDBACK_TYPES = (
+        ('general', 'General'),
+        ('bug', 'Bug Report'),
+        ('feature', 'Feature Request'),
+        ('love', 'Praise'),
+    )
+    type = models.CharField(max_length=50, choices=FEEDBACK_TYPES, default='general')
+    subject = models.CharField(max_length=200)
+    message = models.TextField()
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_resolved = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"[{self.get_type_display()}] {self.subject}"

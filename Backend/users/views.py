@@ -418,3 +418,25 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         
         serializer = self.get_serializer(profile, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+class ContactMessageViewSet(viewsets.ModelViewSet):
+    from .models import ContactMessage
+    from .serializers import ContactMessageSerializer
+    queryset = ContactMessage.objects.all()
+    serializer_class = ContactMessageSerializer
+    permission_classes = [AllowAny]
+    http_method_names = ['post']
+
+class FeedbackMessageViewSet(viewsets.ModelViewSet):
+    from .models import FeedbackMessage
+    from .serializers import FeedbackMessageSerializer
+    queryset = FeedbackMessage.objects.all()
+    serializer_class = FeedbackMessageSerializer
+    permission_classes = [AllowAny]
+    http_method_names = ['post']
+
+    def perform_create(self, serializer):
+        if self.request.user.is_authenticated:
+            serializer.save(user=self.request.user)
+        else:
+            serializer.save()

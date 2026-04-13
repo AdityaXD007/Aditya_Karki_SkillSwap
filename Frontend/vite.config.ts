@@ -10,14 +10,15 @@ export default defineConfig({
     }
   },
   server: {
-    host: '0.0.0.0',      // Listen on all interfaces
+    host: '0.0.0.0',
     port: 5173,
     watch: {
-      usePolling: true    // Important for Docker
+      usePolling: true
     },
-    hmr: {
+    // Only use secure HMR (wss/443) if the VITE_TUNNEL variable is 'true'
+    hmr: process.env.VITE_TUNNEL === 'true' ? {
       protocol: 'wss',
       clientPort: 443
-    }
+    } : true
   }
 })

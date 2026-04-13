@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import UserProfile
+from .models import UserProfile, ContactMessage, FeedbackMessage
 
 class UserSerializer(serializers.ModelSerializer):
     name = serializers.CharField(source='get_full_name', read_only=True)
@@ -112,6 +112,16 @@ class ResetPasswordSerializer(serializers.Serializer):
     confirm_password = serializers.CharField(min_length=8)
     
     def validate(self, data):
-        if data['new_password'] != data['confirm_password']:
-            raise serializers.ValidationError({"confirm_password": "Passwords do not match."})
         return data
+
+class ContactMessageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ContactMessage
+        fields = ['id', 'full_name', 'email', 'subject', 'message', 'created_at', 'is_resolved']
+        read_only_fields = ['id', 'created_at', 'is_resolved']
+
+class FeedbackMessageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FeedbackMessage
+        fields = ['id', 'type', 'subject', 'message', 'user', 'created_at', 'is_resolved']
+        read_only_fields = ['id', 'user', 'created_at', 'is_resolved']

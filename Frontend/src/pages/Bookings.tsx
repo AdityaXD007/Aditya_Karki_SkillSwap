@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { sessionsAPI, requestsAPI, paymentAPI, type LearningSession } from "@/services";
+import { sessionsAPI, requestsAPI, paymentAPI } from "@/services";
 import { useAuth } from "@/components/Context/AuthContext";
 import {
   Calendar,
@@ -58,6 +58,7 @@ interface DisplayBooking {
   price?: number | string;
   isFree?: boolean;
   isPaid?: boolean;
+  meetingLink?: string;
 }
 
 export const Bookings: React.FC = () => {
@@ -146,7 +147,6 @@ export const Bookings: React.FC = () => {
               })
             : "TBD",
           duration: req.session_length,
-          location: "Online",
           type: isRequester ? "learning" : "teaching",
           status: req.status,
           requesterUsername: req.requester_details?.username || "",
@@ -164,6 +164,7 @@ export const Bookings: React.FC = () => {
           sess.teacher_name === user?.name ||
           sess.teacher_name === user?.username;
         const partnerName = isTeacher ? sess.student_name : sess.teacher_name;
+        const partnerLocation = isTeacher ? sess.student_location : sess.teacher_location;
 
         displayItems.push({
           id: sess.id,
@@ -178,7 +179,7 @@ export const Bookings: React.FC = () => {
           }),
           duration: sess.duration,
           meetingLink: sess.meeting_link,
-          location: sess.meeting_link || partner?.location || "Online",
+          location: sess.meeting_link || partnerLocation || "Online",
           type: isTeacher ? "teaching" : "learning",
           status: sess.status === "SCHEDULED" ? "ACCEPTED" : sess.status,
           requesterUsername: sess.student_username || "",

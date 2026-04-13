@@ -41,9 +41,17 @@ class SessionRequestSerializer(serializers.ModelSerializer):
 class LearningSessionSerializer(serializers.ModelSerializer):
     student_name = serializers.CharField(source='student.profile.full_name', read_only=True)
     teacher_name = serializers.CharField(source='teacher.profile.full_name', read_only=True)
+    student_location = serializers.CharField(source='student.profile.location', read_only=True)
+    teacher_location = serializers.CharField(source='teacher.profile.location', read_only=True)
     skill_name = serializers.CharField(source='skill.name', read_only=True)
 
     class Meta:
         model = LearningSession
-        fields = '__all__'
+        fields = [
+            'id', 'student', 'teacher', 'skill', 'request', 'status', 'scheduled_time', 
+            'duration', 'meeting_link', 'total_price', 'is_paid', 'is_free', 
+            'student_name', 'teacher_name', 'student_location', 'teacher_location', 'skill_name',
+            'rating_by_student', 'rating_by_teacher', 'feedback_by_student', 'feedback_by_teacher',
+            'reschedule_requested_time', 'reschedule_reason', 'reschedule_requested_by'
+        ]
         read_only_fields = ['id', 'student', 'teacher', 'skill', 'request', 'status', 'created_at']

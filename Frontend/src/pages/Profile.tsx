@@ -311,6 +311,66 @@ export const Profile: React.FC = () => {
     }
   };
 
+  const ACHIEVEMENT_DEFINITIONS = [
+    {
+      id: "profile_complete",
+      title: "Profile Complete",
+      description: "All information verified",
+      icon: CheckCircle,
+      color: "text-green-600",
+      bgColor: "bg-green-50 dark:bg-green-900/20",
+      borderColor: "border-green-100 dark:border-green-800",
+      condition: (u: any) => u.bio?.length > 20 && u.location && u.userSkills?.length >= 2
+    },
+    {
+      id: "top_teacher",
+      title: "Top Teacher",
+      description: "5+ high-rated sessions",
+      icon: Star,
+      color: "text-blue-600",
+      bgColor: "bg-blue-50 dark:bg-blue-900/20",
+      borderColor: "border-blue-100 dark:border-blue-800",
+      condition: (u: any) => u.sessionsTaughtCount >= 5 && (u.rating || 5.0) >= 4.5
+    },
+    {
+      id: "rising_star",
+      title: "Rising Star",
+      description: "Exceptional first sessions",
+      icon: Award,
+      color: "text-amber-600",
+      bgColor: "bg-amber-50 dark:bg-amber-900/20",
+      borderColor: "border-amber-100 dark:border-amber-800",
+      condition: (u: any) => u.sessionsTaughtCount >= 1 && (u.rating || 5.0) >= 4.8
+    },
+    {
+      id: "avid_learner",
+      title: "Avid Learner",
+      description: "Completed 5+ learning sessions",
+      icon: Users,
+      color: "text-purple-600",
+      bgColor: "bg-purple-50 dark:bg-purple-900/20",
+      borderColor: "border-purple-100 dark:border-purple-800",
+      condition: (u: any) => u.sessionsLearnedCount >= 5
+    },
+    {
+      id: "skill_collector",
+      title: "Skill Collector",
+      description: "Mastering 5+ different skills",
+      icon: Plus,
+      color: "text-indigo-600",
+      bgColor: "bg-indigo-50 dark:bg-indigo-900/20",
+      borderColor: "border-indigo-100 dark:border-indigo-800",
+      condition: (u: any) => u.userSkills?.filter((s: any) => s.type === "TEACH").length >= 5
+    }
+  ];
+
+  const getEarnedAchievements = (user: any) => {
+    if (!user) return [];
+    return ACHIEVEMENT_DEFINITIONS.filter(ach => ach.condition(user));
+  };
+
+  const earnedAchievements = getEarnedAchievements(profileUser);
+
   const handleRemoveSkill = async (userSkillId: number) => {
     try {
       await skillsAPI.deleteUserSkill(userSkillId);
@@ -960,24 +1020,34 @@ export const Profile: React.FC = () => {
                    <Award className="w-4 h-4 text-yellow-500" /> Achievements
                 </h3>
                 <div className="space-y-4">
-                   <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-green-50 dark:bg-green-900/20 flex items-center justify-center border border-green-100 dark:border-green-800">
-                         <CheckCircle className="w-5 h-5 text-green-600" />
+                   {earnedAchievements.length > 0 ? (
+                     earnedAchievements.map((ach) => (
+                       <div key={ach.id} className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-lg ${ach.bgColor} flex items-center justify-center border ${ach.borderColor}`}>
+                             <ach.icon className={`w-5 h-5 ${ach.color}`} />
+                          </div>
+                          <div>
+                             <p className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-tight">{ach.title}</p>
+                             <p className="text-[10px] text-slate-500 font-medium">{ach.description}</p>
+                          </div>
+                       </div>
+                     ))
+                   ) : (
+                     <p className="text-[10px] text-slate-400 italic text-center py-2">No achievements earned yet.</p>
+                   )}
+                   
+                   {/* Show locked state for main achievements if not yet earned */}
+                   {!earnedAchievements.find(a => a.id === 'top_teacher') && (
+                      <div className="flex items-center gap-3 opacity-30 grayscale">
+                        <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center border border-slate-200">
+                           <Star className="w-5 h-5 text-slate-400" />
+                        </div>
+                        <div>
+                           <p className="text-xs font-bold text-slate-900">Top Teacher</p>
+                           <p className="text-[10px] text-slate-500">5+ high-rated sessions</p>
+                        </div>
                       </div>
-                      <div>
-                         <p className="text-xs font-bold text-slate-900 dark:text-white">Profile Complete</p>
-                         <p className="text-[10px] text-slate-500">All information verified</p>
-                      </div>
-                   </div>
-                   <div className="flex items-center gap-3 opacity-50">
-                      <div className="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center border border-blue-100 dark:border-blue-800">
-                         <Star className="w-5 h-5 text-blue-600" />
-                      </div>
-                      <div>
-                         <p className="text-xs font-bold text-slate-900 dark:text-white">Top Teacher</p>
-                         <p className="text-[10px] text-slate-500">5+ five-star reviews</p>
-                      </div>
-                   </div>
+                   )}
                 </div>
               </div>
             </div>

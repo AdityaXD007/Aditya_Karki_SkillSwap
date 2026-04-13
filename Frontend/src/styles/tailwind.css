@@ -2,6 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
+
 /* Custom animations for landing page */
 @keyframes blob {
   0%, 100% {

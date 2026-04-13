@@ -13,6 +13,7 @@ import { Matches } from '@/pages/Matches';
 import { Bookings } from '@/pages/Bookings';
 import { Messages } from '@/pages/Messages';
 import { ForgotPassword } from '@/pages/ForgotPassword';
+import { Contact } from '@/pages/Contact';
 import { Landing } from '@/pages/Landing';
 import { Settings } from '@/pages/Settings';
 import { Feedback } from '@/pages/Feedback';
@@ -41,7 +42,8 @@ export default function App() {
             {/* Public Routes */}
             <Route path="/landing" element={<Landing />} />
             <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
+            <Route path="/register" element={<Signup />} />
+            <Route path="/contact" element={<Contact />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
 
