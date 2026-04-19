@@ -95,6 +95,8 @@ export const Messages: React.FC = () => {
   const [confirmingEnd, setConfirmingEnd] = useState(false);
   const [confirmCountdown, setConfirmCountdown] = useState(5);
   const confirmTimerRef = useRef<any>(null);
+  const [isPausing, setIsPausing] = useState(false);
+  const [isResuming, setIsResuming] = useState(false);
 
   // Rating modal state
   const [showRatingModal, setShowRatingModal] = useState(false);
@@ -105,6 +107,7 @@ export const Messages: React.FC = () => {
   const [ratingLoading, setRatingLoading] = useState(false);
   const [ratingError, setRatingError] = useState<string | null>(null);
   const [ratingRole, setRatingRole] = useState<'student' | 'teacher'>('student');
+  const [showStartConfirm, setShowStartConfirm] = useState(false);
 
   const socketRef = useRef<WebSocket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -221,7 +224,14 @@ export const Messages: React.FC = () => {
             
             if (remaining === 0) {
                 if (sessionTimerRef.current) clearInterval(sessionTimerRef.current);
-                handleEndSession(true); 
+                
+                // Only the teacher triggers the automatic end-of-session on the server
+                // to prevent duplicate calls and clock-sync issues.
+                const isTeacher = Number(activeSession.teacher) === Number(user?.id);
+                if (isTeacher && activeSession.status === 'ONGOING') {
+                    console.log("⏱️ Timer reached zero. Auto-ending session as Teacher...");
+                    handleEndSession(true); 
+                }
             }
         };
 
@@ -232,7 +242,8 @@ export const Messages: React.FC = () => {
   }, [activeSession?.id, activeSession?.status, activeSession?.is_paused, activeSession?.actual_start_time]);
 
   const handlePauseSession = async () => {
-    if (!activeSession) return;
+    if (!activeSession || isPausing) return;
+    setIsPausing(true);
     try {
         const response = await sessionsAPI.pauseSession(activeSession.id);
         setActiveSession({
@@ -242,11 +253,14 @@ export const Messages: React.FC = () => {
         });
     } catch (err) {
         console.error("Failed to pause session:", err);
+    } finally {
+        setIsPausing(false);
     }
   };
 
   const handleResumeSession = async () => {
-    if (!activeSession) return;
+    if (!activeSession || isResuming) return;
+    setIsResuming(true);
     try {
         const response = await sessionsAPI.resumeSession(activeSession.id);
         setActiveSession({
@@ -256,6 +270,8 @@ export const Messages: React.FC = () => {
         });
     } catch (err) {
         console.error("Failed to resume session:", err);
+    } finally {
+        setIsResuming(false);
     }
   };
 
@@ -525,18 +541,33 @@ export const Messages: React.FC = () => {
               ));
           }
 
-          // Session Ended Update (via WebSocket nudge)
-          else if (data.type === 'session_ended') {
+          // Signaling: Session Updates (nudge from backend)
+          else if (['session_started', 'session_paused', 'session_resumed', 'session_ended'].includes(data.type)) {
               if (Number(data.sender_id) !== Number(user?.id)) {
-                  setShowRatingModal(true);
-                  setRatingSessionId(data.data.session_id);
-                  setRatingRole('student'); // The recipient of the nudge is always the student
-                  setRatingValue(0);
-                  setRatingHover(0);
-                  setFeedbackText("");
-                  setRatingError(null);
-                  setActiveSession(null);
-                  setTimeLeft(null);
+                  // Only update if we are the recipient of the signal
+                  if (data.type === 'session_ended') {
+                      setShowRatingModal(true);
+                      setRatingSessionId(data.data.session_id);
+                      setRatingRole(user?.username === activeSession?.teacher_username ? 'teacher' : 'student');
+                      setRatingValue(0);
+                      setRatingHover(0);
+                      setFeedbackText("");
+                      setRatingError(null);
+                      setActiveSession(null);
+                      setTimeLeft(null);
+                  } else {
+                      // For start, pause, resume: refresh the active session from state
+                      setActiveSession(prev => {
+                          if (!prev || Number(prev.id) !== Number(data.data.session_id)) return prev;
+                          return {
+                              ...prev,
+                              status: data.data.status,
+                              is_paused: data.data.is_paused,
+                              actual_start_time: data.data.actual_start_time,
+                              remaining_duration_seconds: data.data.remaining_seconds
+                          };
+                      });
+                  }
               }
           }
     };
@@ -1090,6 +1121,7 @@ const stopScreenShare = () => {
                     {/* Session controls & Call Buttons */}
                     <div className="flex items-center space-x-3">
                         {/* Timer Display */}
+                        {activeSession && activeSession.status === 'ONGOING' && (
                             <div className={`px-3 py-1.5 rounded-full font-mono font-bold flex items-center gap-2 shadow-sm border transition-all ${
                                 activeSession?.is_paused
                                 ? 'bg-yellow-50 text-yellow-600 border-yellow-100'
@@ -1102,19 +1134,22 @@ const stopScreenShare = () => {
                                     timeLeft !== null && timeLeft < 300 ? 'bg-red-600' : 'bg-blue-600'
                                 }`} />
                                 {activeSession?.is_paused ? 'PAUSED ' : ''}
-                                {timeLeft !== null && (
+                                {timeLeft !== null ? (
                                     <>
                                         {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
                                     </>
+                                ) : (
+                                    'Starting...'
                                 )}
                             </div>
+                        )}
 
                         {/* Teacher Controls */}
                         {activeSession && user && Number(activeSession.teacher) === Number(user.id) && (
                             <>
                                 {activeSession.status === 'SCHEDULED' && (
                                     <button 
-                                        onClick={handleStartSession}
+                                        onClick={() => setShowStartConfirm(true)}
                                         disabled={!activeSession.is_paid}
                                         className={`px-4 py-2 text-white text-xs font-bold rounded-lg transition-all shadow-lg flex items-center gap-2 ${
                                             activeSession.is_paid 
@@ -1132,16 +1167,16 @@ const stopScreenShare = () => {
                                     <>
                                         <button 
                                             onClick={activeSession.is_paused ? handleResumeSession : handlePauseSession}
-                                            disabled={confirmingEnd}
+                                            disabled={confirmingEnd || isPausing || isResuming}
                                             className={`px-4 py-2 text-white text-xs font-bold rounded-lg transition-all shadow-lg ${
-                                                confirmingEnd
+                                                confirmingEnd || isPausing || isResuming
                                                 ? 'opacity-40 cursor-not-allowed bg-gray-400 shadow-none'
                                                 : activeSession.is_paused 
                                                 ? 'bg-blue-500 hover:bg-blue-600 shadow-blue-500/20' 
                                                 : 'bg-yellow-500 hover:bg-yellow-600 shadow-yellow-500/20'
                                             }`}
                                         >
-                                            {activeSession.is_paused ? 'Resume' : 'Pause'}
+                                            {isPausing || isResuming ? 'Processing...' : (activeSession.is_paused ? 'Resume' : 'Pause')}
                                         </button>
                                         {!confirmingEnd ? (
                                             <button 
@@ -1646,6 +1681,41 @@ const stopScreenShare = () => {
         </div>
       </div>
 
+      <Dialog open={showStartConfirm} onOpenChange={setShowStartConfirm}>
+        <DialogContent className="sm:max-w-[400px] bg-white dark:bg-slate-900 border-none shadow-2xl p-0 overflow-hidden">
+          <div className="p-6">
+            <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-4 mx-auto">
+              <CheckCircle2 className="w-8 h-8 text-green-600 dark:text-green-400" />
+            </div>
+            
+            <DialogHeader className="text-center mb-6">
+              <DialogTitle className="text-xl font-bold text-gray-900 dark:text-white">Ready to Start?</DialogTitle>
+              <DialogDescription className="text-gray-500 dark:text-gray-400 mt-2">
+                You are about to start a <span className="font-bold text-blue-600 dark:text-blue-400">{activeSession?.skill_name}</span> session with <span className="font-bold text-gray-900 dark:text-white">{activeSession?.student_name || activeSession?.student_username || activeSession?.student_email || "Student"}</span> as your Student.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowStartConfirm(false)}
+                className="flex-1 px-4 py-2.5 bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-gray-300 rounded-xl font-semibold hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setShowStartConfirm(false);
+                  handleStartSession();
+                }}
+                className="flex-1 px-4 py-2.5 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700 shadow-lg shadow-green-500/20 transition-all active:scale-95"
+              >
+                Start Now
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={showPaymentModal} onOpenChange={setShowPaymentModal}>
         <DialogContent className="sm:max-w-[450px] bg-white dark:bg-slate-900 border-none shadow-2xl p-0 overflow-hidden">
           <div className="relative h-32 bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center">
@@ -1720,11 +1790,6 @@ const stopScreenShare = () => {
                   <ShieldCheck className="w-5 h-5 text-green-500" />
                 </div>
                 <div className="h-8 w-px bg-gray-100 dark:bg-slate-800" />
-                <div className="flex space-x-2 opacity-50 grayscale transition-all hover:grayscale-0">
-                  {/* Mimic small logo icons or just text for simplicity */}
-                  <span className="text-[10px] font-bold text-gray-900 dark:text-white px-1.5 py-0.5 border rounded uppercase">Visa</span>
-                  <span className="text-[10px] font-bold text-gray-900 dark:text-white px-1.5 py-0.5 border rounded uppercase">MC</span>
-                </div>
               </div>
             </div>
           </div>

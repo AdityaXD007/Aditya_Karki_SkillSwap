@@ -99,7 +99,7 @@ apiClient.interceptors.response.use(
                 url.includes('/resend-verification/');
 
             // Also check current page to avoid interrupting verification flow
-            const publicPages = ['/login', '/register', '/signup', '/verify-email', '/check-email'];
+            const publicPages = ['/login', '/register', '/signup', '/verify-email', '/check-email', '/payment-callback'];
             const isPublicPage = publicPages.some(page => window.location.pathname.startsWith(page));
 
             if (!isAuthEndpoint && !isPublicPage) {

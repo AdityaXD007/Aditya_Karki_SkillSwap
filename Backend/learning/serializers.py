@@ -41,6 +41,12 @@ class SessionRequestSerializer(serializers.ModelSerializer):
 class LearningSessionSerializer(serializers.ModelSerializer):
     student_name = serializers.CharField(source='student.profile.full_name', read_only=True)
     teacher_name = serializers.CharField(source='teacher.profile.full_name', read_only=True)
+    student_username = serializers.CharField(source='student.username', read_only=True)
+    teacher_username = serializers.CharField(source='teacher.username', read_only=True)
+    student_email = serializers.EmailField(source='student.email', read_only=True)
+    teacher_email = serializers.EmailField(source='teacher.email', read_only=True)
+    student_avatar = serializers.ImageField(source='student.profile.profile_image', read_only=True)
+    teacher_avatar = serializers.ImageField(source='teacher.profile.profile_image', read_only=True)
     student_location = serializers.CharField(source='student.profile.location', read_only=True)
     teacher_location = serializers.CharField(source='teacher.profile.location', read_only=True)
     skill_name = serializers.CharField(source='skill.name', read_only=True)
@@ -50,7 +56,10 @@ class LearningSessionSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'student', 'teacher', 'skill', 'request', 'status', 'scheduled_time', 
             'duration', 'meeting_link', 'total_price', 'is_paid', 'is_free', 
-            'student_name', 'teacher_name', 'student_location', 'teacher_location', 'skill_name',
+            'actual_start_time', 'actual_end_time', 'is_paused', 'remaining_duration_seconds',
+            'student_name', 'teacher_name', 'student_username', 'teacher_username',
+            'student_email', 'teacher_email', 'student_avatar', 'teacher_avatar',
+            'student_location', 'teacher_location', 'skill_name',
             'rating_by_student', 'rating_by_teacher', 'feedback_by_student', 'feedback_by_teacher',
             'reschedule_requested_time', 'reschedule_reason', 'reschedule_requested_by'
         ]

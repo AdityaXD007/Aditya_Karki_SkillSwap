@@ -2,7 +2,7 @@ import React from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/components/Context/AuthContext";
 import { useTheme } from "@/components/theme-provider";
-import { requestsAPI, type SessionRequest } from "@/services";
+import { requestsAPI, notificationsAPI, type SessionRequest, type Notification } from "@/services";
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from "sonner";
 import {
@@ -36,31 +36,38 @@ export const Navbar: React.FC = () => {
   const [showAppearanceMenu, setShowAppearanceMenu] = React.useState(false);
   const [pendingCount, setPendingCount] = React.useState(0);
   const [pendingRequests, setPendingRequests] = React.useState<SessionRequest[]>([]);
+  const [notifications, setNotifications] = React.useState<Notification[]>([]);
   const [hasNewNotifications, setHasNewNotifications] = React.useState(false);
   const userMenuRef = React.useRef<HTMLDivElement>(null);
   const notificationsRef = React.useRef<HTMLDivElement>(null);
 
-  // Fetch notifications (pending requests)
+  // Fetch notifications
   React.useEffect(() => {
-    const fetchNotifications = async () => {
+    const fetchAllAlerts = async () => {
       if (!isAuthenticated || !user) return;
       try {
-        const response = await requestsAPI.getRequests();
+        const [requestsRes, notificationsRes] = await Promise.all([
+          requestsAPI.getRequests(),
+          notificationsAPI.getNotifications()
+        ]);
         
         // 1. Filter pending requests sent to me
-        const pending = Array.isArray(response.data) 
-          ? response.data.filter(
+        const pending = Array.isArray(requestsRes.data) 
+          ? requestsRes.data.filter(
               (req: any) => req.status === "PENDING" && req.partner_details?.username === user?.username
             )
           : [];
-        
         setPendingRequests(pending);
 
-        // 2. Update count
-        const currentCount = pending.length;
+        // 2. Filter unread notifications
+        const unreadNotes = Array.isArray(notificationsRes.data) ? notificationsRes.data : [];
+        setNotifications(unreadNotes);
+        
+        // 3. Update total count
+        const currentCount = pending.length + unreadNotes.filter(n => !n.is_read).length;
         setPendingCount(currentCount);
 
-        // 3. Handle badge persistence
+        // 4. Handle badge persistence
         const lastSeenCount = parseInt(localStorage.getItem('lastSeenNotificationCount') || '0');
         if (currentCount > lastSeenCount) {
           setHasNewNotifications(true);
@@ -68,7 +75,7 @@ export const Navbar: React.FC = () => {
           setHasNewNotifications(false);
         }
         
-        // Clear if we're on certain pages
+        // Clear badge if on bookings
         if (location.pathname === '/bookings') {
           localStorage.setItem('lastSeenNotificationCount', currentCount.toString());
         }
@@ -77,11 +84,10 @@ export const Navbar: React.FC = () => {
       }
     };
 
-    fetchNotifications();
-    // Refresh every 30 seconds
-    const interval = setInterval(fetchNotifications, 30000);
+    fetchAllAlerts();
+    const interval = setInterval(fetchAllAlerts, 30000);
     return () => clearInterval(interval);
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, user, location.pathname]);
 
   const handleLogout = () => {
     logout();
@@ -125,19 +131,35 @@ export const Navbar: React.FC = () => {
     try {
       if (action === 'accept') {
         await requestsAPI.acceptRequest(id);
-        toast.success("Request accepted! Check your sessions.");
+        toast.success("Request accepted!");
       } else {
         await requestsAPI.rejectRequest(id);
         toast.error("Request rejected.");
       }
-      
-      // Update local state and count
       setPendingRequests(prev => prev.filter(req => req.id !== id));
       setPendingCount(prev => Math.max(0, prev - 1));
-      
     } catch (error) {
       console.error(`Failed to ${action} request:`, error);
-      toast.error(`Failed to ${action} request.`);
+    }
+  };
+
+  const handleMarkAsRead = async (id: number) => {
+    try {
+      await notificationsAPI.markAsRead(id);
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
+      setPendingCount(prev => Math.max(0, prev - 1));
+    } catch (error) {
+      console.error("Failed to mark as read", error);
+    }
+  };
+
+  const handleClearNotifications = async () => {
+    try {
+      await notificationsAPI.clearAll();
+      setNotifications([]);
+      setPendingCount(pendingRequests.length);
+    } catch (error) {
+      console.error("Failed to clear notifications", error);
     }
   };
 
@@ -259,11 +281,12 @@ export const Navbar: React.FC = () => {
                           )}
                         </div>
                         <div className="max-h-[400px] sm:max-h-[500px] overflow-y-auto custom-scrollbar">
-                          {pendingRequests.length > 0 ? (
+                          {(pendingRequests.length > 0 || notifications.length > 0) ? (
                             <div className="divide-y divide-gray-100 dark:divide-slate-800">
+                              {/* Pending Requests */}
                               {pendingRequests.map((req) => (
                                 <div
-                                  key={req.id}
+                                  key={`req-${req.id}`}
                                   className="p-4 hover:bg-gray-50/80 dark:hover:bg-slate-800/40 transition-colors group relative"
                                 >
                                   <div className="flex items-start space-x-3">
@@ -299,12 +322,6 @@ export const Navbar: React.FC = () => {
                                         <span className="font-bold text-blue-600 dark:text-blue-400">{req.skill_learn_details.name}</span>
                                       </p>
                                       
-                                      {req.message && (
-                                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 line-clamp-1 italic bg-gray-50 dark:bg-slate-800/50 p-1.5 rounded-lg border border-gray-100 dark:border-slate-700">
-                                          "{req.message}"
-                                        </p>
-                                      )}
-
                                       <div className="flex items-center space-x-2 mt-3">
                                         <button
                                           onClick={() => handleRequestAction(req.id, 'accept')}
@@ -325,14 +342,79 @@ export const Navbar: React.FC = () => {
                                   </div>
                                 </div>
                               ))}
+
+                              {/* Notifications (Cancellations/Withdrawals) */}
+                              {notifications.filter(n => !n.is_read).map((note) => (
+                                <div
+                                  key={`note-${note.id}`}
+                                  className="p-4 hover:bg-gray-50/80 dark:hover:bg-slate-800/40 transition-colors group relative border-l-4 border-blue-500"
+                                >
+                                  <div className="flex items-start space-x-3">
+                                    <div className="shrink-0">
+                                      {note.sender_avatar ? (
+                                        <img
+                                          src={note.sender_avatar}
+                                          alt=""
+                                          className="w-10 h-10 rounded-full object-cover shadow-sm"
+                                        />
+                                      ) : (
+                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shadow-sm ${note.notification_type === 'SESSION_CANCELLED' ? 'bg-red-500' : 'bg-amber-500'}`}>
+                                          {note.sender_username ? note.sender_username[0].toUpperCase() : '!'}
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center justify-between mb-0.5">
+                                        <span className={`text-[10px] font-bold uppercase tracking-widest ${note.notification_type === 'SESSION_CANCELLED' ? 'text-red-500' : 'text-amber-500'}`}>
+                                          {note.title}
+                                        </span>
+                                        <span className="text-[10px] text-gray-400 dark:text-gray-500">
+                                          {formatDistanceToNow(new Date(note.created_at), { addSuffix: true })}
+                                        </span>
+                                      </div>
+                                      <p className="text-sm text-gray-900 dark:text-white leading-snug">
+                                        {note.content}
+                                      </p>
+                                      <div className="flex items-center gap-2 mt-3">
+                                        {note.link && (
+                                          <Link
+                                            to={note.link}
+                                            onClick={() => {
+                                              handleMarkAsRead(note.id);
+                                              setIsNotificationsOpen(false);
+                                            }}
+                                            className="px-3 py-1.5 bg-gray-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-700 dark:text-gray-300 hover:text-blue-600 rounded-lg text-[10px] font-bold transition-all"
+                                          >
+                                            View Details
+                                          </Link>
+                                        )}
+                                        <button
+                                          onClick={() => handleMarkAsRead(note.id)}
+                                          className="p-1.5 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg text-gray-400 hover:text-green-500 transition-colors"
+                                          title="Mark as read"
+                                        >
+                                          <Check className="w-4 h-4" />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
                               
-                              <div className="p-3 bg-gray-50/50 dark:bg-slate-800/30">
+                              <div className="p-3 bg-gray-50/50 dark:bg-slate-800/30 flex gap-2">
+                                <button
+                                  onClick={handleClearNotifications}
+                                  className="flex-1 py-2 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl text-center text-[10px] font-bold text-gray-500 hover:text-red-600 transition-all"
+                                >
+                                  Clear All Alerts
+                                </button>
                                 <Link
                                   to="/bookings"
                                   onClick={() => setIsNotificationsOpen(false)}
-                                  className="block w-full py-2.5 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl text-center text-xs font-bold text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all shadow-sm"
+                                  className="flex-1 py-2 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl text-center text-[10px] font-bold text-gray-500 hover:text-blue-600 transition-all"
                                 >
-                                  Manage Session History
+                                  Session History
                                 </Link>
                               </div>
                             </div>

@@ -187,6 +187,21 @@ class SessionRequestViewSet(viewsets.ModelViewSet):
         
         session_request.status = 'WITHDRAWN'
         session_request.save()
+
+        # In-app Notification for the partner (teacher)
+        try:
+            from notifications.models import Notification
+            Notification.objects.create(
+                recipient=session_request.partner,
+                sender=request.user,
+                notification_type='REQUEST_WITHDRAWN',
+                title='Request Withdrawn',
+                content=f'@{request.user.username} has withdrawn their request for {session_request.skill_to_learn.name}.',
+                link='/bookings'
+            )
+        except Exception as e:
+            print(f"Failed to create notification: {e}")
+
         return Response({'status': 'Request withdrawn'}, status=status.HTTP_200_OK)
 
 class LearningSessionViewSet(viewsets.ModelViewSet):
@@ -212,6 +227,21 @@ class LearningSessionViewSet(viewsets.ModelViewSet):
         reason = request.data.get('reason', 'No reason provided')
         session.notes = f"Cancelled by {request.user.username}. Reason: {reason}"
         session.save()
+
+        # In-app Notification for the other party
+        try:
+            from notifications.models import Notification
+            other_user = session.teacher if session.student == request.user else session.student
+            Notification.objects.create(
+                recipient=other_user,
+                sender=request.user,
+                notification_type='SESSION_CANCELLED',
+                title='Session Cancelled',
+                content=f'@{request.user.username} has cancelled the session for {session.skill.name}. Reason: {reason}',
+                link='/bookings'
+            )
+        except Exception as e:
+            print(f"Failed to create notification: {e}")
 
         # Send email to the OTHER party
         other_user = session.teacher if session.student == request.user else session.student
@@ -373,6 +403,9 @@ class LearningSessionViewSet(viewsets.ModelViewSet):
         session.actual_start_time = timezone.now()
         session.save()
         
+        # Broadcast session started via WebSocket
+        self._broadcast_session_signal(session, 'session_started', request.user.id)
+        
         return Response({
             'status': 'Session started',
             'actual_start_time': session.actual_start_time,
@@ -403,22 +436,7 @@ class LearningSessionViewSet(viewsets.ModelViewSet):
         student_profile.save()
 
         # Broadcast session ended via WebSocket
-        try:
-            from chat.models import Conversation
-            conversation = Conversation.objects.filter(participants=session.student).filter(participants=session.teacher).first()
-            if conversation:
-                channel_layer = get_channel_layer()
-                async_to_sync(channel_layer.group_send)(
-                    f'chat_{conversation.id}',
-                    {
-                        'type': 'signal_message',
-                        'signal_type': 'session_ended',
-                        'data': {'session_id': session.id},
-                        'sender_id': request.user.id
-                    }
-                )
-        except Exception as e:
-            print(f"Error broadcasting session end: {e}")
+        self._broadcast_session_signal(session, 'session_ended', request.user.id)
 
         return Response({'status': 'Session completed'})
 
@@ -463,6 +481,9 @@ class LearningSessionViewSet(viewsets.ModelViewSet):
         session.remaining_duration_seconds = int(remaining)
         session.save()
 
+        # Broadcast session paused via WebSocket
+        self._broadcast_session_signal(session, 'session_paused', request.user.id)
+
         return Response({'status': 'Session paused', 'remaining': session.remaining_duration_seconds})
 
     @action(detail=True, methods=['post'])
@@ -484,6 +505,9 @@ class LearningSessionViewSet(viewsets.ModelViewSet):
         session.is_paused = False
         session.paused_at = None
         session.save()
+
+        # Broadcast session resumed via WebSocket
+        self._broadcast_session_signal(session, 'session_resumed', request.user.id)
 
         return Response({'status': 'Session resumed', 'actual_start_time': session.actual_start_time})
 
@@ -550,3 +574,37 @@ class LearningSessionViewSet(viewsets.ModelViewSet):
             'status': 'Feedback submitted successfully',
             'average_rating': teacher_profile.rating
         })
+
+    def _broadcast_session_signal(self, session, signal_type, sender_id):
+        """Helper to send session-related signals via WebSocket"""
+        try:
+            from chat.models import Conversation
+            from asgiref.sync import async_to_sync
+            from channels.layers import get_channel_layer
+            
+            # Find the conversation between student and teacher
+            conversation = Conversation.objects.filter(
+                participants=session.student
+            ).filter(
+                participants=session.teacher
+            ).first()
+            
+            if conversation:
+                channel_layer = get_channel_layer()
+                async_to_sync(channel_layer.group_send)(
+                    f'chat_{conversation.id}',
+                    {
+                        'type': 'signal_message',
+                        'signal_type': signal_type,
+                        'data': {
+                            'session_id': session.id,
+                            'status': session.status,
+                            'is_paused': session.is_paused,
+                            'actual_start_time': session.actual_start_time.isoformat() if session.actual_start_time else None,
+                            'remaining_seconds': session.remaining_duration_seconds
+                        },
+                        'sender_id': sender_id
+                    }
+                )
+        except Exception as e:
+            print(f"Error broadcasting {signal_type}: {e}")

@@ -103,6 +103,14 @@ export interface LearningSession {
     teacher: number;
     student_name: string;
     teacher_name: string;
+    student_username: string;
+    teacher_username: string;
+    student_email: string;
+    teacher_email: string;
+    student_avatar?: string;
+    teacher_avatar?: string;
+    student_location?: string;
+    teacher_location?: string;
     skill_name: string;
     scheduled_time: string;
     actual_start_time?: string;
@@ -121,4 +129,7 @@ export interface LearningSession {
     rating_by_teacher?: number | null;
     feedback_by_student?: string;
     feedback_by_teacher?: string;
+    reschedule_requested_time?: string;
+    reschedule_reason?: string;
+    reschedule_requested_by?: number;
 }

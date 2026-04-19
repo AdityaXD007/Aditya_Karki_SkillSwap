@@ -9,3 +9,4 @@ export { sessionsAPI } from './sessionService';
 export { messagesApi } from './messageService';
 export { paymentAPI } from './paymentService';
 export { supportAPI } from './supportService';
+export { notificationsAPI } from './notificationService';

@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'chat',
     'ai_assistant',
     'payment',
+    'notifications',
     'django_apscheduler',
 ]
 

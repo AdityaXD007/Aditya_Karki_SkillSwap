@@ -8,6 +8,7 @@ import {
   MapPin,
   User,
   CheckCircle,
+  CheckCircle2,
   XCircle,
   AlertCircle,
   Loader2,
@@ -18,7 +19,9 @@ import {
   Star,
   ExternalLink,
   Wallet,
+  ShieldCheck,
 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 // Unified type for display
 interface DisplayBooking {
@@ -160,18 +163,20 @@ export const Bookings: React.FC = () => {
 
       // Map Sessions (Confirmed/Scheduled)
       sessionsRes.data.forEach((sess: any) => {
-        const isTeacher =
-          sess.teacher_name === user?.name ||
-          sess.teacher_name === user?.username;
-        const partnerName = isTeacher ? sess.student_name : sess.teacher_name;
+        const isTeacher = Number(sess.teacher) === Number(user?.id);
+        const partnerName = isTeacher
+          ? (sess.student_name || sess.student_username || sess.student_email || "Student")
+          : (sess.teacher_name || sess.teacher_username || sess.teacher_email || "Teacher");
         const partnerLocation = isTeacher ? sess.student_location : sess.teacher_location;
+
+        const partnerAvatar = isTeacher ? sess.student_avatar : sess.teacher_avatar;
 
         displayItems.push({
           id: sess.id,
           isRequest: false,
           skill: sess.skill_name,
           partnerName: partnerName,
-          partnerAvatar: undefined,
+          partnerAvatar: partnerAvatar,
           date: new Date(sess.scheduled_time),
           time: new Date(sess.scheduled_time).toLocaleTimeString([], {
             hour: "2-digit",
@@ -495,7 +500,7 @@ export const Bookings: React.FC = () => {
                   Date.now() - itemDate.getTime() > 3 * 24 * 60 * 60 * 1000;
                 const hasRescheduleProposal = !!item.rescheduleRequestedTime;
                 const isIRequestedReschedule =
-                  item.rescheduleRequestedBy === user?.id;
+                  Number(item.rescheduleRequestedBy) === Number(user?.id);
 
                 return (
                   <div
@@ -1217,71 +1222,96 @@ export const Bookings: React.FC = () => {
         );
       })()}
 
-      {/* Payment Modal */}
-      {showPaymentModal !== null && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-slate-800 w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-300">
-            <div className="p-6 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center bg-gray-50 dark:bg-slate-800/50">
-              <div>
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white">Secure Payment</h3>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Choose your payment method</p>
-              </div>
-              <button 
-                onClick={() => setShowPaymentModal(null)} 
-                className="p-2 hover:bg-gray-200 dark:hover:bg-slate-700 rounded-full transition-colors"
-                aria-label="Close"
-              >
-                <X className="w-5 h-5 text-gray-500" />
-              </button>
-            </div>
-            <div className="p-6 space-y-4">
-              {isProcessingPayment ? (
-                <div className="flex flex-col items-center justify-center py-8 space-y-4">
-                  <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Redirecting to payment gateway...</p>
-                </div>
-              ) : (
-                <>
-                  <button
-                    onClick={() => handleInitiatePayment(showPaymentModal, 'KHALTI')}
-                    className="w-full flex items-center justify-between p-4 rounded-xl border-2 border-purple-100 dark:border-purple-900/20 hover:border-purple-500 dark:hover:border-purple-500 bg-purple-50/50 dark:bg-purple-900/10 transition-all group"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-purple-600 rounded-lg flex items-center justify-center shadow-lg shadow-purple-600/20 group-hover:scale-110 transition-transform">
-                        <span className="text-white font-bold text-xs font-sans">K</span>
-                      </div>
-                      <div className="text-left">
-                        <p className="font-bold text-gray-900 dark:text-white">Khalti</p>
-                        <p className="text-[10px] text-gray-500">Pay via Khalti Wallet / SDK</p>
-                      </div>
-                    </div>
-                    <ExternalLink className="w-4 h-4 text-purple-400 group-hover:translate-x-1 transition-transform" />
-                  </button>
+      <Dialog 
+        open={showPaymentModal !== null} 
+        onOpenChange={(open) => !open && setShowPaymentModal(null)}
+      >
+        <DialogContent className="sm:max-w-[450px] bg-white dark:bg-slate-900 border-none shadow-2xl p-0 overflow-hidden">
+          {(() => {
+            const paymentItem = items.find(it => !it.isRequest && it.id === showPaymentModal);
+            const price = paymentItem ? paymentItem.price : "0.00";
 
-                  <button
-                    onClick={() => handleInitiatePayment(showPaymentModal, 'STRIPE')}
-                    className="w-full flex items-center justify-between p-4 rounded-xl border-2 border-blue-100 dark:border-blue-900/20 hover:border-blue-500 dark:hover:border-blue-500 bg-blue-50/50 dark:bg-blue-900/10 transition-all group"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-black rounded-lg flex items-center justify-center shadow-lg shadow-black/20 group-hover:scale-110 transition-transform">
-                        <span className="text-white font-bold text-xs font-sans">S</span>
+            return (
+              <>
+                <div className="relative h-32 bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center">
+                  <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,_white_1px,_transparent_1px)] bg-[size:20px_20px]" />
+                  <div className="z-10 text-center">
+                    <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center mx-auto mb-2 border border-white/30">
+                      <ShieldCheck className="w-8 h-8 text-white" />
+                    </div>
+                    <h3 className="text-white font-bold text-lg">Secure Checkout</h3>
+                  </div>
+                </div>
+                
+                <div className="p-6">
+                  <DialogHeader className="mb-6">
+                    <DialogTitle className="text-gray-900 dark:text-white text-xl font-bold">Choose Payment Method</DialogTitle>
+                    <DialogDescription className="text-gray-500 dark:text-gray-400">
+                      You are paying <span className="font-bold text-blue-600 dark:text-blue-400">NPR {parseFloat(price?.toString() || "0").toFixed(2)}</span> for your learning session.
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  <div className="flex flex-col sm:flex-row gap-4 py-2">
+                    <button
+                      onClick={() => handleInitiatePayment(showPaymentModal!, 'KHALTI')}
+                      disabled={isProcessingPayment}
+                      className="group relative flex-1 flex flex-col items-center p-6 rounded-2xl border-2 border-slate-100 dark:border-slate-800 hover:border-purple-500 dark:hover:border-purple-600 hover:bg-purple-50/50 dark:hover:bg-purple-900/10 transition-all duration-300 text-center"
+                    >
+                      <div className="w-20 h-20 rounded-xl bg-white dark:bg-slate-800 flex items-center justify-center mb-4 shadow-sm group-hover:scale-110 transition-transform overflow-hidden p-2">
+                        <img 
+                          src="https://upload.wikimedia.org/wikipedia/commons/e/ee/Khalti_Digital_Wallet_Logo.png.jpg" 
+                          alt="Khalti" 
+                          className="w-full h-full object-contain" 
+                        />
                       </div>
-                      <div className="text-left">
-                        <p className="font-bold text-gray-900 dark:text-white">Stripe / Card</p>
-                        <p className="text-[10px] text-gray-500">Global Credit/Debit Cards</p>
+                      <div>
+                        <p className="font-bold text-gray-900 dark:text-white mb-1 leading-none">Khalti Wallet</p>
+                        <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight">Pay using your Khalti account</p>
+                      </div>
+                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <CheckCircle2 className="w-4 h-4 text-purple-600" />
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={() => handleInitiatePayment(showPaymentModal!, 'STRIPE')}
+                      disabled={isProcessingPayment}
+                      className="group relative flex-1 flex flex-col items-center p-6 rounded-2xl border-2 border-slate-100 dark:border-slate-800 hover:border-blue-500 dark:hover:border-blue-600 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-all duration-300 text-center"
+                    >
+                      <div className="w-20 h-20 rounded-xl bg-white dark:bg-slate-800 flex items-center justify-center mb-4 shadow-sm group-hover:scale-110 transition-transform overflow-hidden p-2">
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/b/ba/Stripe_Logo%2C_revised_2016.svg" alt="Stripe" className="w-full h-full object-contain" />
+                      </div>
+                      <div>
+                        <p className="font-bold text-gray-900 dark:text-white mb-1 leading-none">Stripe Payment</p>
+                        <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight">Pay using your Stripe account</p>
+                      </div>
+                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <CheckCircle2 className="w-4 h-4 text-blue-600" />
+                      </div>
+                    </button>
+                  </div>
+
+                  {isProcessingPayment && (
+                    <div className="mt-4 flex items-center justify-center space-x-2 text-sm text-blue-600 dark:text-blue-400 animate-pulse">
+                      <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                      <span>Redirecting to payment gateway...</span>
+                    </div>
+                  )}
+
+                  <div className="mt-8 pt-6 border-t border-gray-100 dark:border-slate-800">
+                    <div className="flex items-center justify-center space-x-6">
+                      <div className="flex flex-col items-center">
+                        <span className="text-[10px] text-gray-400 uppercase tracking-widest mb-1">Secure</span>
+                        <ShieldCheck className="w-5 h-5 text-green-500" />
                       </div>
                     </div>
-                    <ExternalLink className="w-4 h-4 text-blue-400 group-hover:translate-x-1 transition-transform" />
-                  </button>
-                </>
-              )}
-            </div>
-            <div className="p-4 bg-gray-50 dark:bg-slate-800/50 text-center">
-              <p className="text-[10px] text-gray-400 font-medium">Your payment is secured and encrypted</p>
-            </div>
-          </div>
-        </div>
-      )}
+                  </div>
+                </div>
+              </>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

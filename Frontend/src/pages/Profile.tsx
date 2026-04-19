@@ -1180,7 +1180,7 @@ export const Profile: React.FC = () => {
                       : 'bg-green-50 dark:bg-green-900/10 border-green-100 dark:border-green-900/20'
                     }`}>
                        <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-tighter">
-                         {profileUser?.canCharge ? "Hourly Rate" : "Special Offer"}
+                         {profileUser?.canCharge ? "Hourly Rate" : "Session Fee"}
                        </p>
                        <div className="flex flex-col items-center">
                           <p className={`font-black flex items-baseline gap-0.5 justify-center ${

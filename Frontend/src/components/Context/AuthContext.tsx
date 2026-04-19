@@ -71,15 +71,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       const urlToken = urlParams.get("token");
       const urlRefresh = urlParams.get("refresh");
 
-      if (urlToken && window.location.pathname !== '/reset-password') {
+      // Only intercept tokens if we are on a known redirect-landing page (dashboard or login)
+      // This prevents unrelated 'token' params (e.g. from Khalti or other tools) from nuking decimals
+      const isAuthRedirectPage = ['/dashboard', '/login', '/auth-callback'].includes(window.location.pathname);
+
+      if (urlToken && isAuthRedirectPage) {
+        console.log("Found auth token in URL, updating localStorage");
         localStorage.setItem("auth_token", urlToken);
         if (urlRefresh) localStorage.setItem("refresh_token", urlRefresh);
         // Clean URL
         window.history.replaceState({}, document.title, window.location.pathname);
       }
 
-      const storedUser = localStorage.getItem("user");
       const token = localStorage.getItem("auth_token");
+      const storedUser = localStorage.getItem("user");
+      
+      console.log("Initializing Auth - Current Token:", token ? "Exists" : "Missing");
 
       if (token) {
         // Parse the stored user if it exists
@@ -128,7 +135,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           await refreshUserSkills();
         } catch (error) {
           console.error("Token verification failed", error);
-          logout();
+          // Don't logout if we are on the payment-callback page, let that page handle verification failures
+          if (window.location.pathname !== '/payment-callback') {
+            logout();
+          }
         }
       }
       setLoading(false);
