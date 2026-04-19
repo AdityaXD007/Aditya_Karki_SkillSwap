@@ -41,26 +41,111 @@ export const Settings: React.FC = () => {
   // States for toggles
   const { updateUser } = useAuth();
   const [emailNotif, setEmailNotif] = useState(user?.emailNotificationsEnabled ?? true);
-  const [pushNotif, setPushNotif] = useState(false);
-  const [isPublic, setIsPublic] = useState(true);
+  const [pushNotif, setPushNotif] = useState(user?.pushNotificationsEnabled ?? false);
+  const [isPublic, setIsPublic] = useState(user?.isPublic ?? true);
+
+  const [confirmModal, setConfirmModal] = useState<{
+    show: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    show: false,
+    title: "",
+    message: "",
+    onConfirm: () => {},
+  });
 
   // Sync state when user data is available/changes
   React.useEffect(() => {
     if (user) {
       setEmailNotif(user.emailNotificationsEnabled);
+      setPushNotif(user.pushNotificationsEnabled);
+      setIsPublic(user.isPublic);
     }
   }, [user]);
 
-  const handleToggleEmail = async () => {
-    const newValue = !emailNotif;
-    setEmailNotif(newValue);
+  const performToggleEmail = async (value: boolean) => {
+    setEmailNotif(value);
     try {
-      await authAPI.updateProfile({ email_notifications_enabled: newValue });
-      updateUser({ emailNotificationsEnabled: newValue });
+      await authAPI.updateProfile({ email_notifications_enabled: value });
+      updateUser({ emailNotificationsEnabled: value });
     } catch (err) {
-      console.error("Failed to update notification preference:", err);
-      // Revert on failure
-      setEmailNotif(!newValue);
+      console.error("Failed to update email notification preference:", err);
+      setEmailNotif(!value);
+    }
+  };
+
+  const performTogglePush = async (value: boolean) => {
+    setPushNotif(value);
+    try {
+      await authAPI.updateProfile({ push_notifications_enabled: value });
+      updateUser({ pushNotificationsEnabled: value });
+    } catch (err) {
+      console.error("Failed to update push notification preference:", err);
+      setPushNotif(!value);
+    }
+  };
+
+  const performTogglePublic = async (value: boolean) => {
+    setIsPublic(value);
+    try {
+      await authAPI.updateProfile({ is_public: value });
+      updateUser({ isPublic: value });
+    } catch (err) {
+      console.error("Failed to update privacy preference:", err);
+      setIsPublic(!value);
+    }
+  };
+
+  const handleToggleEmail = () => {
+    const newValue = !emailNotif;
+    if (!newValue) {
+      setConfirmModal({
+        show: true,
+        title: "Disable Email Notifications?",
+        message: "You might miss important updates about your skill swaps and messages.",
+        onConfirm: () => {
+          performToggleEmail(false);
+          setConfirmModal((prev) => ({ ...prev, show: false }));
+        },
+      });
+    } else {
+      performToggleEmail(true);
+    }
+  };
+
+  const handleTogglePush = () => {
+    const newValue = !pushNotif;
+    if (!newValue) {
+      setConfirmModal({
+        show: true,
+        title: "Disable Push Notifications?",
+        message: "We won't be able to notify you instantly when someone wants to swap skills with you.",
+        onConfirm: () => {
+          performTogglePush(false);
+          setConfirmModal((prev) => ({ ...prev, show: false }));
+        },
+      });
+    } else {
+      performTogglePush(true);
+    }
+  };
+
+  const handleTogglePublic = () => {
+    const newValue = !isPublic;
+    if (!newValue) {
+      setConfirmModal({
+        show: true,
+        title: "Go Private?",
+        message: "Your profile will no longer be visible in search results, and others won't be able to find you to swap skills.",
+        onConfirm: () => {
+          performTogglePublic(false);
+          setConfirmModal((prev) => ({ ...prev, show: false }));
+        },
+      });
+    } else {
+      performTogglePublic(true);
     }
   };
 
@@ -80,6 +165,22 @@ export const Settings: React.FC = () => {
     error: null,
     success: null,
   });
+
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const { logout } = useAuth();
+
+  const handleDeleteAccount = async () => {
+    setIsDeleting(true);
+    try {
+      await authAPI.deleteAccount();
+      await logout();
+      window.location.href = "/";
+    } catch (err) {
+      console.error("Failed to delete account:", err);
+      setIsDeleting(false);
+    }
+  };
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -166,7 +267,7 @@ export const Settings: React.FC = () => {
           description: "Browser and mobile alerts",
           toggle: true,
           active: pushNotif,
-          onToggle: () => setPushNotif(!pushNotif),
+          onToggle: handleTogglePush,
         },
       ],
     },
@@ -179,13 +280,16 @@ export const Settings: React.FC = () => {
           description: "Allow others to find your profile",
           toggle: true,
           active: isPublic,
-          onToggle: () => setIsPublic(!isPublic),
+          onToggle: handleTogglePublic,
         },
         {
           icon: Globe,
           label: "Connected Accounts",
-          description: "Google, Github, etc.",
-          count: 1,
+          description: user ? [
+            user.isGoogleConnected && "Google",
+            user.isGithubConnected && "GitHub"
+          ].filter(Boolean).join(", ") || "No accounts connected" : "Google, Github, etc.",
+          count: (user?.isGoogleConnected ? 1 : 0) + (user?.isGithubConnected ? 1 : 0),
         },
         {
           icon: FileText,
@@ -289,7 +393,10 @@ export const Settings: React.FC = () => {
                   cannot be undone.
                 </p>
               </div>
-              <button className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors">
+              <button 
+                onClick={() => setIsDeleteModalOpen(true)}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors"
+              >
                 Delete Account
               </button>
             </div>
@@ -363,19 +470,20 @@ export const Settings: React.FC = () => {
                         Forgot Password?
                       </Link>
                     </div>
-                    <input
-                      type="password"
-                      required
-                      value={passwordForm.old_password}
-                      onChange={(e) =>
-                        setPasswordForm({
-                          ...passwordForm,
-                          old_password: e.target.value,
-                        })
-                      }
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-slate-700 transition-all outline-none text-gray-900 dark:text-white"
-                      placeholder="••••••••"
-                    />
+                      <input
+                        type="password"
+                        required
+                        autoComplete="current-password"
+                        value={passwordForm.old_password}
+                        onChange={(e) =>
+                          setPasswordForm({
+                            ...passwordForm,
+                            old_password: e.target.value,
+                          })
+                        }
+                        className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-slate-700 transition-all outline-none text-gray-900 dark:text-white"
+                        placeholder="••••••••"
+                      />
                   </div>
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-gray-700 dark:text-gray-300 ml-1">
@@ -385,6 +493,7 @@ export const Settings: React.FC = () => {
                       type="password"
                       required
                       minLength={8}
+                      autoComplete="new-password"
                       value={passwordForm.new_password}
                       onChange={(e) =>
                         setPasswordForm({
@@ -403,6 +512,7 @@ export const Settings: React.FC = () => {
                     <input
                       type="password"
                       required
+                      autoComplete="new-password"
                       value={passwordForm.confirm_password}
                       onChange={(e) =>
                         setPasswordForm({
@@ -436,6 +546,110 @@ export const Settings: React.FC = () => {
                     </button>
                   </div>
                 </form>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Settings Confirmation Modal */}
+      <AnimatePresence>
+        {confirmModal.show && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 text-left">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setConfirmModal((prev) => ({ ...prev, show: false }))}
+              className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-sm bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden border border-white/20 p-8"
+            >
+              <div className="flex items-center space-x-3 mb-4">
+                <div className="w-10 h-10 bg-amber-50 dark:bg-amber-900/20 rounded-xl flex items-center justify-center">
+                  <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                  {confirmModal.title}
+                </h3>
+              </div>
+              <p className="text-gray-600 dark:text-gray-400 mb-8 leading-relaxed">
+                {confirmModal.message}
+              </p>
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => setConfirmModal((prev) => ({ ...prev, show: false }))}
+                  className="flex-1 px-4 py-3 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-900 dark:text-white rounded-xl font-bold transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmModal.onConfirm}
+                  className="flex-1 px-4 py-3 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold transition-all shadow-lg shadow-amber-500/30"
+                >
+                  Yes, Turn Off
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Account Confirmation Modal */}
+      <AnimatePresence>
+        {isDeleteModalOpen && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6 text-left">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => !isDeleting && setIsDeleteModalOpen(false)}
+              className="absolute inset-0 bg-slate-950/80 backdrop-blur-md"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-[32px] shadow-2xl overflow-hidden border border-red-500/20 p-10"
+            >
+              <div className="flex flex-col items-center text-center mb-8">
+                <div className="w-16 h-16 bg-red-50 dark:bg-red-900/20 rounded-2xl flex items-center justify-center mb-6">
+                  <Trash2 className="w-8 h-8 text-red-600 dark:text-red-400" />
+                </div>
+                <h3 className="text-2xl font-black text-gray-900 dark:text-white mb-3">
+                  Delete Account?
+                </h3>
+                <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
+                  This action is <span className="text-red-600 dark:text-red-400 font-bold underline">permanent</span>. You will lose all your matches, messages, and profile data. We'll be sad to see you go!
+                </p>
+              </div>
+              
+              <div className="flex flex-col space-y-3">
+                <button
+                  onClick={handleDeleteAccount}
+                  disabled={isDeleting}
+                  className="w-full px-4 py-4 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-black transition-all shadow-lg shadow-red-500/30 flex items-center justify-center space-x-2"
+                >
+                  {isDeleting ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <span>Deleting Account...</span>
+                    </>
+                  ) : (
+                    <span>Yes, Delete Everything</span>
+                  )}
+                </button>
+                <button
+                  onClick={() => setIsDeleteModalOpen(false)}
+                  disabled={isDeleting}
+                  className="w-full px-4 py-4 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-900 dark:text-white rounded-2xl font-bold transition-colors"
+                >
+                  No, I Want to Stay
+                </button>
               </div>
             </motion.div>
           </div>

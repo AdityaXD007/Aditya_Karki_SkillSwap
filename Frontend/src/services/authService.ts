@@ -12,6 +12,7 @@ export const authAPI = {
         apiClient.post('/auth/google_login/', { token }),
 
     logout: () => apiClient.post('/auth/logout/'),
+    deleteAccount: () => apiClient.delete('/auth/delete_account/'),
 
     getProfile: () => apiClient.get<UserProfile>('/profiles/me/'),
 

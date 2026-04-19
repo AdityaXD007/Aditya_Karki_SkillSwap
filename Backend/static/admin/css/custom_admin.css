@@ -475,3 +475,14 @@ button[name="_addanother"],
     margin-bottom: 20px;
 }
 
+/* Reduce Admin Sidebar Logo Size */
+.brand-link .brand-image {
+    max-height: 22px !important;
+    width: auto !important;
+    margin-top: -2px !important;
+}
+
+.brand-link {
+    padding: 0.6rem 0.5rem !important;
+}
+

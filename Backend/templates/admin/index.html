@@ -100,39 +100,47 @@
 
     <!-- Stats Cards -->
     <div class="row">
-        <div class="col-md-4">
+        <div class="col-md-3">
             <div class="card stats-card bg-berry-p">
-                <div class="mb-2">Total Registered Users</div>
+                <div class="mb-2">Total Users</div>
                 <h2 class="mb-0">{{ dashboard_stats.total_users|default:0 }}</h2>
                 <div class="mt-2 text-sm text-white-50"><i class="fas fa-arrow-up"></i> New members</div>
                 <i class="fas fa-users"></i>
             </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
             <div class="card stats-card bg-berry-s">
-                <div class="mb-2">Total Skills Shared</div>
+                <div class="mb-2">Total Skills</div>
                 <h2 class="mb-0">{{ dashboard_stats.total_skills|default:0 }}</h2>
                 <div class="mt-2 text-sm text-white-50"><i class="fas fa-arrow-up"></i> Active listings</div>
                 <i class="fas fa-brain"></i>
             </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
             <div class="card stats-card bg-berry-g">
-                <div class="mb-2">Total Revenue</div>
+                <div class="mb-2">Gross Volume</div>
                 <h2 class="mb-0">Rs. {{ dashboard_stats.total_revenue|default:0|floatformat:2 }}</h2>
-                <div class="mt-2 text-sm text-white-50"><i class="fas fa-arrow-up"></i> All time</div>
+                <div class="mt-2 text-sm text-white-50"><i class="fas fa-shopping-cart"></i> All transactions</div>
                 <i class="fas fa-wallet"></i>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stats-card" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
+                <div class="mb-2">Platform Profit (10%)</div>
+                <h2 class="mb-0">Rs. {{ dashboard_stats.platform_earnings|default:0|floatformat:2 }}</h2>
+                <div class="mt-2 text-sm text-white-50"><i class="fas fa-hand-holding-usd"></i> Your net cut</div>
+                <i class="fas fa-coins"></i>
             </div>
         </div>
     </div>
 
     <!-- Charts Row -->
     <div class="row">
-        <div class="col-md-8">
+        <div class="col-md-4">
             <div class="card">
                 <div class="card-body chart-container">
                     <h5 class="card-title">Recent Registrations</h5>
-                    <div style="height: 350px;">
+                    <div style="height: 300px;">
                         <canvas id="registrationChart"></canvas>
                     </div>
                 </div>
@@ -141,8 +149,18 @@
         <div class="col-md-4">
             <div class="card">
                 <div class="card-body chart-container">
+                    <h5 class="card-title">Profit Trends (10% Fee)</h5>
+                    <div style="height: 300px;">
+                        <canvas id="revenueChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body chart-container">
                     <h5 class="card-title">Skill Distribution</h5>
-                    <div style="height: 350px;">
+                    <div style="height: 300px;">
                         <canvas id="skillCategoryChart"></canvas>
                     </div>
                 </div>
@@ -248,6 +266,31 @@
             }
         });
 
+        // Revenue Chart (10% Platform Charge)
+        const revData = JSON.parse('{{ dashboard_stats.revenue_chart|default:"[]"|escapejs }}');
+        const ctxRev = document.getElementById('revenueChart').getContext('2d');
+        new Chart(ctxRev, {
+            type: 'bar',
+            data: {
+                labels: revData.map(d => d.date),
+                datasets: [{
+                    label: 'Profit (NPR)',
+                    data: revData.map(d => d.amount),
+                    backgroundColor: '#00c853',
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { display: false } },
+                    y: { grid: { color: '#f1f1f1' }, beginAtZero: true }
+                }
+            }
+        });
+
         // Skill Categories Chart
         const skillCategories = JSON.parse('{{ dashboard_stats.skill_categories|default:"[]"|escapejs }}');
         const ctx2 = document.getElementById('skillCategoryChart').getContext('2d');
@@ -265,9 +308,9 @@
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: { position: 'bottom', labels: { padding: 20 } }
+                    legend: { position: 'bottom', labels: { padding: 10, boxWidth: 10 } }
                 },
-                cutout: '75%'
+                cutout: '70%'
             }
         });
     });

@@ -5,7 +5,7 @@ from django.dispatch import receiver
 
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
-    full_name = models.CharField(max_length=255, blank=True)
+    full_name = models.CharField(max_length=255, blank=True, default='')
     profile_image = models.ImageField(upload_to='profile_images/', null=True, blank=True)
     location = models.CharField(max_length=100, blank=True)
     bio = models.TextField(blank=True)
@@ -16,6 +16,10 @@ class UserProfile(models.Model):
     hourly_rate = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, help_text="Hourly rate in NPR")
     rating = models.FloatField(default=0.0, help_text="Average teacher rating from student feedback")
     email_notifications_enabled = models.BooleanField(default=True)
+    push_notifications_enabled = models.BooleanField(default=False)
+    is_public = models.BooleanField(default=True)
+    is_google_connected = models.BooleanField(default=False)
+    is_github_connected = models.BooleanField(default=False)
     is_onboarded = models.BooleanField(default=False)
     is_email_verified = models.BooleanField(default=False)
     last_activity = models.DateTimeField(null=True, blank=True)

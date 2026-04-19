@@ -32,6 +32,10 @@ export interface User {
   canCharge: boolean;
   hourlyRate: number;
   emailNotificationsEnabled: boolean;
+  pushNotificationsEnabled: boolean;
+  isPublic: boolean;
+  isGoogleConnected: boolean;
+  isGithubConnected: boolean;
   isOnboarded: boolean;
   isEmailVerified: boolean;
 }
@@ -109,6 +113,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             canCharge: userData.can_charge || false,
             hourlyRate: parseFloat(userData.hourly_rate?.toString() || "0"),
             emailNotificationsEnabled: userData.email_notifications_enabled !== false,
+            pushNotificationsEnabled: !!userData.push_notifications_enabled,
+            isPublic: userData.is_public !== false,
+            isGoogleConnected: !!userData.is_google_connected,
+            isGithubConnected: !!userData.is_github_connected,
             isOnboarded: !!userData.is_onboarded,
             isEmailVerified: !!userData.is_email_verified,
           };
@@ -198,6 +206,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           ? userData.availability.split(",").filter(Boolean)
           : [],
         emailNotificationsEnabled: userData.email_notifications_enabled !== false,
+        pushNotificationsEnabled: !!userData.push_notifications_enabled,
+        isPublic: userData.is_public !== false,
+        isGoogleConnected: !!userData.is_google_connected,
+        isGithubConnected: !!userData.is_github_connected,
         isOnboarded: !!userData.is_onboarded,
         isEmailVerified: !!userData.is_email_verified,
       };
@@ -259,6 +271,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           ? userData.availability.split(",").filter(Boolean)
           : [],
         emailNotificationsEnabled: userData.email_notifications_enabled !== false,
+        pushNotificationsEnabled: !!userData.push_notifications_enabled,
+        isPublic: userData.is_public !== false,
+        isGoogleConnected: !!userData.is_google_connected,
+        isGithubConnected: !!userData.is_github_connected,
         isOnboarded: !!userData.is_onboarded,
         isEmailVerified: !!userData.is_email_verified,
       };

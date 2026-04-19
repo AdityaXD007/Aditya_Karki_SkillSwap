@@ -238,6 +238,9 @@ JAZZMIN_SETTINGS = {
     "site_brand": "SkillSwap Administration",
     "welcome_sign": "Welcome to SkillSwap Admin Panel",
     "copyright": "SkillSwap Ltd",
+    "site_logo": "img/favicon.png",
+    "login_logo": "img/favicon.png",
+    "site_icon": "img/favicon.png",
     "user_avatar": None,
     "topmenu_links": [
         {"name": "Home",  "url": "admin:index", "permissions": ["auth.view_user"]},

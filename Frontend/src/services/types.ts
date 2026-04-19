@@ -16,8 +16,13 @@ export interface UserProfile {
     can_charge?: boolean;
     hourly_rate?: string | number;
     email_notifications_enabled?: boolean;
+    push_notifications_enabled?: boolean;
+    is_public?: boolean;
+    is_google_connected?: boolean;
+    is_github_connected?: boolean;
     experience_title?: string;
     is_onboarded?: boolean;
+    is_email_verified?: boolean;
 }
 
 export interface Skill {

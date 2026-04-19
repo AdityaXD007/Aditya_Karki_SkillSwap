@@ -79,7 +79,8 @@ class UserProfileSerializer(serializers.ModelSerializer):
         fields = ['id', 'username', 'email', 'full_name', 'profile_image', 'profile_image_url', 
                   'location', 'bio', 'languages', 'availability', 'user_skills', 'rating',
                   'experience_title', 'sessions_taught_count', 'sessions_learned_count', 
-                  'can_charge', 'hourly_rate', 'email_notifications_enabled', 'is_onboarded', 'is_email_verified']
+                  'can_charge', 'hourly_rate', 'email_notifications_enabled', 'push_notifications_enabled',
+                  'is_public', 'is_google_connected', 'is_github_connected', 'is_onboarded', 'is_email_verified']
         read_only_fields = ['id', 'username', 'email', 'full_name', 'rating', 'experience_title',
                            'sessions_taught_count', 'sessions_learned_count', 'can_charge', 'is_email_verified']
     

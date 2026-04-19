@@ -43,8 +43,8 @@ class AuthViewSet(viewsets.ViewSet):
             if not email:
                 return Response({'error': 'Email not provided by Google'}, status=status.HTTP_400_BAD_REQUEST)
                 
-            first_name = idinfo.get('given_name', '')
-            last_name = idinfo.get('family_name', '')
+            first_name = idinfo.get('given_name') or ''
+            last_name = idinfo.get('family_name') or ''
             
             # Use email prefix as username if not exists, or generate unique
             base_username = email.split('@')[0]
@@ -75,8 +75,15 @@ class AuthViewSet(viewsets.ViewSet):
                 user.save()
                 
                 # Also ensure profile name is set
-                user.profile.full_name = f"{first_name} {last_name}".strip()
+                full_name = f"{first_name} {last_name}".strip()
+                user.profile.full_name = full_name if full_name else username
+                user.profile.is_google_connected = True
                 user.profile.save()
+            else:
+                # Update connection status if existing user logs in with different method
+                if not user.profile.is_google_connected:
+                    user.profile.is_google_connected = True
+                    user.profile.save()
 
             # 4. Generate JWT tokens
             refresh = RefreshToken.for_user(user)
@@ -136,9 +143,9 @@ class AuthViewSet(viewsets.ViewSet):
                 primary_email = next((e['email'] for e in emails if e['primary']), emails[0]['email'])
                 email = primary_email
 
-            first_name = github_user.get('name', '').split(' ')[0] if github_user.get('name') else ''
-            last_name = ' '.join(github_user.get('name', '').split(' ')[1:]) if github_user.get('name') and ' ' in github_user.get('name') else ''
-            username = github_user.get('login', email.split('@')[0])
+            first_name = (github_user.get('name') or '').split(' ')[0] if github_user.get('name') else ''
+            last_name = ' '.join((github_user.get('name') or '').split(' ')[1:]) if github_user.get('name') and ' ' in github_user.get('name') else ''
+            username = github_user.get('login') or email.split('@')[0]
 
             # 4. Find or Create the user
             try:
@@ -163,8 +170,13 @@ class AuthViewSet(viewsets.ViewSet):
             if created:
                 user.set_unusable_password()
                 user.save()
-                user.profile.full_name = github_user.get('name', username)
+                user.profile.full_name = github_user.get('name') or username
+                user.profile.is_github_connected = True
                 user.profile.save()
+            else:
+                if not user.profile.is_github_connected:
+                    user.profile.is_github_connected = True
+                    user.profile.save()
 
             # 5. Generate JWT tokens
             refresh = RefreshToken.for_user(user)
@@ -259,6 +271,13 @@ class AuthViewSet(viewsets.ViewSet):
         # If using blacklist, we would blacklist the token here
         return Response({'message': 'Logged out successfully'})
 
+    @action(detail=False, methods=['delete'], authentication_classes=[JWTAuthentication], permission_classes=[IsAuthenticated])
+    def delete_account(self, request):
+        """Permanently delete user account"""
+        user = request.user
+        user.delete()
+        return Response({'message': 'Account deleted successfully'}, status=status.HTTP_204_NO_CONTENT)
+
     @action(detail=False, methods=['post'], permission_classes=[AllowAny])
     def forgot_password(self, request):
         """Request a password reset link"""
@@ -316,6 +335,15 @@ class AuthViewSet(viewsets.ViewSet):
         serializer = UserSerializer(request.user)
         return Response(serializer.data)
 
+    @action(detail=False, methods=['get'], permission_classes=[AllowAny])
+    def check_username(self, request):
+        """Check if username is available"""
+        username = request.query_params.get('username')
+        if not username:
+            return Response({'error': 'Username parameter is required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        exists = User.objects.filter(username__iexact=username).exists()
+        return Response({'available': not exists})
 
 class UserProfileViewSet(viewsets.ModelViewSet):
     queryset = UserProfile.objects.all()

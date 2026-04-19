@@ -23,7 +23,6 @@ import {
   ArrowLeft,
   Check,
   Monitor,
-  Mail,
 } from "lucide-react";
 
 export const Navbar: React.FC = () => {
@@ -181,14 +180,6 @@ export const Navbar: React.FC = () => {
   
   return (
     <>
-    {isAuthenticated && user && !user.isEmailVerified && (
-      <div className="bg-blue-600 dark:bg-blue-600 text-white px-4 py-2 text-center text-sm font-bold shadow-md z-[60] relative">
-         <span className="flex items-center justify-center gap-2">
-           <Mail className="w-4 h-4" />
-           Please verify your email address to unlock all SkillSwap features. Check your inbox!
-         </span>
-      </div>
-    )}
     <nav
       className={`sticky top-0 z-50 transition-all duration-300 ${
         isLandingPage
@@ -204,377 +195,334 @@ export const Navbar: React.FC = () => {
               to={isAuthenticated ? "/dashboard" : "/landing"}
               className="flex items-center space-x-2 group"
             >
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center transform group-hover:rotate-6 transition-transform">
+              <div className="w-9 h-9 md:w-10 md:h-10 rounded-lg flex items-center justify-center transform group-hover:rotate-6 transition-transform overflow-hidden shadow-sm">
                 <img src="/favicon.png" alt="SkillSwap" className="w-full h-full object-cover" />
               </div>
-              <span className="font-bold text-xl text-gray-900 dark:text-white transition-colors">SkillSwap</span>
+              <span className="font-bold text-lg md:text-xl text-gray-900 dark:text-white transition-colors">SkillSwap</span>
             </Link>
           </div>
 
           {/* Desktop Navigation */}
           {isAuthenticated && (
-            <div className="hidden md:flex items-center space-x-4">
+            <div className="hidden md:flex items-center space-x-1 lg:space-x-4">
               {navLinks.map(({ to, label, icon: Icon }) => (
                 <Link
                   key={to}
                   to={to}
-                  className={`flex items-center space-x-1 px-3 py-2 rounded-md transition-colors ${
+                  className={`flex items-center space-x-1 px-3 py-2 rounded-lg transition-all ${
                     isActive(to)
-                      ? "bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400"
+                      ? "bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400 font-bold"
                       : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-900 hover:text-gray-900 dark:hover:text-gray-100"
                   }`}
                 >
                   <Icon className="w-4 h-4" />
-                  <span>{label}</span>
+                  <span className="text-sm">{label}</span>
                 </Link>
               ))}
             </div>
           )}
 
-          {/* User Menu */}
-          <div className="flex items-center">
+          {/* User Menu / Actions */}
+          <div className="flex items-center space-x-1 md:space-x-4">
             {isAuthenticated ? (
-              <div className="hidden md:flex items-center space-x-2">
-                {/* Notifications */}
-                <div className="relative" ref={notificationsRef}>
-                  <button
-                    onClick={() => {
-                      setIsNotificationsOpen(!isNotificationsOpen);
-                      if (!isNotificationsOpen) {
-                        setHasNewNotifications(false);
-                        localStorage.setItem('lastSeenNotificationCount', pendingCount.toString());
-                      }
-                    }}
-                    className="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-900 rounded-full transition-colors relative group focus:outline-none"
-                  >
-                    <Bell className="w-5 h-5 group-hover:text-gray-900 dark:group-hover:text-white" />
-                    {hasNewNotifications && pendingCount > 0 && (
-                      <span className="absolute top-2 right-2.5 w-4 h-4 bg-blue-600 rounded-full border-2 border-white dark:border-slate-900 text-[10px] text-white flex items-center justify-center font-bold">
-                        {pendingCount}
-                      </span>
-                    )}
-                  </button>
+              <>
+                <div className="flex items-center space-x-1 md:space-x-2">
+                  {/* Notifications */}
+                  <div className="relative" ref={notificationsRef}>
+                    <button
+                      onClick={() => {
+                        setIsNotificationsOpen(!isNotificationsOpen);
+                        if (!isNotificationsOpen) {
+                          setHasNewNotifications(false);
+                          localStorage.setItem('lastSeenNotificationCount', pendingCount.toString());
+                        }
+                      }}
+                      className="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-900 rounded-full transition-colors relative group focus:outline-none"
+                    >
+                      <Bell className="w-5 h-5 group-hover:text-gray-900 dark:group-hover:text-white" />
+                      {hasNewNotifications && pendingCount > 0 && (
+                        <span className="absolute top-2 right-2 w-4 h-4 bg-red-500 rounded-full border-2 border-white dark:border-slate-950 text-[9px] text-white flex items-center justify-center font-bold">
+                          {pendingCount}
+                        </span>
+                      )}
+                    </button>
 
-                  {/* Notifications Dropdown */}
-                  {isNotificationsOpen && (
-                    <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-gray-200 dark:border-slate-800 py-2 z-50 overflow-hidden transform origin-top-right transition-all animate-in fade-in zoom-in duration-200">
-                      <div className="px-4 py-3 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between">
-                        <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100">Notifications</h3>
-                        {pendingCount > 0 && (
-                          <span className="px-2 py-0.5 bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 rounded-full text-[10px] font-bold">
-                            {pendingCount} New
-                          </span>
-                        )}
-                      </div>
-                      <div className="max-h-[450px] overflow-y-auto custom-scrollbar">
-                        {pendingRequests.length > 0 ? (
-                          <div className="divide-y divide-gray-100 dark:divide-slate-800">
-                            {/* Show Session Requests */}
-                            {pendingRequests.map((req) => (
-                              <div
-                                key={req.id}
-                                className="p-4 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors group relative"
-                              >
-                                <div className="flex items-start space-x-3">
-                                  {/* Requester Avatar */}
-                                  <Link 
-                                    to={`/profile/${req.requester_details.id}`}
-                                    onClick={() => setIsNotificationsOpen(false)}
-                                    className="shrink-0"
-                                  >
-                                    {req.requester_details.profile_image_url || req.requester_details.profile_image ? (
-                                      <img
-                                        src={req.requester_details.profile_image_url || req.requester_details.profile_image || ''}
-                                        alt={req.requester_details.username}
-                                        className="w-10 h-10 rounded-full object-cover ring-2 ring-transparent group-hover:ring-blue-500 transition-all"
-                                      />
-                                    ) : (
-                                      <div className="w-10 h-10 bg-indigo-100 dark:bg-indigo-900/30 rounded-full flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold">
-                                        {req.requester_details.username[0].toUpperCase()}
+                    {/* Notifications Dropdown */}
+                    {isNotificationsOpen && (
+                      <div className="absolute right-0 mt-3 w-[calc(100vw-2rem)] sm:w-80 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-slate-800 py-2 z-50 overflow-hidden transform origin-top-right transition-all animate-in fade-in zoom-in duration-200">
+                        <div className="px-4 py-3 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between">
+                          <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100">Notifications</h3>
+                          {pendingCount > 0 && (
+                            <span className="px-2 py-0.5 bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400 rounded-full text-[10px] font-bold uppercase tracking-wider">
+                              {pendingCount} New
+                            </span>
+                          )}
+                        </div>
+                        <div className="max-h-[400px] sm:max-h-[500px] overflow-y-auto custom-scrollbar">
+                          {pendingRequests.length > 0 ? (
+                            <div className="divide-y divide-gray-100 dark:divide-slate-800">
+                              {pendingRequests.map((req) => (
+                                <div
+                                  key={req.id}
+                                  className="p-4 hover:bg-gray-50/80 dark:hover:bg-slate-800/40 transition-colors group relative"
+                                >
+                                  <div className="flex items-start space-x-3">
+                                    <Link 
+                                      to={`/profile/${req.requester_details.id}`}
+                                      onClick={() => setIsNotificationsOpen(false)}
+                                      className="shrink-0"
+                                    >
+                                      {req.requester_details.profile_image_url || req.requester_details.profile_image ? (
+                                        <img
+                                          src={req.requester_details.profile_image_url || req.requester_details.profile_image || ''}
+                                          alt={req.requester_details.username}
+                                          className="w-10 h-10 rounded-full object-cover ring-2 ring-transparent group-hover:ring-blue-500 transition-all shadow-sm"
+                                        />
+                                      ) : (
+                                        <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold shadow-sm">
+                                          {req.requester_details.username[0].toUpperCase()}
+                                        </div>
+                                      )}
+                                    </Link>
+
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center justify-between mb-0.5">
+                                        <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest">New Session</span>
+                                        <span className="text-[10px] text-gray-400 dark:text-gray-500">
+                                          {req.created_at ? formatDistanceToNow(new Date(req.created_at), { addSuffix: true }) : 'Just now'}
+                                        </span>
                                       </div>
-                                    )}
-                                  </Link>
-
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-center justify-between">
-                                      <span className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-tight">New Request</span>
-                                      <span className="text-[10px] text-gray-400 dark:text-gray-500">
-                                        {req.created_at ? formatDistanceToNow(new Date(req.created_at), { addSuffix: true }) : 'Just now'}
-                                      </span>
-                                    </div>
-                                    
-                                    <p className="text-sm text-gray-900 dark:text-white mt-0.5">
-                                      <span className="font-bold">{req.requester_details.full_name || req.requester_details.username}</span>
-                                      <span className="text-gray-500 dark:text-gray-400"> wants to learn </span>
-                                      <span className="font-bold">{req.skill_learn_details.name}</span>
-                                    </p>
-                                    
-                                    {req.message && (
-                                      <p className="text-xs text-gray-500 dark:text-gray-500 mt-1 line-clamp-1 italic">
-                                        "{req.message}"
+                                      
+                                      <p className="text-sm text-gray-900 dark:text-white leading-snug">
+                                        <span className="font-bold">{req.requester_details.username}</span>
+                                        <span className="text-gray-500 dark:text-gray-400"> wants to learn </span>
+                                        <span className="font-bold text-blue-600 dark:text-blue-400">{req.skill_learn_details.name}</span>
                                       </p>
-                                    )}
+                                      
+                                      {req.message && (
+                                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 line-clamp-1 italic bg-gray-50 dark:bg-slate-800/50 p-1.5 rounded-lg border border-gray-100 dark:border-slate-700">
+                                          "{req.message}"
+                                        </p>
+                                      )}
 
-                                    {/* Action Buttons */}
-                                    <div className="flex items-center space-x-2 mt-3">
-                                      <button
-                                        onClick={() => handleRequestAction(req.id, 'accept')}
-                                        className="flex-1 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
-                                      >
-                                        <Check className="w-3.5 h-3.5" />
-                                        Accept
-                                      </button>
-                                      <button
-                                        onClick={() => handleRequestAction(req.id, 'reject')}
-                                        className="flex-1 py-1.5 border border-gray-200 dark:border-slate-700 hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-700 dark:text-gray-300 rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
-                                      >
-                                        <X className="w-3.5 h-3.5" />
-                                        Decline
-                                      </button>
+                                      <div className="flex items-center space-x-2 mt-3">
+                                        <button
+                                          onClick={() => handleRequestAction(req.id, 'accept')}
+                                          className="flex-1 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-blue-500/20 active:scale-95"
+                                        >
+                                          <Check className="w-3.5 h-3.5" />
+                                          Accept
+                                        </button>
+                                        <button
+                                          onClick={() => handleRequestAction(req.id, 'reject')}
+                                          className="flex-1 py-1.5 border border-gray-200 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800 text-gray-600 dark:text-gray-400 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 active:scale-95"
+                                        >
+                                          <X className="w-3.5 h-3.5" />
+                                          Decline
+                                        </button>
+                                      </div>
                                     </div>
                                   </div>
                                 </div>
+                              ))}
+                              
+                              <div className="p-3 bg-gray-50/50 dark:bg-slate-800/30">
+                                <Link
+                                  to="/bookings"
+                                  onClick={() => setIsNotificationsOpen(false)}
+                                  className="block w-full py-2.5 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl text-center text-xs font-bold text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all shadow-sm"
+                                >
+                                  Manage Session History
+                                </Link>
                               </div>
-                            ))}
-                            
-                            <div className="p-3 bg-gray-50/50 dark:bg-slate-800/30">
+                            </div>
+                          ) : (
+                            <div className="py-16 flex flex-col items-center justify-center text-center px-6">
+                              <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/20 rounded-2xl flex items-center justify-center mb-4 transition-transform hover:rotate-12">
+                                <Bell className="w-8 h-8 text-blue-500 dark:text-blue-400" />
+                              </div>
+                              <h4 className="text-base font-bold text-gray-900 dark:text-white">Stay Tuned!</h4>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 max-w-[200px] leading-relaxed">
+                                No new notification alerts right now.
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Desktop User Dropdown */}
+                  <div className="hidden md:block relative" ref={userMenuRef}>
+                    <button
+                      onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                      className="flex items-center space-x-2 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-slate-900 transition-colors focus:outline-none"
+                    >
+                      {user?.avatar ? (
+                        <img
+                          src={user.avatar}
+                          alt={user?.name}
+                          className="w-10 h-10 rounded-full object-cover border border-gray-200 dark:border-slate-800 shadow-sm"
+                        />
+                      ) : (
+                        <div className="w-9 h-9 bg-gradient-to-tr from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white shadow-md">
+                          <User className="w-5 h-5" />
+                        </div>
+                      )}
+                    </button>
+
+                    {/* Desktop Dropdown Menu */}
+                    {isUserMenuOpen && (
+                      <div className="absolute right-0 mt-3 w-72 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-slate-800 py-2 z-50 overflow-hidden transform origin-top-right transition-all animate-in fade-in zoom-in duration-200">
+                        {!showAppearanceMenu ? (
+                          <>
+                            {/* User Header */}
+                            <div className="px-4 py-4 flex items-start space-x-3 border-b border-gray-100 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-800/50">
+                              {user?.avatar ? (
+                                <img
+                                  src={user.avatar}
+                                  alt={user?.name}
+                                  className="w-10 h-10 rounded-full object-cover ring-2 ring-white dark:ring-slate-700 shadow-sm"
+                                />
+                              ) : (
+                                <div className="w-10 h-10 bg-gradient-to-tr from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white shrink-0 shadow-sm">
+                                  <User className="w-5 h-5" />
+                                </div>
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">
+                                  {user?.name || user?.username}
+                                </p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
+                                  @{user?.username}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Section 1: Account */}
+                            <div className="py-2">
                               <Link
-                                to="/bookings"
-                                onClick={() => setIsNotificationsOpen(false)}
-                                className="block w-full py-2 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-lg text-center text-xs font-bold text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                                to="/profile"
+                                onClick={() => setIsUserMenuOpen(false)}
+                                className="flex items-center px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 dark:hover:text-blue-400 transition-colors group"
                               >
-                                View Session History
+                                <UserCircle className="w-5 h-5 mr-3 text-gray-400 group-hover:text-blue-500 transition-colors" />
+                                <span className="flex-1">Profile Overview</span>
+                              </Link>
+                              <Link
+                                to="/settings"
+                                onClick={() => setIsUserMenuOpen(false)}
+                                className="flex items-center px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 dark:hover:text-blue-400 transition-colors group"
+                              >
+                                <Settings className="w-5 h-5 mr-3 text-gray-400 group-hover:text-blue-500 transition-colors" />
+                                <span className="flex-1">Settings</span>
                               </Link>
                             </div>
-                          </div>
-                        ) : (
-                          <div className="py-12 flex flex-col items-center justify-center text-center px-6">
-                            <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/20 rounded-full flex items-center justify-center mb-4">
-                              <Bell className="w-8 h-8 text-blue-400 dark:text-blue-600" />
+
+                            {/* Section 2: Preferences */}
+                            <div className="border-t border-gray-100 dark:border-slate-800 py-2">
+                              <button
+                                onClick={() => setShowAppearanceMenu(true)}
+                                className="w-full flex items-center px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 dark:hover:text-blue-400 transition-colors group"
+                              >
+                                <Moon className="w-5 h-5 mr-3 text-gray-400 group-hover:text-blue-500 transition-colors" />
+                                <span className="flex-1 text-left">
+                                  Appearance
+                                </span>
+                                <div className="flex items-center text-xs text-gray-400">
+                                  {theme === "system" ? "Auto" : theme === "dark" ? "Dark" : "Light"}
+                                  <ChevronRight className="w-4 h-4 ml-1" />
+                                </div>
+                              </button>
                             </div>
-                            <h4 className="text-sm font-bold text-gray-900 dark:text-white">All caught up!</h4>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 max-w-[180px]">
-                              No new notifications right now.
-                            </p>
+
+                            {/* Section 3: Logout */}
+                            <div className="border-t border-gray-100 dark:border-slate-800 py-2">
+                              <button
+                                onClick={handleLogout}
+                                className="w-full flex items-center px-4 py-2.5 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors group"
+                              >
+                                <LogOut className="w-5 h-5 mr-3 group-hover:-translate-x-1 transition-transform" />
+                                <span className="flex-1 text-left font-bold">Sign Out</span>
+                              </button>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="animate-in slide-in-from-right-4 duration-200">
+                            {/* Appearance Submenu Header */}
+                            <div className="flex items-center border-b border-gray-100 dark:border-slate-800 px-2 py-3">
+                              <button
+                                onClick={() => setShowAppearanceMenu(false)}
+                                className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-full transition-colors"
+                              >
+                                <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                              </button>
+                              <span className="ml-2 text-sm font-bold text-gray-900 dark:text-gray-100">Appearance Settings</span>
+                            </div>
+
+                            <div className="py-2">
+                              <button
+                                onClick={() => setTheme("light")}
+                                className={`w-full flex items-center px-4 py-3 text-sm font-medium transition-colors ${theme === 'light' ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800'}`}
+                              >
+                                <Sun className="w-5 h-5 mr-3" />
+                                <span className="flex-1 text-left">Light Mode</span>
+                                {theme === "light" && <Check className="w-4 h-4" />}
+                              </button>
+
+                              <button
+                                onClick={() => setTheme("dark")}
+                                className={`w-full flex items-center px-4 py-3 text-sm font-medium transition-colors ${theme === 'dark' ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800'}`}
+                              >
+                                <Moon className="w-5 h-5 mr-3" />
+                                <span className="flex-1 text-left">Dark Mode</span>
+                                {theme === "dark" && <Check className="w-4 h-4" />}
+                              </button>
+
+                              <button
+                                onClick={() => setTheme("system")}
+                                className={`w-full flex items-center px-4 py-3 text-sm font-medium transition-colors ${theme === 'system' ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800'}`}
+                              >
+                                <Monitor className="w-5 h-5 mr-3" />
+                                <span className="flex-1 text-left">Device Default</span>
+                                {theme === "system" && <Check className="w-4 h-4" />}
+                              </button>
+                            </div>
                           </div>
                         )}
                       </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* User Dropdown */}
-                <div className="relative" ref={userMenuRef}>
-                  <button
-                    onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                    className="flex items-center space-x-2 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-slate-900 transition-colors focus:outline-none"
-                  >
-                    {user?.avatar ? (
-                      <img
-                        src={user.avatar}
-                        alt={user?.name}
-                        className="w-10 h-10 rounded-full object-cover border border-gray-200 dark:border-slate-800"
-                      />
-                    ) : (
-                      <div className="w-8 h-8 bg-gradient-to-tr from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white">
-                        <User className="w-4 h-4" />
-                      </div>
                     )}
-                  </button>
-
-                   {/* Dropdown Menu */}
-                  {isUserMenuOpen && (
-                    <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-gray-200 dark:border-slate-800 py-2 z-50 overflow-hidden transform origin-top-right transition-all animate-in fade-in zoom-in duration-200">
-                      {!showAppearanceMenu ? (
-                        <>
-                          {/* User Header */}
-                          <div className="px-4 py-3 flex items-start space-x-3 border-b border-gray-100 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-800/50">
-                            {user?.avatar ? (
-                              <img
-                                src={user.avatar}
-                                alt={user?.name}
-                                className="w-10 h-10 rounded-full object-cover ring-2 ring-white dark:ring-slate-700 shadow-sm"
-                              />
-                            ) : (
-                              <div className="w-10 h-10 bg-gradient-to-tr from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white shrink-0 shadow-sm">
-                                <User className="w-5 h-5" />
-                              </div>
-                            )}
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">
-                                {user?.name || user?.username}
-                              </p>
-                              <p className="text-xs text-gray-500 dark:text-gray-400 truncate mb-1">
-                                {user?.username}
-                              </p>
-                            </div>
-                          </div>
-
-                          {/* Section 1: Account */}
-                          <div className="py-1.5">
-                            <Link
-                              to="/profile"
-                              onClick={() => setIsUserMenuOpen(false)}
-                              className="flex items-center px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors group"
-                            >
-                              <UserCircle className="w-5 h-5 mr-3 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-200" />
-                              <span className="flex-1">Profile</span>
-                            </Link>
-                            <button
-                              onClick={handleLogout}
-                              className="w-full flex items-center px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors group"
-                            >
-                              <LogOut className="w-5 h-5 mr-3 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-200" />
-                              <span className="flex-1 text-left">Sign out</span>
-                            </button>
-                          </div>
-
-                          {/* Section 2: Preferences */}
-                          <div className="border-t border-gray-100 dark:border-slate-800 py-1.5">
-                            <button
-                              onClick={() => setShowAppearanceMenu(true)}
-                              className="w-full flex items-center px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors group"
-                            >
-                              <Moon className="w-5 h-5 mr-3 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-200" />
-                              <span className="flex-1 text-left">
-                                Appearance: {theme === "system" ? "Device theme" : theme === "dark" ? "Dark" : "Light"}
-                              </span>
-                              <ChevronRight className="w-4 h-4 text-gray-300 dark:text-gray-600" />
-                            </button>
-                            <Link
-                              to="/settings"
-                              onClick={() => setIsUserMenuOpen(false)}
-                              className="flex items-center px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors group"
-                            >
-                              <Settings className="w-5 h-5 mr-3 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-200" />
-                              <span className="flex-1">Settings</span>
-                            </Link>
-                          </div>
-
-                          {/* Section 3: Help */}
-                          <div className="border-t border-gray-100 dark:border-slate-800 py-1.5">
-                            <Link
-                              to="/feedback"
-                              onClick={() => setIsUserMenuOpen(false)}
-                              className="w-full flex items-center px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors group"
-                            >
-                              <MessageCircle className="w-5 h-5 mr-3 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-200" />
-                              <span className="flex-1 text-left">Send feedback</span>
-                            </Link>
-                            <Link
-                              to="/contact"
-                              onClick={() => setIsUserMenuOpen(false)}
-                              className="w-full flex items-center px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors group"
-                            >
-                              <Mail className="w-5 h-5 mr-3 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-200" />
-                              <span className="flex-1 text-left">Contact Us</span>
-                            </Link>
-                          </div>
-                        </>
-                      ) : (
-                        <div className="animate-in slide-in-from-right-4 duration-200">
-                          {/* Appearance Submenu Header */}
-                          <div className="flex items-center border-b border-gray-100 dark:border-slate-800 px-2 py-1.5">
-                            <button
-                              onClick={() => setShowAppearanceMenu(false)}
-                              className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-full transition-colors"
-                            >
-                              <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-                            </button>
-                            <span className="ml-2 text-sm font-semibold text-gray-900 dark:text-gray-100">Appearance</span>
-                          </div>
-
-                          <div className="py-1">
-                            <p className="px-4 py-2 text-xs text-gray-500 dark:text-gray-400">
-                              Setting applies to this browser only
-                            </p>
-                            
-                            <button
-                              onClick={() => setTheme("system")}
-                              className="w-full flex items-center px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors"
-                            >
-                              <div className="w-5 h-5 mr-3 flex items-center justify-center">
-                                {theme === "system" ? <Check className="w-4 h-4 text-blue-600" /> : <Monitor className="w-5 h-5 text-gray-400" />}
-                              </div>
-                              <span className="flex-1 text-left">Use device theme</span>
-                            </button>
-
-                            <button
-                              onClick={() => setTheme("dark")}
-                              className="w-full flex items-center px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors"
-                            >
-                              <div className="w-5 h-5 mr-3 flex items-center justify-center">
-                                {theme === "dark" ? <Check className="w-4 h-4 text-blue-600" /> : <Moon className="w-5 h-5 text-gray-400" />}
-                              </div>
-                              <span className="flex-1 text-left">Dark theme</span>
-                            </button>
-
-                            <button
-                              onClick={() => setTheme("light")}
-                              className="w-full flex items-center px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors"
-                            >
-                              <div className="w-5 h-5 mr-3 flex items-center justify-center">
-                                {theme === "light" ? <Check className="w-4 h-4 text-blue-600" /> : <Sun className="w-5 h-5 text-gray-400" />}
-                              </div>
-                              <span className="flex-1 text-left">Light theme</span>
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  </div>
                 </div>
-              </div>
+              </>
             ) : (
-              <div className="hidden md:flex items-center space-x-4">
-                <Link
-                  to="/contact"
-                  className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
-                >
-                  Contact
-                </Link>
+              <div className="hidden md:flex items-center space-x-2">
                 <Link
                   to="/login"
-                  className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+                  className="px-4 py-2 text-sm font-bold text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                 >
                   Login
                 </Link>
                 <Link
                   to="/register"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/20"
+                  className="px-5 py-2.5 bg-blue-600 text-white text-sm font-bold rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-500/25 transition-all active:scale-95"
                 >
-                  Sign Up
+                  Join Now
                 </Link>
               </div>
             )}
 
             {/* Mobile Menu Button */}
-            <div className="flex items-center space-x-2 md:hidden">
-              {isAuthenticated && (
-                <button 
-                  onClick={() => {
-                    setIsNotificationsOpen(!isNotificationsOpen);
-                    if (!isNotificationsOpen) {
-                      setHasNewNotifications(false);
-                      localStorage.setItem('lastSeenNotificationCount', pendingCount.toString());
-                    }
-                  }}
-                  className="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-900 rounded-full transition-colors relative focus:outline-none"
-                >
-                  <Bell className="w-6 h-6" />
-                  {hasNewNotifications && pendingCount > 0 && (
-                    <span className="absolute top-2 right-2.5 w-2.5 h-2.5 bg-blue-600 rounded-full border-2 border-white dark:border-slate-950"></span>
-                  )}
-                </button>
-              )}
+            <div className="flex items-center md:hidden">
               <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="p-2 rounded-md text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-900 transition-colors focus:outline-none"
+                className="p-2 rounded-xl text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-900 transition-all focus:outline-none"
+                aria-label="Toggle Menu"
               >
                 {isMenuOpen ? (
-                  <X className="w-6 h-6" />
+                  <X className="w-6 h-6 animate-in spin-in-90 duration-300" />
                 ) : (
-                  <Menu className="w-6 h-6" />
+                  <Menu className="w-6 h-6 animate-in slide-in-from-right-2 duration-300" />
                 )}
               </button>
             </div>
@@ -582,78 +530,113 @@ export const Navbar: React.FC = () => {
         </div>
       </div>
 
-       {/* Mobile Menu */}
+       {/* Mobile Full-Screen Menu Overlay */}
       {isMenuOpen && (
-        <div className="md:hidden border-t border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-950 transition-colors duration-300">
-          <div className="px-2 pt-2 pb-3 space-y-1">
+        <div className="md:hidden fixed inset-0 z-[45] bg-white dark:bg-slate-950 flex flex-col pt-16 animate-in fade-in slide-in-from-bottom-5 duration-300">
+          <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6">
             {isAuthenticated ? (
               <>
-                {navLinks.map(({ to, label, icon: Icon }) => (
+                {/* User Mobile Profile Card */}
+                <div className="bg-gray-50 dark:bg-slate-900/50 rounded-2xl p-4 flex items-center space-x-4 border border-gray-100 dark:border-slate-800">
+                  {user?.avatar ? (
+                    <img src={user.avatar} className="w-14 h-14 rounded-full object-cover shadow-md" alt={user.name} />
+                  ) : (
+                    <div className="w-14 h-14 bg-blue-600 rounded-full flex items-center justify-center text-white text-xl font-bold shadow-md">
+                      {user?.name?.[0] || user?.username?.[0]}
+                    </div>
+                  )}
+                  <div className="overflow-hidden">
+                    <p className="font-bold text-gray-900 dark:text-white truncate lg:text-lg">{user?.name || user?.username}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 truncate">@{user?.username}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  {navLinks.map(({ to, label, icon: Icon }) => (
+                    <Link
+                      key={to}
+                      to={to}
+                      onClick={() => setIsMenuOpen(false)}
+                      className={`flex flex-col items-center justify-center p-4 rounded-2xl border transition-all ${
+                        isActive(to)
+                          ? "bg-blue-600 border-blue-600 text-white shadow-xl shadow-blue-600/20"
+                          : "bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-800 text-gray-600 dark:text-gray-400"
+                      }`}
+                    >
+                      <Icon className={`w-6 h-6 mb-2 ${isActive(to) ? 'text-white' : 'text-gray-400 dark:text-gray-500'}`} />
+                      <span className="text-sm font-bold">{label}</span>
+                    </Link>
+                  ))}
+                </div>
+
+                <div className="space-y-2">
                   <Link
-                    key={to}
-                    to={to}
+                    to="/profile"
                     onClick={() => setIsMenuOpen(false)}
-                    className={`flex items-center space-x-2 px-3 py-2 rounded-md transition-colors ${
-                      isActive(to)
-                        ? "bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400"
-                        : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-900"
-                    }`}
+                    className="flex items-center space-x-3 w-full p-4 rounded-xl text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-slate-900/50 font-bold active:bg-gray-100"
                   >
-                    <Icon className="w-5 h-5" />
-                    <span>{label}</span>
+                    <UserCircle className="w-5 h-5 text-blue-500" />
+                    <span>View Profile</span>
                   </Link>
-                ))}
-                <Link
-                  to="/contact"
-                  onClick={() => setIsMenuOpen(false)}
-                  className="flex items-center space-x-2 px-3 py-2 rounded-md text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-900 transition-colors"
-                >
-                  <Mail className="w-5 h-5" />
-                  <span>Contact</span>
-                </Link>
-                <Link
-                  to="/profile"
-                  onClick={() => setIsMenuOpen(false)}
-                  className="flex items-center space-x-2 px-3 py-2 rounded-md text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-900 transition-colors"
-                >
-                  <User className="w-5 h-5" />
-                  <span>Profile</span>
-                </Link>
+                  <Link
+                    to="/settings"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="flex items-center space-x-3 w-full p-4 rounded-xl text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-slate-900/50 font-bold active:bg-gray-100"
+                  >
+                    <Settings className="w-5 h-5 text-blue-500" />
+                    <span>App Settings</span>
+                  </Link>
+                  <button
+                    onClick={() => { setTheme(theme === 'dark' ? 'light' : 'dark'); }}
+                    className="flex items-center space-x-3 w-full p-4 rounded-xl text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-slate-900/50 font-bold active:bg-gray-100 text-left"
+                  >
+                    {theme === 'dark' ? <Sun className="w-5 h-5 text-amber-500" /> : <Moon className="w-5 h-5 text-blue-500" />}
+                    <span>Switch to {theme === 'dark' ? 'Light' : 'Dark'} Mode</span>
+                  </button>
+                </div>
+
                 <button
                   onClick={() => {
                     handleLogout();
                     setIsMenuOpen(false);
                   }}
-                  className="w-full flex items-center space-x-2 px-3 py-2 rounded-md text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-900 transition-colors"
+                  className="flex items-center justify-center space-x-3 w-full p-4 rounded-2xl text-red-600 bg-red-50 dark:bg-red-900/10 font-bold active:bg-red-100 transition-colors mt-8"
                 >
                   <LogOut className="w-5 h-5" />
-                  <span>Logout</span>
+                  <span>Logout From App</span>
                 </button>
               </>
             ) : (
-              <>
-                <Link
-                  to="/contact"
-                  onClick={() => setIsMenuOpen(false)}
-                  className="block px-3 py-2 rounded-md text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-900 transition-colors"
-                >
-                  Contact
-                </Link>
+              <div className="flex flex-col h-full justify-center space-y-4">
+                <div className="text-center mb-10">
+                   <div className="w-20 h-20 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-2xl rotate-6">
+                      <img src="/favicon.png" className="w-12 h-12 brightness-0 invert" alt="SkillSwap" />
+                   </div>
+                   <h2 className="text-3xl font-bold dark:text-white">Welcome back!</h2>
+                   <p className="text-gray-500 dark:text-gray-400 mt-2">Sign in to continue your journey</p>
+                </div>
                 <Link
                   to="/login"
                   onClick={() => setIsMenuOpen(false)}
-                  className="block px-3 py-2 rounded-md text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-900 transition-colors"
+                  className="w-full py-4 text-center rounded-2xl bg-blue-600 text-white font-bold text-lg shadow-xl shadow-blue-600/25 active:scale-95 transition-transform"
                 >
-                  Login
+                  Login Session
                 </Link>
                 <Link
                   to="/register"
                   onClick={() => setIsMenuOpen(false)}
-                  className="block px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/20"
+                  className="w-full py-4 text-center rounded-2xl border-2 border-blue-600 text-blue-600 dark:text-blue-400 font-bold text-lg active:scale-95 transition-transform"
                 >
-                  Sign Up
+                  Create New Account
                 </Link>
-              </>
+                <Link
+                  to="/contact"
+                  onClick={() => setIsMenuOpen(false)}
+                  className="w-full py-4 text-center text-gray-500 dark:text-gray-400 font-medium hover:text-blue-600 transition-colors mt-4"
+                >
+                  Support & Contact
+                </Link>
+              </div>
             )}
           </div>
         </div>

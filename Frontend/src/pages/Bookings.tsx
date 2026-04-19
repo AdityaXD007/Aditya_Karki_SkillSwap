@@ -555,9 +555,9 @@ export const Bookings: React.FC = () => {
                     <div
                       className={`bg-white dark:bg-slate-900 rounded-lg border border-gray-200 dark:border-slate-800 p-6 hover:shadow-md transition-shadow ${hasRescheduleProposal ? "rounded-t-none border-t-blue-100 dark:border-t-blue-900/40" : ""}`}
                     >
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-start space-x-4 flex-1">
-                          <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold shrink-0">
+                      <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
+                        <div className="flex items-start space-x-4 flex-1 w-full">
+                          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold shrink-0">
                             {item.partnerAvatar ? (
                               <img
                                 src={item.partnerAvatar}
@@ -568,41 +568,43 @@ export const Bookings: React.FC = () => {
                               (item.partnerName || "U")[0]
                             )}
                           </div>
-                          <div className="flex-1">
-                            <h3 className="font-semibold text-lg text-gray-900 dark:text-white">
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-semibold text-base sm:text-lg text-gray-900 dark:text-white truncate">
                               {item.skill}
                             </h3>
-                            <div className="flex items-center space-x-2 mt-1 text-sm text-gray-600 dark:text-gray-400">
-                              <User className="w-4 h-4" />
-                              <span>with {item.partnerName}</span>
-                              <span className="text-gray-400 dark:text-gray-600">
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1 text-sm text-gray-600 dark:text-gray-400">
+                              <div className="flex items-center gap-1">
+                                <User className="w-4 h-4" />
+                                <span className="truncate max-w-[120px] sm:max-w-none">with {item.partnerName}</span>
+                              </div>
+                              <span className="hidden sm:inline text-gray-400 dark:text-gray-600">
                                 •
                               </span>
                               <span
-                                className={`px-2 py-0.5 rounded-full text-xs font-medium ${item.type === "teaching" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" : "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"}`}
+                                className={`px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-medium ${item.type === "teaching" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" : "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"}`}
                               >
                                 {item.type === "teaching"
                                   ? "Teaching"
                                   : "Learning"}
                               </span>
                             </div>
-                            <div className="mt-3 grid grid-cols-2 gap-4 text-sm text-gray-600 dark:text-gray-400">
+                            <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-[13px] sm:text-sm text-gray-600 dark:text-gray-400">
                               <div className="flex items-center space-x-2">
-                                <Calendar className="w-4 h-4" />
+                                <Calendar className="w-4 h-4 text-gray-400" />
                                 <span>{itemDate.toLocaleDateString()}</span>
                               </div>
                               <div className="flex items-center space-x-2">
-                                <Clock className="w-4 h-4" />
+                                <Clock className="w-4 h-4 text-gray-400" />
                                 <span>
                                   {item.time} ({item.duration} min)
                                 </span>
                               </div>
                               <div className="flex items-center space-x-2">
-                                <MapPin className="w-4 h-4" />
-                                <span>{item.location}</span>
+                                <MapPin className="w-4 h-4 text-gray-400" />
+                                <span className="truncate">{item.location}</span>
                               </div>
                               <div className="flex items-center space-x-2">
-                                <Wallet className="w-4 h-4" />
+                                <Wallet className="w-4 h-4 text-gray-400" />
                                 <span>
                                   {item.isFree
                                     ? "Free"
@@ -612,15 +614,15 @@ export const Bookings: React.FC = () => {
                             </div>
                           </div>
                         </div>
-                        <div className="flex flex-col items-end space-y-2">
+                        <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-start w-full sm:w-auto gap-2 pt-4 sm:pt-0 border-t sm:border-t-0 border-gray-100 dark:border-slate-800">
                           <div className="flex items-center gap-2">
                             {isExpired && (
-                              <span className="px-3 py-1 bg-gray-100 text-gray-500 rounded-full text-xs font-medium dark:bg-slate-800 dark:text-gray-400">
+                              <span className="px-3 py-1 bg-gray-100 text-gray-500 rounded-full text-[10px] sm:text-xs font-medium dark:bg-slate-800 dark:text-gray-400">
                                 Expired
                               </span>
                             )}
                              <span
-                              className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1.5 ${getStatusColor(item.status)}`}
+                              className={`px-3 py-1 rounded-full text-[10px] sm:text-xs font-medium flex items-center gap-1.5 ${getStatusColor(item.status)}`}
                             >
                               {item.status === "ONGOING" && (
                                 <span className="relative flex h-2 w-2">

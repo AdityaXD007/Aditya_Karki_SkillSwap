@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Check, ChevronRight, ChevronLeft, Sparkles, User, GraduationCap, Microscope, Rocket, Search, MapPin } from 'lucide-react';
+import { Check, X, ChevronRight, ChevronLeft, Sparkles, User, GraduationCap, Microscope, Rocket, Search, MapPin } from 'lucide-react';
 import { useAuth } from '@/components/Context/AuthContext';
 import { authAPI, skillsAPI, matchesApi } from '@/services';
 import type { Skill, Match } from '@/services/types';
@@ -392,24 +392,26 @@ export const OnboardingWizard: React.FC = () => {
                                   className="h-6 w-6 text-slate-400 hover:text-red-500"
                                   onClick={() => toggleSkill(skill.id, type)}
                                 >
-                                  <Check className="w-3 h-3" />
+                                  <X className="w-3 h-3" />
                                 </Button>
                               </div>
-                              <div className="flex gap-1">
-                                {['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'EXPERT'].map((level) => (
-                                  <button
-                                    key={level}
-                                    onClick={() => updateProficiency(skill.id, type, level)}
-                                    className={`text-[10px] px-2 py-1 rounded-md transition-all ${
-                                      item.proficiency_level === level
-                                        ? 'bg-indigo-600 text-white'
-                                        : 'bg-white dark:bg-slate-900 text-slate-500 border border-slate-200 dark:border-slate-700 hover:bg-slate-100'
-                                    }`}
-                                  >
-                                    {level.charAt(0) + level.slice(1).toLowerCase()}
-                                  </button>
-                                ))}
-                              </div>
+                              {type === 'teaching' && (
+                                <div className="flex gap-1">
+                                  {['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'EXPERT'].map((level) => (
+                                    <button
+                                      key={level}
+                                      onClick={() => updateProficiency(skill.id, type, level)}
+                                      className={`text-[10px] px-2 py-1 rounded-md transition-all ${
+                                        item.proficiency_level === level
+                                          ? 'bg-indigo-600 text-white'
+                                          : 'bg-white dark:bg-slate-900 text-slate-500 border border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+                                      }`}
+                                    >
+                                      {level.charAt(0) + level.slice(1).toLowerCase()}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           ) : null;
                         })}

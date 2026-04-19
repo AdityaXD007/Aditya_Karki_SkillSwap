@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/components/Context/AuthContext';
-import { Mail, User as UserIcon, Lock, AlertCircle, Eye, EyeOff, ArrowRight, Github, CheckCircle2, X } from 'lucide-react';
+import { Mail, User as UserIcon, Lock, AlertCircle, Eye, EyeOff, ArrowRight, Github, CheckCircle2, X, Check, ShieldCheck, ShieldAlert, Loader2 } from 'lucide-react';
+import apiClient from '@/services/apiClient';
 import { useGoogleLogin } from "@react-oauth/google";
 import { motion, AnimatePresence } from 'framer-motion';
 import { TermsContent } from './Terms';
@@ -20,6 +21,10 @@ export const Signup: React.FC = () => {
   const [fieldErrors, setFieldErrors] = useState<{ [key: string]: string }>({});
   const [isLoading, setIsLoading] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
+
+  // New states for feedback
+  const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'unavailable'>('idle');
+  const [passwordStrength, setPasswordStrength] = useState({ score: 0, label: '', color: '' });
 
   const { signup, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
@@ -46,6 +51,48 @@ export const Signup: React.FC = () => {
     window.location.href = githubUrl;
   };
 
+  // Password Strength Logic
+  const checkPasswordStrength = (pass: string) => {
+    if (!pass) return { score: 0, label: '', color: '' };
+    
+    let score = 0;
+    if (pass.length > 6) score++;
+    if (pass.length > 10) score++;
+    if (/[A-Z]/.test(pass)) score++;
+    if (/[0-9]/.test(pass)) score++;
+    if (/[^A-Za-z0-9]/.test(pass)) score++;
+
+    if (score <= 2) return { score, label: 'Weak', color: 'text-red-500 bg-red-500' };
+    if (score <= 3) return { score, label: 'Fair', color: 'text-yellow-500 bg-yellow-500' };
+    if (score === 4) return { score, label: 'Good', color: 'text-blue-500 bg-blue-500' };
+    return { score, label: 'Strong', color: 'text-green-500 bg-green-500' };
+  };
+
+  useEffect(() => {
+    setPasswordStrength(checkPasswordStrength(password));
+  }, [password]);
+
+  // Username availability check logic
+  useEffect(() => {
+    if (!username || username.length < 3) {
+      setUsernameStatus('idle');
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setUsernameStatus('checking');
+      try {
+        const response = await apiClient.get(`/auth/check_username/?username=${username}`);
+        setUsernameStatus(response.data.available ? 'available' : 'unavailable');
+      } catch (err) {
+        console.error("Error checking username:", err);
+        setUsernameStatus('idle');
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [username]);
+
   const validate = () => {
     const errors: { [key: string]: string } = {};
     let isValid = true;
@@ -55,6 +102,9 @@ export const Signup: React.FC = () => {
       isValid = false;
     } else if (!/^[a-zA-Z0-9@.+_-]+$/.test(username)) {
       errors.username = "Letters, numbers, and @/./+/-/_ only";
+      isValid = false;
+    } else if (usernameStatus === 'unavailable') {
+      errors.username = "This username is already taken";
       isValid = false;
     }
 
@@ -81,6 +131,9 @@ export const Signup: React.FC = () => {
       isValid = false;
     } else if (password.length < 8) {
       errors.password = "Min. 8 characters";
+      isValid = false;
+    } else if (passwordStrength.label === 'Weak') {
+      errors.password = "Password is too weak";
       isValid = false;
     }
 
@@ -322,7 +375,28 @@ export const Signup: React.FC = () => {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-800 dark:text-slate-200 ml-2">Choose Username</label>
+                <div className="flex justify-between items-center ml-2 mr-1">
+                  <label className="text-xs font-bold text-slate-800 dark:text-slate-200">Choose Username</label>
+                  <AnimatePresence>
+                    {usernameStatus !== 'idle' && (
+                      <motion.span 
+                        initial={{ opacity: 0, x: 10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0 }}
+                        className={`text-[10px] font-bold flex items-center gap-1 ${
+                          usernameStatus === 'available' ? 'text-green-500' : 
+                          usernameStatus === 'unavailable' ? 'text-red-500' : 'text-blue-500'
+                        }`}
+                      >
+                        {usernameStatus === 'checking' && <Loader2 className="w-3 h-3 animate-spin" />}
+                        {usernameStatus === 'available' && <Check className="w-3 h-3" />}
+                        {usernameStatus === 'unavailable' && <X className="w-3 h-3" />}
+                        {usernameStatus === 'checking' ? 'Checking...' : 
+                         usernameStatus === 'available' ? 'Available' : 'Unavailable'}
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
+                </div>
                 <div className="relative group">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-blue-500 transition-colors">
                     <UserIcon size={16} />
@@ -331,69 +405,93 @@ export const Signup: React.FC = () => {
                     type="text"
                     value={username}
                     onChange={(e) => {
-                      setUsername(e.target.value);
+                      setUsername(e.target.value.toLowerCase().replace(/\s/g, ''));
                       if (fieldErrors.username) setFieldErrors({ ...fieldErrors, username: "" });
                     }}
-                    className={`w-full bg-slate-400/5 dark:bg-white/5 border ${fieldErrors.username ? 'border-red-500' : 'border-slate-200/50 dark:border-white/5'} focus:border-blue-500/50 focus:bg-white dark:focus:bg-slate-800/80 pl-10 pr-4 h-[42px] rounded-xl outline-none transition-all duration-300 text-slate-900 dark:text-white placeholder:text-slate-400 font-medium text-sm shadow-sm focus:shadow-md`}
+                    className={`w-full bg-slate-400/5 dark:bg-white/5 border ${
+                      fieldErrors.username || usernameStatus === 'unavailable' ? 'border-red-500' : 
+                      usernameStatus === 'available' ? 'border-green-500/50' : 'border-slate-200/50 dark:border-white/5'
+                    } focus:border-blue-500/50 focus:bg-white dark:focus:bg-slate-800/80 pl-10 pr-4 h-[42px] rounded-xl outline-none transition-all duration-300 text-slate-900 dark:text-white placeholder:text-slate-400 font-medium text-sm shadow-sm focus:shadow-md`}
                     placeholder="janesmith"
                   />
                 </div>
                 {fieldErrors.username && <p className="text-[10px] font-bold text-red-500 ml-2">{fieldErrors.username}</p>}
+                {usernameStatus === 'unavailable' && !fieldErrors.username && <p className="text-[10px] font-bold text-red-500 ml-2">This username is already taken</p>}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-800 dark:text-slate-200 ml-2">Password</label>
-                  <div className="relative group">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-blue-500 transition-colors">
-                      <Lock size={16} />
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between items-center ml-2 mr-1">
+                      <label className="text-xs font-bold text-slate-800 dark:text-slate-200">Password</label>
+                      {password && (
+                        <span className={`text-[10px] font-bold ${passwordStrength.color.split(' ')[0]}`}>
+                          {passwordStrength.label}
+                        </span>
+                      )}
                     </div>
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      value={password}
-                      onChange={(e) => {
-                        setPassword(e.target.value);
-                        if (fieldErrors.password) setFieldErrors({ ...fieldErrors, password: "" });
-                      }}
-                      className={`w-full bg-slate-400/5 dark:bg-white/5 border ${fieldErrors.password ? 'border-red-500' : 'border-slate-200/50 dark:border-white/5'} focus:border-blue-500/50 focus:bg-white dark:focus:bg-slate-800/80 pl-10 pr-10 h-[42px] rounded-xl outline-none transition-all duration-300 text-slate-900 dark:text-white placeholder:text-slate-400 font-medium text-sm shadow-sm focus:shadow-md`}
-                      placeholder="••••••••"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
-                    >
-                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
-                  </div>
-                  {fieldErrors.password && <p className="text-[10px] font-bold text-red-500 ml-2">{fieldErrors.password}</p>}
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-800 dark:text-slate-200 ml-2">Confirm</label>
-                  <div className="relative group">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-blue-500 transition-colors">
-                      <Lock size={16} />
+                    <div className="relative group">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-blue-500 transition-colors">
+                        <Lock size={16} />
+                      </div>
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        value={password}
+                        onChange={(e) => {
+                          setPassword(e.target.value);
+                          if (fieldErrors.password) setFieldErrors({ ...fieldErrors, password: "" });
+                        }}
+                        className={`w-full bg-slate-400/5 dark:bg-white/5 border ${fieldErrors.password ? 'border-red-500' : 'border-slate-200/50 dark:border-white/5'} focus:border-blue-500/50 focus:bg-white dark:focus:bg-slate-800/80 pl-10 pr-10 h-[42px] rounded-xl outline-none transition-all duration-300 text-slate-900 dark:text-white placeholder:text-slate-400 font-medium text-sm shadow-sm focus:shadow-md`}
+                        placeholder="••••••••"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
+                      >
+                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
                     </div>
-                    <input
-                      type={showConfirmPassword ? "text" : "password"}
-                      value={confirmPassword}
-                      onChange={(e) => {
-                        setConfirmPassword(e.target.value);
-                        if (fieldErrors.confirmPassword) setFieldErrors({ ...fieldErrors, confirmPassword: "" });
-                      }}
-                      className={`w-full bg-slate-400/5 dark:bg-white/5 border ${fieldErrors.confirmPassword ? 'border-red-500' : 'border-slate-200/50 dark:border-white/5'} focus:border-blue-500/50 focus:bg-white dark:focus:bg-slate-800/80 pl-10 pr-10 h-[42px] rounded-xl outline-none transition-all duration-300 text-slate-900 dark:text-white placeholder:text-slate-400 font-medium text-sm shadow-sm focus:shadow-md`}
-                      placeholder="••••••••"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
-                    >
-                      {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
+                    {/* Password Strength Bar */}
+                    {password && (
+                      <div className="flex gap-1 mt-1 px-1">
+                        {[1, 2, 3, 4, 5].map((level) => (
+                          <div 
+                            key={level} 
+                            className={`h-1 flex-1 rounded-full transition-all duration-500 ${
+                              level <= passwordStrength.score ? passwordStrength.color.split(' ')[1] : 'bg-slate-200 dark:bg-slate-800'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                    )}
+                    {fieldErrors.password && <p className="text-[10px] font-bold text-red-500 ml-2">{fieldErrors.password}</p>}
                   </div>
-                  {fieldErrors.confirmPassword && <p className="text-[10px] font-bold text-red-500 ml-2">{fieldErrors.confirmPassword}</p>}
-                </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-800 dark:text-slate-200 ml-2">Confirm</label>
+                    <div className="relative group">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-blue-500 transition-colors">
+                        <Lock size={16} />
+                      </div>
+                      <input
+                        type={showConfirmPassword ? "text" : "password"}
+                        value={confirmPassword}
+                        onChange={(e) => {
+                          setConfirmPassword(e.target.value);
+                          if (fieldErrors.confirmPassword) setFieldErrors({ ...fieldErrors, confirmPassword: "" });
+                        }}
+                        className={`w-full bg-slate-400/5 dark:bg-white/5 border ${fieldErrors.confirmPassword ? 'border-red-500' : 'border-slate-200/50 dark:border-white/5'} focus:border-blue-500/50 focus:bg-white dark:focus:bg-slate-800/80 pl-10 pr-10 h-[42px] rounded-xl outline-none transition-all duration-300 text-slate-900 dark:text-white placeholder:text-slate-400 font-medium text-sm shadow-sm focus:shadow-md`}
+                        placeholder="••••••••"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
+                      >
+                        {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+                    {fieldErrors.confirmPassword && <p className="text-[10px] font-bold text-red-500 ml-2">{fieldErrors.confirmPassword}</p>}
+                  </div>
               </div>
 
               <div className="flex flex-col space-y-1 mt-3 ml-2">

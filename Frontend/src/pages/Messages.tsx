@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { messagesApi, sessionsAPI, paymentAPI, getMediaUrl, type Conversation, type Message, type LearningSession } from "@/services";
 import { useAuth } from "@/components/Context/AuthContext";
-import { Send, Search, Phone, X, Mic, MicOff, Video as VideoIcon, VideoOff, MoreVertical, Reply, Smile, Trash2, Image as ImageIcon, ShieldCheck, CheckCircle2, Monitor, Star, AlertCircle, Loader2 } from "lucide-react";
+import { Send, Search, Phone, X, Mic, MicOff, Video as VideoIcon, VideoOff, MoreVertical, Reply, Smile, Trash2, Image as ImageIcon, ShieldCheck, CheckCircle2, Monitor, Star, AlertCircle, Loader2, ArrowLeft } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
@@ -989,7 +989,7 @@ const stopScreenShare = () => {
         >
           <div className="grid grid-cols-1 md:grid-cols-3 h-full">
             {/* Conversations List */}
-            <div className="border-r border-gray-200 dark:border-slate-800 overflow-y-auto h-full">
+            <div className={`border-r border-gray-200 dark:border-slate-800 overflow-y-auto h-full ${selectedConversation ? "hidden md:block" : "block"}`}>
               <div className="p-4 border-b border-gray-200 dark:border-slate-800">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 w-5 h-5" />
@@ -1060,22 +1060,31 @@ const stopScreenShare = () => {
             </div>
 
             {/* Chat Area */}
-            <div className="md:col-span-2 flex flex-col h-full overflow-hidden">
+            <div className={`md:col-span-2 flex flex-col h-full overflow-hidden ${selectedConversation ? "block" : "hidden md:flex"}`}>
               {selected ? (
                 <>
                    {/* Chat Header */}
-                  <div className="p-4 border-b border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 transition-colors flex justify-between items-center">
+                  <div className="p-4 border-b border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 transition-colors flex justify-between items-center shrink-0">
                     <div className="flex items-center space-x-3">
+                      <button 
+                        onClick={() => setSelectedConversation(null)}
+                        className="md:hidden p-2 -ml-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+                      >
+                        <ArrowLeft className="w-6 h-6" />
+                      </button>
                       <img
                         src={getMediaUrl(selected.userAvatar)}
                         alt={selected.userName}
-                        className="w-10 h-10 rounded-full"
+                        className="w-8 h-8 sm:w-10 sm:h-10 rounded-full"
                       />
-                      <div>
-                        <h3 className="font-medium text-gray-900 dark:text-white">
+                      <div className="min-w-0">
+                        <h3 className="font-bold text-gray-900 dark:text-white truncate text-sm sm:text-base">
                           {selected.userName}
                         </h3>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Active now</p>
+                        <p className="text-[10px] sm:text-xs text-green-500 font-medium flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+                          Online
+                        </p>
                       </div>
                     </div>
                     {/* Session controls & Call Buttons */}

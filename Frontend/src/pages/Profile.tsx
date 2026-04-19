@@ -18,6 +18,8 @@ import {
   BarChart,
   Calendar,
   Lock,
+  ChevronDown,
+  Search,
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { skillsAPI, authAPI, type Skill } from "@/services";
@@ -42,9 +44,20 @@ export const Profile: React.FC = () => {
   const [availableSkills, setAvailableSkills] = useState<Skill[]>([]);
   const [isAddingAvailability, setIsAddingAvailability] = useState(false);
   const [newAvailabilityTime, setNewAvailabilityTime] = useState("");
+  const [selectedDay, setSelectedDay] = useState("");
+  const [selectedStartTime, setSelectedStartTime] = useState("");
+  const [selectedEndTime, setSelectedEndTime] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [teachDropdownOpen, setTeachDropdownOpen] = useState(false);
+  const [learnDropdownOpen, setLearnDropdownOpen] = useState(false);
+  const [teachSearchText, setTeachSearchText] = useState("");
+  const [learnSearchText, setLearnSearchText] = useState("");
+  const teachDropdownRef = useRef<HTMLDivElement>(null);
+  const learnDropdownRef = useRef<HTMLDivElement>(null);
+  const [skillToRemove, setSkillToRemove] = useState<{ id: number; name: string } | null>(null);
+  const [availabilityToRemove, setAvailabilityToRemove] = useState<{ index: number; time: string } | null>(null);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -132,6 +145,22 @@ export const Profile: React.FC = () => {
       fetchSkills();
     }
   }, [isAuthenticated, isOwnProfile]);
+
+  // Close dropdowns on outside click
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (teachDropdownRef.current && !teachDropdownRef.current.contains(event.target as Node)) {
+        setTeachDropdownOpen(false);
+        setTeachSearchText("");
+      }
+      if (learnDropdownRef.current && !learnDropdownRef.current.contains(event.target as Node)) {
+        setLearnDropdownOpen(false);
+        setLearnSearchText("");
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const handleImageClick = () => {
     if (!isOwnProfile) return;
@@ -371,25 +400,71 @@ export const Profile: React.FC = () => {
 
   const earnedAchievements = getEarnedAchievements(profileUser);
 
-  const handleRemoveSkill = async (userSkillId: number) => {
+  const handleRemoveSkill = (userSkillId: number, skillName: string) => {
+    setSkillToRemove({ id: userSkillId, name: skillName });
+  };
+
+  const confirmRemoveSkill = async () => {
+    if (!skillToRemove) return;
     try {
-      await skillsAPI.deleteUserSkill(userSkillId);
+      await skillsAPI.deleteUserSkill(skillToRemove.id);
       await refreshUserSkills();
       setProfileUser((prev: any) => ({
           ...prev,
-          userSkills: prev.userSkills.filter((s: any) => s.id !== userSkillId)
+          userSkills: prev.userSkills.filter((s: any) => s.id !== skillToRemove.id)
       }));
       toast.success("Skill removed");
     } catch (error) {
       toast.error("Failed to remove skill");
+    } finally {
+      setSkillToRemove(null);
     }
   };
 
+  const DAYS_OF_WEEK = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+  const toAmPm = (h: number, m: number): string => {
+    const period = h < 12 ? "AM" : "PM";
+    const hour12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+    return `${hour12}:${m.toString().padStart(2, "0")} ${period}`;
+  };
+
+  const timeToMinutes = (ampm: string): number => {
+    const [timePart, period] = ampm.split(" ");
+    const [hStr, mStr] = timePart.split(":");
+    let h = parseInt(hStr);
+    const m = parseInt(mStr);
+    if (period === "AM" && h === 12) h = 0;
+    if (period === "PM" && h !== 12) h += 12;
+    return h * 60 + m;
+  };
+
+  const TIME_SLOTS = (() => {
+    const slots: string[] = [];
+    for (let h = 0; h < 24; h++) {
+      for (let m = 0; m < 60; m += 30) {
+        slots.push(toAmPm(h, m));
+      }
+    }
+    return slots;
+  })();
+
+  const composedAvailability = selectedDay && selectedStartTime && selectedEndTime
+    ? `${selectedDay} ${selectedStartTime} - ${selectedEndTime}`
+    : "";
+
+  const isEndTimeValid = selectedStartTime && selectedEndTime && timeToMinutes(selectedEndTime) > timeToMinutes(selectedStartTime);
+
   const handleSaveAvailability = async () => {
-    if (!newAvailabilityTime || !profileUser) return;
+    if (!composedAvailability || !profileUser || !isEndTimeValid) {
+      if (selectedStartTime && selectedEndTime && !isEndTimeValid) {
+        toast.error("End time must be after start time");
+      }
+      return;
+    }
 
     const currentAvailability = profileUser.availability || [];
-    const newAvailability = [...currentAvailability, newAvailabilityTime];
+    const newAvailability = [...currentAvailability, composedAvailability];
 
     setIsLoading(true);
     try {
@@ -399,6 +474,9 @@ export const Profile: React.FC = () => {
       updateUser({ availability: newAvailability });
       setProfileUser((prev: any) => ({ ...prev, availability: newAvailability }));
       setNewAvailabilityTime("");
+      setSelectedDay("");
+      setSelectedStartTime("");
+      setSelectedEndTime("");
       setIsAddingAvailability(false);
       toast.success("Availability added");
     } catch (error) {
@@ -408,10 +486,14 @@ export const Profile: React.FC = () => {
     }
   };
 
-  const handleRemoveAvailability = async (index: number) => {
-    if (!profileUser) return;
+  const handleRemoveAvailability = (index: number, time: string) => {
+    setAvailabilityToRemove({ index, time });
+  };
+
+  const confirmRemoveAvailability = async () => {
+    if (!availabilityToRemove || !profileUser) return;
     const newAvailability = (profileUser.availability || []).filter(
-      (_: any, i: number) => i !== index,
+      (_: any, i: number) => i !== availabilityToRemove.index,
     );
 
     try {
@@ -423,6 +505,8 @@ export const Profile: React.FC = () => {
       toast.success("Availability removed");
     } catch (error) {
       toast.error("Failed to remove availability");
+    } finally {
+      setAvailabilityToRemove(null);
     }
   };
 
@@ -685,7 +769,7 @@ export const Profile: React.FC = () => {
                     </span>
                   </span>
                   <button
-                    onClick={() => handleRemoveSkill(skill.id)}
+                    onClick={() => handleRemoveSkill(skill.id, skill.name)}
                     className="ml-1 text-blue-400 hover:text-red-500 transition-colors"
                   >
                     <X className="w-3.5 h-3.5" />
@@ -728,30 +812,65 @@ export const Profile: React.FC = () => {
                 </motion.div>
               ) : (
                 <>
-                  <label htmlFor="teach-skill-select" className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2 block ml-1">
+                  <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2 block ml-1">
                     Add New Skill
                   </label>
-                  <select
-                    id="teach-skill-select"
-                    onChange={(e) => {
-                      if (e.target.value) {
-                        onSkillSelect(Number(e.target.value), "TEACH");
-                        e.target.value = "";
-                      }
-                    }}
-                    className="w-full p-3 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-sm focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer hover:bg-white dark:hover:bg-slate-700 shadow-sm"
-                  >
-                    <option value="">+ Find a skill to teach...</option>
-                    {availableSkills
-                      .filter(
-                        (s) => !teachingSkills.find((ts: any) => ts.skill_id === s.id),
-                      )
-                      .map((skill) => (
-                        <option key={skill.id} value={skill.id}>
-                          {skill.name}
-                        </option>
-                      ))}
-                  </select>
+                  <div className="relative" ref={teachDropdownRef}>
+                    <button
+                      type="button"
+                      onClick={() => { setTeachDropdownOpen(!teachDropdownOpen); setTeachSearchText(""); }}
+                      className="w-full p-3 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-sm focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer hover:bg-white dark:hover:bg-slate-700 shadow-sm flex items-center justify-between"
+                    >
+                      <span className="text-slate-400 dark:text-slate-500">+ Find a skill to teach...</span>
+                      <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${teachDropdownOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                    {teachDropdownOpen && (
+                      <div className="absolute left-0 right-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg z-50 overflow-hidden">
+                        <div className="p-2 border-b border-slate-100 dark:border-slate-700">
+                          <div className="relative">
+                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                            <input
+                              type="text"
+                              autoFocus
+                              value={teachSearchText}
+                              onChange={(e) => setTeachSearchText(e.target.value)}
+                              placeholder="Search skills..."
+                              className="w-full pl-8 pr-3 py-1.5 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 text-slate-700 dark:text-slate-300"
+                            />
+                          </div>
+                        </div>
+                        <ul className="max-h-[200px] overflow-y-auto py-1">
+                          {availableSkills
+                            .filter((s) => !teachingSkills.find((ts: any) => ts.skill_id === s.id))
+                            .filter((s) => s.name.toLowerCase().includes(teachSearchText.toLowerCase()))
+                            .map((skill) => (
+                              <li key={skill.id}>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    onSkillSelect(skill.id, "TEACH");
+                                    setTeachDropdownOpen(false);
+                                    setTeachSearchText("");
+                                  }}
+                                  className="w-full text-left px-4 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors flex items-center gap-2"
+                                >
+                                  {skill.icon_class && (
+                                    <i className={`${skill.icon_class} ${skill.color_class || (skill.icon_class.includes("devicon") ? "colored" : "text-slate-400")}`}></i>
+                                  )}
+                                  {skill.name}
+                                </button>
+                              </li>
+                            ))}
+                          {availableSkills
+                            .filter((s) => !teachingSkills.find((ts: any) => ts.skill_id === s.id))
+                            .filter((s) => s.name.toLowerCase().includes(teachSearchText.toLowerCase()))
+                            .length === 0 && (
+                              <li className="px-4 py-3 text-sm text-slate-400 dark:text-slate-500 text-center italic">No skills found</li>
+                            )}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
                 </>
               )}
             </div>
@@ -782,7 +901,7 @@ export const Profile: React.FC = () => {
                   )}
                   <span className="text-purple-700 dark:text-purple-400">{skill.name}</span>
                   <button
-                    onClick={() => handleRemoveSkill(skill.id)}
+                    onClick={() => handleRemoveSkill(skill.id, skill.name)}
                     className="ml-1 text-purple-400 hover:text-red-500 transition-colors"
                   >
                     <X className="w-3.5 h-3.5" />
@@ -797,30 +916,65 @@ export const Profile: React.FC = () => {
             </div>
 
             <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800">
-              <label htmlFor="learn-skill-select" className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2 block ml-1">
+              <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2 block ml-1">
                 Add New Interest
               </label>
-              <select
-                id="learn-skill-select"
-                onChange={(e) => {
-                  if (e.target.value) {
-                    onSkillSelect(Number(e.target.value), "LEARN");
-                    e.target.value = "";
-                  }
-                }}
-                className="w-full p-3 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-sm focus:ring-2 focus:ring-purple-500/20 transition-all cursor-pointer hover:bg-white dark:hover:bg-slate-700 shadow-sm"
-              >
-                <option value="">+ Find a skill to learn...</option>
-                {availableSkills
-                  .filter(
-                    (s) => !learningSkills.find((ls: any) => ls.skill_id === s.id),
-                  )
-                  .map((skill) => (
-                    <option key={skill.id} value={skill.id}>
-                      {skill.name}
-                    </option>
-                  ))}
-              </select>
+              <div className="relative" ref={learnDropdownRef}>
+                <button
+                  type="button"
+                  onClick={() => { setLearnDropdownOpen(!learnDropdownOpen); setLearnSearchText(""); }}
+                  className="w-full p-3 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-sm focus:ring-2 focus:ring-purple-500/20 transition-all cursor-pointer hover:bg-white dark:hover:bg-slate-700 shadow-sm flex items-center justify-between"
+                >
+                  <span className="text-slate-400 dark:text-slate-500">+ Find a skill to learn...</span>
+                  <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${learnDropdownOpen ? 'rotate-180' : ''}`} />
+                </button>
+                {learnDropdownOpen && (
+                  <div className="absolute left-0 right-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg z-50 overflow-hidden">
+                    <div className="p-2 border-b border-slate-100 dark:border-slate-700">
+                      <div className="relative">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                        <input
+                          type="text"
+                          autoFocus
+                          value={learnSearchText}
+                          onChange={(e) => setLearnSearchText(e.target.value)}
+                          placeholder="Search skills..."
+                          className="w-full pl-8 pr-3 py-1.5 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-purple-500 text-slate-700 dark:text-slate-300"
+                        />
+                      </div>
+                    </div>
+                    <ul className="max-h-[200px] overflow-y-auto py-1">
+                      {availableSkills
+                        .filter((s) => !learningSkills.find((ls: any) => ls.skill_id === s.id))
+                        .filter((s) => s.name.toLowerCase().includes(learnSearchText.toLowerCase()))
+                        .map((skill) => (
+                          <li key={skill.id}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                onSkillSelect(skill.id, "LEARN");
+                                setLearnDropdownOpen(false);
+                                setLearnSearchText("");
+                              }}
+                              className="w-full text-left px-4 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-purple-50 dark:hover:bg-purple-900/30 transition-colors flex items-center gap-2"
+                            >
+                              {skill.icon_class && (
+                                <i className={`${skill.icon_class} ${skill.color_class || (skill.icon_class.includes("devicon") ? "colored" : "text-slate-400")}`}></i>
+                              )}
+                              {skill.name}
+                            </button>
+                          </li>
+                        ))}
+                      {availableSkills
+                        .filter((s) => !learningSkills.find((ls: any) => ls.skill_id === s.id))
+                        .filter((s) => s.name.toLowerCase().includes(learnSearchText.toLowerCase()))
+                        .length === 0 && (
+                          <li className="px-4 py-3 text-sm text-slate-400 dark:text-slate-500 text-center italic">No skills found</li>
+                        )}
+                    </ul>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -849,24 +1003,74 @@ export const Profile: React.FC = () => {
           </div>
 
           {isAddingAvailability && (
-            <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-100 dark:border-green-800/50 flex flex-col sm:flex-row gap-3 shadow-inner">
-              <label htmlFor="availability-input" className="sr-only">
-                Add availability time
-              </label>
-              <input
-                id="availability-input"
-                type="text"
-                autoFocus
-                placeholder="e.g. Mon 10:00 - 12:00"
-                value={newAvailabilityTime}
-                onChange={(e) => setNewAvailabilityTime(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSaveAvailability()}
-                className="flex-1 p-2.5 border border-green-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none bg-white dark:bg-slate-800 text-slate-700 dark:text-white transition-colors"
-              />
+            <div className="mb-6 p-5 bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-100 dark:border-green-800/50 shadow-inner">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+                {/* Day Selector */}
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 block ml-0.5">Day</label>
+                  <select
+                    id="availability-day"
+                    value={selectedDay}
+                    onChange={(e) => setSelectedDay(e.target.value)}
+                    className="w-full p-2.5 border border-green-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none bg-white dark:bg-slate-800 text-slate-700 dark:text-white transition-colors text-sm font-medium appearance-none cursor-pointer"
+                  >
+                    <option value="">Select day</option>
+                    {DAYS_OF_WEEK.map((day) => (
+                      <option key={day} value={day}>{day === "Mon" ? "Monday" : day === "Tue" ? "Tuesday" : day === "Wed" ? "Wednesday" : day === "Thu" ? "Thursday" : day === "Fri" ? "Friday" : day === "Sat" ? "Saturday" : "Sunday"}</option>
+                    ))}
+                  </select>
+                </div>
+                {/* Start Time Selector */}
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 block ml-0.5">From</label>
+                  <select
+                    id="availability-start"
+                    value={selectedStartTime}
+                    onChange={(e) => setSelectedStartTime(e.target.value)}
+                    className="w-full p-2.5 border border-green-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none bg-white dark:bg-slate-800 text-slate-700 dark:text-white transition-colors text-sm font-medium appearance-none cursor-pointer"
+                  >
+                    <option value="">Start time</option>
+                    {TIME_SLOTS.map((t) => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
+                </div>
+                {/* End Time Selector */}
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 block ml-0.5">To</label>
+                  <select
+                    id="availability-end"
+                    value={selectedEndTime}
+                    onChange={(e) => setSelectedEndTime(e.target.value)}
+                    className={`w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none bg-white dark:bg-slate-800 text-slate-700 dark:text-white transition-colors text-sm font-medium appearance-none cursor-pointer ${
+                      selectedStartTime && selectedEndTime && !isEndTimeValid
+                        ? 'border-red-400 dark:border-red-600'
+                        : 'border-green-200 dark:border-slate-700'
+                    }`}
+                  >
+                    <option value="">End time</option>
+                    {TIME_SLOTS.filter((t) => !selectedStartTime || timeToMinutes(t) > timeToMinutes(selectedStartTime)).map((t) => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
+                  {selectedStartTime && selectedEndTime && !isEndTimeValid && (
+                    <p className="text-[10px] text-red-500 font-medium mt-1 ml-0.5">Must be after start time</p>
+                  )}
+                </div>
+              </div>
+              {/* Preview */}
+              {composedAvailability && isEndTimeValid && (
+                <div className="mb-4 px-3 py-2 bg-green-100/70 dark:bg-green-900/30 rounded-lg border border-green-200 dark:border-green-800/50">
+                  <p className="text-xs text-green-700 dark:text-green-400 font-semibold flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5" />
+                    {composedAvailability}
+                  </p>
+                </div>
+              )}
               <div className="flex gap-2">
                 <Button
                   onClick={handleSaveAvailability}
-                  disabled={!newAvailabilityTime || isLoading}
+                  disabled={!composedAvailability || !isEndTimeValid || isLoading}
                   size="sm"
                   className="bg-green-600 hover:bg-green-700 flex-1 sm:flex-none font-bold"
                 >
@@ -875,7 +1079,9 @@ export const Profile: React.FC = () => {
                 <Button
                   onClick={() => {
                     setIsAddingAvailability(false);
-                    setNewAvailabilityTime("");
+                    setSelectedDay("");
+                    setSelectedStartTime("");
+                    setSelectedEndTime("");
                   }}
                   variant="ghost"
                   size="sm"
@@ -899,7 +1105,7 @@ export const Profile: React.FC = () => {
                     <span className="text-slate-700 dark:text-slate-300 font-medium">{time}</span>
                   </div>
                   <button
-                    onClick={() => handleRemoveAvailability(idx)}
+                    onClick={() => handleRemoveAvailability(idx, time)}
                     className="text-slate-300 dark:text-slate-600 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
                     title="Remove availability"
                   >
@@ -1192,6 +1398,82 @@ export const Profile: React.FC = () => {
           skills: profileUser.userSkills.filter((s: any) => s.type === "TEACH")
         } as any : null}
       />
+      {/* Skill Removal Confirmation Modal */}
+      {skillToRemove && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setSkillToRemove(null)} />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="relative bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 max-w-sm w-full"
+          >
+            <div className="text-center">
+              <div className="w-12 h-12 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center mx-auto mb-4">
+                <AlertCircle className="w-6 h-6 text-red-500" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
+                Remove Skill?
+              </h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
+                Are you sure you want to remove <span className="font-semibold text-slate-700 dark:text-slate-300">{skillToRemove.name}</span> from your profile?
+              </p>
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  className="flex-1 font-semibold"
+                  onClick={() => setSkillToRemove(null)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold shadow-lg shadow-red-500/20"
+                  onClick={confirmRemoveSkill}
+                >
+                  Yes, Remove
+                </Button>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+      {/* Availability Removal Confirmation Modal */}
+      {availabilityToRemove && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setAvailabilityToRemove(null)} />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="relative bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 max-w-sm w-full"
+          >
+            <div className="text-center">
+              <div className="w-12 h-12 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center mx-auto mb-4">
+                <AlertCircle className="w-6 h-6 text-red-500" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
+                Remove Availability?
+              </h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
+                Are you sure you want to remove <span className="font-semibold text-slate-700 dark:text-slate-300">{availabilityToRemove.time}</span> from your schedule?
+              </p>
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  className="flex-1 font-semibold"
+                  onClick={() => setAvailabilityToRemove(null)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold shadow-lg shadow-red-500/20"
+                  onClick={confirmRemoveAvailability}
+                >
+                  Yes, Remove
+                </Button>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </>
   );
 };

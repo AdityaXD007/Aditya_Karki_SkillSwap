@@ -43,7 +43,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const isProfileRoute = currentPath.startsWith('/profile');
   const isSettingsRoute = currentPath.startsWith('/settings');
 
-  if (user && !user.isEmailVerified && !isProfileRoute && !isSettingsRoute && currentPath !== '/onboarding') {
+  if (user && !user.isEmailVerified && !isProfileRoute && !isSettingsRoute && currentPath !== '/onboarding' && currentPath !== '/dashboard') {
     return (
       <div className="min-h-[calc(100vh-64px)] flex items-center justify-center p-4">
         <div className="max-w-md w-full backdrop-blur-xl bg-white/70 dark:bg-slate-900/40 rounded-[32px] p-8 border border-slate-200 dark:border-slate-800 shadow-[0_32px_80px_-20px_rgba(0,0,0,0.08)] text-center relative overflow-hidden">

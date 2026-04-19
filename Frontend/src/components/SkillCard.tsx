@@ -119,17 +119,17 @@ export const SkillCard: React.FC<SkillCardProps> = ({
           </div>
 
           {/* Actions */}
-          <div className="flex space-x-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             <Link
               to={`/profile/${teacher.id}`}
-              className="flex-1 flex items-center justify-center space-x-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className="flex-1 flex items-center justify-center space-x-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-bold text-sm shadow-sm"
             >
               <User className="w-4 h-4" />
               <span>View Profile</span>
             </Link>
             <button
               onClick={() => onBookSession?.(matchId)}
-              className="flex-1 flex items-center justify-center space-x-1 px-4 py-2 border border-blue-600 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+              className="flex-1 flex items-center justify-center space-x-1 px-4 py-2.5 border-2 border-blue-600 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors font-bold text-sm"
             >
               <Calendar className="w-4 h-4" />
               <span>Book Session</span>
