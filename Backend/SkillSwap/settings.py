@@ -245,6 +245,7 @@ JAZZMIN_SETTINGS = {
     "user_avatar": None,
     "topmenu_links": [
         {"name": "Home",  "url": "admin:index", "permissions": ["auth.view_user"]},
+        {"name": "Reports", "url": "admin_reports", "permissions": ["auth.view_user"]},
         {"name": "View Site", "url": "/", "new_window": True},
     ],
     "show_sidebar": True,
@@ -256,8 +257,17 @@ JAZZMIN_SETTINGS = {
         "auth.user": "fas fa-user",
         "auth.Group": "fas fa-users",
     },
+    "custom_links": {
+        "users": [
+            {
+                "name": "Analytical Reports", 
+                "url": "admin_reports", 
+                "icon": "fas fa-chart-line",
+            }
+        ]
+    },
     "default_icon_parents": "fas fa-chevron-circle-right",
     "default_icon_children": "fas fa-circle",
-    "custom_css": "admin/css/custom_admin.css",  # ADD THIS LINE
+    "custom_css": "admin/css/custom_admin.css",  
 }
 

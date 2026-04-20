@@ -242,17 +242,14 @@
         const regData = JSON.parse('{{ dashboard_stats.registration_chart|default:"[]"|escapejs }}');
         const ctx1 = document.getElementById('registrationChart').getContext('2d');
         new Chart(ctx1, {
-            type: 'line',
+            type: 'bar',
             data: {
                 labels: regData.map(d => d.date),
                 datasets: [{
                     label: 'New Users',
                     data: regData.map(d => d.count),
-                    borderColor: '#2196f3',
-                    backgroundColor: 'rgba(33, 150, 243, 0.1)',
-                    pointBackgroundColor: '#2196f3',
-                    fill: true,
-                    tension: 0.4
+                    backgroundColor: '#2196f3',
+                    borderRadius: 4
                 }]
             },
             options: {
@@ -270,14 +267,17 @@
         const revData = JSON.parse('{{ dashboard_stats.revenue_chart|default:"[]"|escapejs }}');
         const ctxRev = document.getElementById('revenueChart').getContext('2d');
         new Chart(ctxRev, {
-            type: 'bar',
+            type: 'line',
             data: {
                 labels: revData.map(d => d.date),
                 datasets: [{
                     label: 'Profit (NPR)',
                     data: revData.map(d => d.amount),
-                    backgroundColor: '#00c853',
-                    borderRadius: 4
+                    borderColor: '#00c853',
+                    backgroundColor: 'rgba(0, 200, 83, 0.1)',
+                    pointBackgroundColor: '#00c853',
+                    fill: true,
+                    tension: 0.4
                 }]
             },
             options: {

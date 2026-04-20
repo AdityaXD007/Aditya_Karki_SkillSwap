@@ -10,11 +10,17 @@ class UserProfileInline(admin.StackedInline):
 
 class UserAdmin(BaseUserAdmin):
     inlines = (UserProfileInline,)
-    list_display = ('username', 'email', 'first_name', 'last_name', 'get_sessions_taught')
+    list_display = ('username', 'email', 'first_name', 'last_name', 'get_sessions_taught', 'is_verified')
+    list_filter = BaseUserAdmin.list_filter + ('profile__is_email_verified',)
 
     def get_sessions_taught(self, instance):
         return instance.profile.sessions_taught_count
     get_sessions_taught.short_description = 'Sessions Taught'
+
+    def is_verified(self, instance):
+        return instance.profile.is_email_verified
+    is_verified.boolean = True
+    is_verified.short_description = 'Verified'
 
 admin.site.unregister(User)
 admin.site.register(User, UserAdmin)

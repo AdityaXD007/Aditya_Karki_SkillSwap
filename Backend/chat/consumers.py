@@ -93,9 +93,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
                         }
                     )
                     
-                    # Trigger 5: NEW MESSAGE RECEIVED (Delayed/Away)
-                    if pid != user.id: # Only for the recipient
-                        await self.handle_message_email_notification(pid, user.username, message_content or "Sent an attachment", self.room_name)
+                    # Trigger 5: NEW MESSAGE RECEIVED (Delayed/Away) - Disabled as requested
+                    # if pid != user.id: # Only for the recipient
+                    #     await self.handle_message_email_notification(pid, user.username, message_content or "Sent an attachment", self.room_name)
         elif message_type == 'add_reaction':
             message_id = text_data_json.get('message_id')
             reaction = text_data_json.get('reaction')

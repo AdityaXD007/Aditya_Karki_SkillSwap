@@ -1,0 +1,369 @@
+{% load i18n static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% trans 'Log in' %} | SkillSwap Admin</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #ec4899;
+            --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            --glass-bg: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        body {
+            background: var(--bg-gradient);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Abstract Background Orbs */
+        .orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            z-index: -1;
+            opacity: 0.5;
+            animation: move 20s infinite alternate;
+        }
+
+        .orb-1 {
+            width: 400px;
+            height: 400px;
+            background: var(--primary);
+            top: -100px;
+            right: -100px;
+        }
+
+        .orb-2 {
+            width: 350px;
+            height: 350px;
+            background: var(--secondary);
+            bottom: -50px;
+            left: -50px;
+            animation-delay: -5s;
+        }
+
+        .orb-3 {
+            width: 300px;
+            height: 300px;
+            background: var(--accent);
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            opacity: 0.2;
+            animation: pulse 10s infinite alternate;
+        }
+
+        @keyframes move {
+            from { transform: translate(0, 0); }
+            to { transform: translate(50px, 50px); }
+        }
+
+        @keyframes pulse {
+            from { opacity: 0.1; scale: 0.8; }
+            to { opacity: 0.3; scale: 1.2; }
+        }
+
+        .login-container {
+            width: 100%;
+            max-width: 440px;
+            padding: 20px;
+            animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .login-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 40px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .brand-section {
+            text-align: center;
+            margin-bottom: 35px;
+        }
+
+        .logo-wrapper {
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .logo-wrapper:hover {
+            transform: scale(1.05) rotate(5deg);
+        }
+
+        .logo-wrapper img {
+            width: 50px;
+            height: 50px;
+            object-fit: contain;
+        }
+
+        .brand-section h1 {
+            color: var(--text-main);
+            font-size: 1.75rem;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            margin-bottom: 8px;
+        }
+
+        .brand-section p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        .form-group {
+            margin-bottom: 24px;
+            position: relative;
+        }
+
+        .form-group label {
+            display: block;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            margin-left: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .input-wrapper i {
+            position: absolute;
+            left: 16px;
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            transition: color 0.3s ease;
+        }
+
+        .input-control {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            border-radius: 14px;
+            padding: 14px 14px 14px 48px;
+            color: var(--text-main);
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .input-control:focus {
+            outline: none;
+            background: rgba(255, 255, 255, 0.08);
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
+        }
+
+        .input-control:focus + i {
+            color: var(--primary);
+        }
+
+        .errorlist {
+            list-style: none;
+            background: rgba(239, 68, 68, 0.1);
+            border-left: 4px solid #ef4444;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+            color: #fca5a5;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .submit-btn {
+            width: 100%;
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            border: none;
+            border-radius: 14px;
+            padding: 14px;
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 20px 25px -5px rgba(99, 102, 241, 0.4);
+            filter: brightness(1.1);
+        }
+
+        .submit-btn:active {
+            transform: translateY(0);
+        }
+
+        .footer-text {
+            text-align: center;
+            margin-top: 30px;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        .footer-text a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .footer-text a:hover {
+            text-decoration: underline;
+        }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            .login-card {
+                padding: 30px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+
+    <div class="login-container">
+        <div class="login-card">
+            <div class="brand-section">
+                <div class="logo-wrapper">
+                    <img src="{% static 'img/favicon.png' %}" alt="SkillSwap Logo">
+                </div>
+                <h1>SkillSwap</h1>
+                <p>{% block welcome_msg %}{{ welcome_sign|default:"Administration Portal" }}{% endblock %}</p>
+            </div>
+
+            {% if user.is_authenticated %}
+                <div class="errorlist" style="background: rgba(245, 158, 11, 0.1); border-color: #f59e0b; color: #fcd34d;">
+                    {% blocktrans trimmed %}
+                        You are authenticated as {{ username }}, but are not authorized to
+                        access this page.
+                    {% endblocktrans %}
+                </div>
+            {% endif %}
+
+            {% if form.errors and not form.non_field_errors %}
+                <p class="errorlist">
+                    {% if form.errors.items|length == 1 %}{% trans "Please correct the error below." %}{% else %}{% trans "Please correct the errors below." %}{% endif %}
+                </p>
+            {% endif %}
+
+            {% if form.non_field_errors %}
+                {% for error in form.non_field_errors %}
+                    <p class="errorlist">
+                        {{ error }}
+                    </p>
+                {% endfor %}
+            {% endif %}
+
+            <form action="{{ app_path }}" method="post" id="login-form">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ next }}">
+                
+                <div class="form-group">
+                    <label for="id_username">{% trans 'Username' %}</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-user-ninja"></i>
+                        <input type="text" name="username" id="id_username" class="input-control" placeholder="Enter your username" required>
+                    </div>
+                    {% if form.username.errors %}
+                        <div style="color: #ef4444; font-size: 0.8rem; margin-top: 4px;">{{ form.username.errors|striptags }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label for="id_password">{% trans 'Password' %}</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-key"></i>
+                        <input type="password" name="password" id="id_password" class="input-control" placeholder="••••••••" required>
+                    </div>
+                    {% if form.password.errors %}
+                        <div style="color: #ef4444; font-size: 0.8rem; margin-top: 4px;">{{ form.password.errors|striptags }}</div>
+                    {% endif %}
+                </div>
+
+                {% url 'admin_password_reset' as password_reset_url %}
+                {% if password_reset_url %}
+                    <div style="text-align: right; margin-bottom: 20px; font-size: 0.85rem;">
+                        <a href="{{ password_reset_url }}" style="color: var(--text-muted); text-decoration: none;">Forgot password?</a>
+                    </div>
+                {% endif %}
+
+                <button type="submit" class="submit-btn">
+                    <span>{% trans 'Secure Login' %}</span>
+                    <i class="fas fa-arrow-right"></i>
+                </button>
+            </form>
+
+            <div class="footer-text">
+                &copy; {{ current_year|default:"2026" }} SkillSwap Ltd. All rights reserved.
+                <br>
+                <a href="/">Back to Home</a>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Simple interactive effect on mouse move
+        document.addEventListener('mousemove', (e) => {
+            const orbs = document.querySelectorAll('.orb');
+            const x = (e.clientX / window.innerWidth) - 0.5;
+            const y = (e.clientY / window.innerHeight) - 0.5;
+            
+            orbs.forEach((orb, index) => {
+                const speed = (index + 1) * 20;
+                orb.style.transform = `translate(${x * speed}px, ${y * speed}px)`;
+            });
+        });
+    </script>
+</body>
+</html>

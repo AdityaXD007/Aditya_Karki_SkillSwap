@@ -18,8 +18,10 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from utils.dashboard import admin_reports
 
 urlpatterns = [
+    path('admin/reports/', admin_reports, name='admin_reports'),
     path('admin/', admin.site.urls),
     path("", include('admin_berry.urls')),
     path('api/', include('users.urls')),

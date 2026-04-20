@@ -1,0 +1,218 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block breadcrumbs %}{% endblock %}
+{% block content_title %}{% endblock %}
+
+{% block content %}
+<div class="reports-container" style="padding: 20px;">
+    <!-- Main Content -->
+    <div class="reports-content">
+        <header class="top-header" style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end;">
+            <div class="welcome-box">
+                <h1>{{ title }}</h1>
+                <p>Detailed performance and system analytics</p>
+            </div>
+            
+            <!-- Date Filter Form -->
+            <form method="get" class="date-filter-form" style="display: flex; gap: 15px; align-items: center; background: white; padding: 10px 20px; border-radius: 12px; border: 1px solid var(--border-color); box-shadow: 0 4px 10px rgba(0,0,0,0.03);">
+                <div class="input-group">
+                    <label style="display: block; font-size: 0.7rem; color: #888; text-transform: uppercase; font-weight: bold; margin-bottom: 2px;">From</label>
+                    <input type="date" name="start_date" value="{{ start_date }}" style="border: none; outline: none; font-size: 0.9rem; color: #333;">
+                </div>
+                <div style="width: 1px; height: 30px; background: #eee;"></div>
+                <div class="input-group">
+                    <label style="display: block; font-size: 0.7rem; color: #888; text-transform: uppercase; font-weight: bold; margin-bottom: 2px;">To</label>
+                    <input type="date" name="end_date" value="{{ end_date }}" style="border: none; outline: none; font-size: 0.9rem; color: #333;">
+                </div>
+                <button type="submit" style="background: var(--primary-color); color: white; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-filter"></i> Apply
+                </button>
+                <a href="{% url 'admin_reports' %}" style="color: #888; font-size: 0.8rem; text-decoration: none;">Reset</a>
+            </form>
+        </header>
+
+        <!-- Reports Grid -->
+        <div class="row" style="display: grid; grid-template-columns: 2fr 1fr; gap: 25px; margin-bottom: 25px;">
+            <!-- Revenue Analysis -->
+            <div class="chart-card" style="background: white; padding: 25px; border-radius: 20px; border: 1px solid var(--border-color);">
+                <h3>Monthly Revenue & Profit (10%)</h3>
+                <div style="height: 350px;">
+                    <canvas id="monthlyRevenueChart"></canvas>
+                </div>
+            </div>
+
+            <!-- User Distribution -->
+            <div class="chart-card" style="background: white; padding: 25px; border-radius: 20px; border: 1px solid var(--border-color);">
+                <h3>User Distribution</h3>
+                <div style="height: 350px;">
+                    <canvas id="userDistChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Weekly Trends (From Dashboard) -->
+        <div class="row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px; margin-bottom: 25px;">
+            <div class="chart-card" style="background: white; padding: 25px; border-radius: 20px; border: 1px solid var(--border-color);">
+                <h3>Recent Registrations (7 Days)</h3>
+                <div style="height: 250px;">
+                    <canvas id="registrationChart"></canvas>
+                </div>
+            </div>
+            <div class="chart-card" style="background: white; padding: 25px; border-radius: 20px; border: 1px solid var(--border-color);">
+                <h3>Daily Profit Trends (7 Days)</h3>
+                <div style="height: 250px;">
+                    <canvas id="weeklyProfitChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px;">
+            <!-- Popular Skills -->
+            <div class="table-card" style="background: white; padding: 25px; border-radius: 20px; border: 1px solid var(--border-color);">
+                <h3>Top 10 Popular Skills</h3>
+                <table class="modern-table" style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+                    <thead>
+                        <tr style="text-align: left; border-bottom: 2px solid var(--bg-dark);">
+                            <th style="padding: 12px;">Skill Name</th>
+                            <th style="padding: 12px;">Sessions Count</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for skill in skill_popularity %}
+                        <tr style="border-bottom: 1px solid var(--bg-dark);">
+                            <td style="padding: 12px; font-weight: 600;">{{ skill.name }}</td>
+                            <td style="padding: 12px;">{{ skill.use_count }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Session Stats -->
+            <div class="chart-card" style="background: white; padding: 25px; border-radius: 20px; border: 1px solid var(--border-color);">
+                <h3>Learning Session Status</h3>
+                <div style="margin-top: 20px;">
+                    {% for stat in session_stats %}
+                    <div style="margin-bottom: 15px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 0.9rem;">
+                            <span style="text-transform: capitalize; font-weight: 600;">{{ stat.status }}</span>
+                            <span>{{ stat.count }}</span>
+                        </div>
+                        <div style="width: 100%; height: 8px; background: #f0f0f0; border-radius: 4px; overflow: hidden;">
+                            <div style="width: {% widthratio stat.count 100 100 %}%; height: 100%; background: var(--primary-color);"></div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Monthly Revenue & Profit Chart
+        const revCtx = document.getElementById('monthlyRevenueChart').getContext('2d');
+        new Chart(revCtx, {
+            type: 'bar',
+            data: {
+                labels: {{ monthly_revenue_labels|safe }},
+                datasets: [
+                    {
+                        label: 'Total Revenue (Rs)',
+                        data: {{ monthly_revenue_data|safe }},
+                        backgroundColor: 'rgba(103, 58, 183, 0.2)',
+                        borderColor: '#673ab7',
+                        borderWidth: 2,
+                        borderRadius: 5,
+                    },
+                    {
+                        label: 'Platform Profit (10%)',
+                        data: {{ monthly_profit_data|safe }},
+                        type: 'line',
+                        borderColor: '#00c853',
+                        backgroundColor: 'transparent',
+                        pointBackgroundColor: '#00c853',
+                        tension: 0.4,
+                        fill: false
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+
+        // Registration Chart (7 Days)
+        const weeklyRegData = {{ registration_chart|safe }};
+        const regChartCtx = document.getElementById('registrationChart').getContext('2d');
+        new Chart(regChartCtx, {
+            type: 'bar',
+            data: {
+                labels: weeklyRegData.map(d => d.date),
+                datasets: [{
+                    label: 'New Users',
+                    data: weeklyRegData.map(d => d.count),
+                    backgroundColor: '#2196f3',
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { x: { grid: { display: false } }, y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+            }
+        });
+
+        // Weekly Profit Trend (7 Days)
+        const weeklyProfData = {{ weekly_profit_chart|safe }};
+        const profCtx = document.getElementById('weeklyProfitChart').getContext('2d');
+        new Chart(profCtx, {
+            type: 'line',
+            data: {
+                labels: weeklyProfData.map(d => d.date),
+                datasets: [{
+                    label: 'Profit (Rs)',
+                    data: weeklyProfData.map(d => d.amount),
+                    borderColor: '#00c853',
+                    backgroundColor: 'rgba(0, 200, 83, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { x: { grid: { display: false } }, y: { beginAtZero: true } }
+            }
+        });
+
+        // User Distribution Chart (P2P roles)
+        const userCtx = document.getElementById('userDistChart').getContext('2d');
+        new Chart(userCtx, {
+            type: 'pie',
+            data: {
+                labels: ['Swappers (P2P)', 'Pure Mentors', 'Pure Students', 'Onboarding'],
+                datasets: [{
+                    data: {{ user_distribution|safe }},
+                    backgroundColor: ['#673ab7', '#00c853', '#2196f3', '#f0f0f0'],
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom', labels: { boxWidth: 12, padding: 15 } }
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}
