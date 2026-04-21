@@ -158,15 +158,22 @@ class ChatConsumer(AsyncWebsocketConsumer):
             )
         elif message_type in ['video_offer', 'video_answer', 'new_ice_candidate', 'end_call']:
             # Forward signaling messages to the group
-            await self.channel_layer.group_send(
-                self.room_group_name,
-                {
-                    'type': 'signal_message',
-                    'signal_type': message_type,
-                    'data': text_data_json.get('data'),
-                    'sender_id': self.scope['user'].id
-                }
-            )
+            # Get other participant in the room to send personal notification if needed
+            participant_ids = await self.get_participant_ids(self.room_name)
+            
+            for pid in participant_ids:
+                # We send to the group (broadcast in room) AND individual personal groups (global)
+                await self.channel_layer.group_send(
+                    f"user_{pid}",
+                    {
+                        'type': 'signal_message',
+                        'signal_type': message_type,
+                        'data': text_data_json.get('data'),
+                        'sender_id': self.scope['user'].id,
+                        'sender_name': self.scope['user'].username,
+                        'room_id': int(self.room_name)
+                    }
+                )
             
             # Start timer if call is answered (Save start time to DB)
             if message_type == 'video_answer':
@@ -233,7 +240,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
         await self.send(text_data=json.dumps({
             'type': event['signal_type'],
             'data': event['data'],
-            'sender_id': event['sender_id']
+            'sender_id': event['sender_id'],
+            'sender_name': event.get('sender_name'),
+            'room_id': event.get('room_id')
         }))
 
     async def reaction_update(self, event):
@@ -463,3 +472,80 @@ class ChatConsumer(AsyncWebsocketConsumer):
             'call_duration': event['call_duration'],
             'status_text': event['status_text']
         }))
+
+class NotificationConsumer(AsyncWebsocketConsumer):
+    async def connect(self):
+        if self.scope['user'].is_anonymous:
+            print(" Anonymous user attempted global socket connection - closing")
+            await self.close()
+            return
+            
+        self.user_id = self.scope['user'].id
+        self.user_group_name = f"user_{self.user_id}"
+        
+        print(f" Global Socket Connected for user: {self.scope['user']}")
+        
+        await self.channel_layer.group_add(
+            self.user_group_name,
+            self.channel_name
+        )
+        await self.accept()
+
+    async def disconnect(self, close_code):
+        if hasattr(self, 'user_group_name'):
+            await self.channel_layer.group_discard(
+                self.user_group_name,
+                self.channel_name
+            )
+
+    async def signal_message(self, event):
+        # Forward everything from signal_message to the global client
+        await self.send(text_data=json.dumps({
+            'type': event['signal_type'],
+            'data': event['data'],
+            'sender_id': event['sender_id'],
+            'sender_name': event.get('sender_name'),
+            'room_id': event.get('room_id')
+        }))
+
+    async def chat_message(self, event):
+        # Global notification for new messages
+        await self.send(text_data=json.dumps({
+            'type': 'chat_message',
+            'room_id': event.get('room_id'),
+            'id': event.get('id'),
+            'message': event.get('message'),
+            'sender': event.get('sender'),
+            'sender_id': event.get('sender_id'),
+            'timestamp': event.get('timestamp'),
+            'message_type': event.get('message_type', 'text')
+        }))
+
+    async def receive(self, text_data):
+        data = json.loads(text_data)
+        msg_type = data.get('type')
+        room_id = data.get('room_id')
+        
+        if msg_type in ['video_offer', 'video_answer', 'new_ice_candidate', 'end_call']:
+            if room_id:
+                participant_ids = await self.get_participant_ids(room_id)
+                for pid in participant_ids:
+                    await self.channel_layer.group_send(
+                        f"user_{pid}",
+                        {
+                            'type': 'signal_message',
+                            'signal_type': msg_type,
+                            'data': data.get('data'),
+                            'sender_id': self.user_id,
+                            'sender_name': self.scope['user'].username,
+                            'room_id': room_id
+                        }
+                    )
+
+    @database_sync_to_async
+    def get_participant_ids(self, room_id):
+        try:
+            conversation = Conversation.objects.get(id=room_id)
+            return list(conversation.participants.values_list('id', flat=True))
+        except Conversation.DoesNotExist:
+            return []

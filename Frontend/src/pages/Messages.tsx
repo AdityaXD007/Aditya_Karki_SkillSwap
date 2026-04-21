@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { messagesApi, sessionsAPI, paymentAPI, getMediaUrl, type Conversation, type Message, type LearningSession } from "@/services";
 import { useAuth } from "@/components/Context/AuthContext";
+import { useCall } from "@/components/Context/CallContext";
 import { Send, Search, Phone, X, Mic, MicOff, Video as VideoIcon, VideoOff, MoreVertical, Reply, Smile, Trash2, Image as ImageIcon, ShieldCheck, CheckCircle2, Monitor, Star, AlertCircle, Loader2, ArrowLeft } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -57,27 +58,13 @@ export const Messages: React.FC = () => {
   const [messageText, setMessageText] = useState("");
   const [loading, setLoading] = useState(true);
   
-  // Video Call State
-  const [isInCall, setIsInCall] = useState(false);
-  const [isIncomingCall, setIsIncomingCall] = useState(false);
-  const [callStatus, setCallStatus] = useState<string>("");
-  const [micOn, setMicOn] = useState(true);
-  const [cameraOn, setCameraOn] = useState(true);
-  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
-  const [isScreenSharing, setIsScreenSharing] = useState(false);
-  const screenStreamRef = useRef<MediaStream | null>(null);
-  const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
-  const remoteBackgroundVideoRef = useRef<HTMLVideoElement | null>(null);
+  const { 
+    startCall: initiateGlobalCall, 
+    endCall: endGlobalCall,
+    isInCall,
+    callStatus 
+  } = useCall();
 
-  useEffect(() => {
-    if (remoteVideoRef.current && remoteStream) {
-        console.log("📺 Setting remote srcObject via useEffect (Tracks:", remoteStream.getTracks().length, ")");
-        remoteVideoRef.current.srcObject = remoteStream;
-    }
-    if (remoteBackgroundVideoRef.current && remoteStream) {
-        remoteBackgroundVideoRef.current.srcObject = remoteStream;
-    }
-  }, [remoteStream]);
   const [localStreamReady, setLocalStreamReady] = useState(false);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState<number | null>(null); // Message ID
@@ -111,12 +98,8 @@ export const Messages: React.FC = () => {
 
   const socketRef = useRef<WebSocket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
-  const localStreamRef = useRef<MediaStream | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
-  // Buffer for ICE candidates that arrive before the peer connection is ready
-  const iceCandidateBufferRef = useRef<RTCIceCandidateInit[]>([]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -435,77 +418,7 @@ export const Messages: React.FC = () => {
              });
          }
          
-         // Signaling: Offer
-         else if (data.type === 'video_offer') {
-             console.log("🔔 Incoming video_offer from:", data.sender_id, "(My ID is:", user?.id, ")");
-             // Guard: Never process an offer sent by ourselves
-             if (data.sender_id && String(data.sender_id) === String(user?.id)) {
-                 console.log("⚠️ Ignoring self-echoed offer");
-                 return;
-             }
-             // Guard: If we are already the one who initiated a call, ignore incoming offers to stay as Caller
-             if (peerConnectionRef.current && peerConnectionRef.current.signalingState !== "stable") {
-                 console.log("⚠️ Signaling Collision: Staying as Caller, ignoring incoming offer.");
-                 return;
-             }
-             iceCandidateBufferRef.current = [];
-             (window as any).pendingOffer = data.data;
-             setIsIncomingCall(true);
-         }
-         
-         // Signaling: Answer
-         else if (data.type === 'video_answer') {
-             console.log("✅ Received video_answer from:", data.sender_id, "(My ID is:", user?.id, ")");
-             if (data.sender_id && String(data.sender_id) === String(user?.id)) {
-                 console.log("⚠️ Ignoring self-echoed answer");
-                 return;
-             }
-             if (peerConnectionRef.current && peerConnectionRef.current.signalingState === "have-local-offer") {
-                 try {
-                     console.log("📝 Setting remote description (answer)");
-                     await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(data.data));
-                     // Flush any buffered ICE candidates now that remote description is set
-                     console.log("💧 Flushing buffered ICE candidates:", iceCandidateBufferRef.current.length);
-                     for (const candidate of iceCandidateBufferRef.current) {
-                         try {
-                             await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(candidate));
-                         } catch (e) {
-                             console.error("Error adding buffered ICE candidate:", e);
-                         }
-                     }
-                     iceCandidateBufferRef.current = [];
-                 } catch (err) {
-                     console.error("Error setting remote description:", err);
-                 }
-             } else {
-                 console.warn("🚫 Received answer but PC is not in 'have-local-offer' state. State:", peerConnectionRef.current?.signalingState);
-             }
-         }
-         
-         // Signaling: End Call
-         else if (data.type === 'end_call') {
-             if (data.sender_id === Number(user?.id)) return;
-             endCall(false);
-         }
-
-         // Signaling: ICE Candidate
-         else if (data.type === 'new_ice_candidate') {
-             if (String(data.sender_id) === String(user?.id)) return;
-             if (!data.data) return;
-             const pc = peerConnectionRef.current;
-             console.log("🧊 Received remote ICE candidate");
-             // If peer connection exists and remote description is set, add immediately
-             if (pc && pc.remoteDescription) {
-                 try {
-                     await pc.addIceCandidate(new RTCIceCandidate(data.data));
-                 } catch (e) {
-                     console.error("Error adding ICE candidate:", e);
-                 }
-             } else {
-                 console.log("📥 Buffering ICE candidate (no remote description yet)");
-                 iceCandidateBufferRef.current.push(data.data);
-             }
-         }
+          // Reactions Update
 
           // Reactions Update
           else if (data.type === 'reaction_update') {
@@ -578,286 +491,21 @@ export const Messages: React.FC = () => {
         if (socketRef.current) {
             socketRef.current.close();
         }
-        if (localStreamRef.current) {
-            localStreamRef.current.getTracks().forEach(track => track.stop());
-        }
-        if (peerConnectionRef.current) {
-             peerConnectionRef.current.close();
+        if (socketRef.current) {
+            socketRef.current.close();
         }
     };
   }
 }, [selectedConversation]);
 
-// WebRTC Functions
-const createPeerConnection = () => {
-    const pc = new RTCPeerConnection(ICE_SERVERS);
-
-    pc.oniceconnectionstatechange = () => {
-        const state = pc.iceConnectionState;
-        console.log("⚡ ICE Connection State:", state);
-        if (state === 'failed' || state === 'disconnected') {
-            console.warn("⚠️ Connection lost/unstable. ICE state is:", state);
-        } else if (state === 'connected' || state === 'completed') {
-            console.log("✅ ICE Connection established! Media should flow.");
-        }
-    };
-
-    pc.onicecandidate = (event) => {
-        if (event.candidate && socketRef.current) {
-            console.log("📤 Sending local ICE candidate (My ID:", user?.id, ")");
-            socketRef.current.send(JSON.stringify({
-                type: 'new_ice_candidate',
-                data: event.candidate,
-                sender_id: user?.id // Explicitly adding sender_id to payload
-            }));
-        }
-    };
-
-    pc.ontrack = (event) => {
-        console.log("🎬 Received remote track:", event.track.kind, "State:", event.track.readyState);
-        setRemoteStream(prev => {
-            if (!prev) {
-                const s = new MediaStream();
-                s.addTrack(event.track);
-                return s;
-            }
-            if (!prev.getTracks().find(t => t.id === event.track.id)) {
-                prev.addTrack(event.track);
-            }
-            // Always return a new MediaStream to trigger React re-renders/prop updates
-            return new MediaStream(prev.getTracks());
-        });
-
-        event.track.onunmute = () => {
-             console.log("🔊 Track unmuted:", event.track.kind);
-             if (remoteVideoRef.current) {
-                 remoteVideoRef.current.play().catch(e => {
-                     if (e.name !== 'AbortError') console.error("Play error on unmute:", e);
-                 });
-             }
-        };
-
-        // Redundant nudge for certain browsers
-        if (remoteVideoRef.current) {
-            remoteVideoRef.current.play().catch(() => {});
-        }
-    };
-
-    return pc;
-};
-
 const startCall = async () => {
-    setIsInCall(true);
-    setCallStatus("Calling...");
-    
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-            video: { width: { ideal: 640 }, height: { ideal: 480 } }, 
-            audio: true 
-        });
-        localStreamRef.current = stream;
-        setLocalStreamReady(true);
-        
-        const pc = createPeerConnection();
-        stream.getTracks().forEach(track => pc.addTrack(track, stream));
-        peerConnectionRef.current = pc;
-
-        const offer = await pc.createOffer();
-        await pc.setLocalDescription(offer);
-
-        if (socketRef.current) {
-            socketRef.current.send(JSON.stringify({
-                type: 'video_offer',
-                data: offer,
-                sender_id: user?.id
-            }));
-        }
-
-    } catch (err) {
-        console.error("Error starting call:", err);
-        endCall();
-    }
-};
-
-const acceptCall = async () => {
-    setIsIncomingCall(false);
-    setIsInCall(true);
-    setCallStatus("Connected");
-
-    try {
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            throw new Error("BrowserNotSupported");
-        }
-
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-            video: { width: { ideal: 640 }, height: { ideal: 480 } }, 
-            audio: true 
-        });
-        localStreamRef.current = stream;
-        setLocalStreamReady(true);
-        
-        const pc = createPeerConnection();
-        stream.getTracks().forEach(track => pc.addTrack(track, stream));
-        peerConnectionRef.current = pc;
-
-        const offer = (window as any).pendingOffer;
-        if (offer) {
-            await pc.setRemoteDescription(new RTCSessionDescription(offer));
-
-            // Flush any ICE candidates that arrived while user was deciding to accept
-            for (const candidate of iceCandidateBufferRef.current) {
-                try {
-                    await pc.addIceCandidate(new RTCIceCandidate(candidate));
-                } catch (e) {
-                    console.error("Error adding buffered ICE candidate in acceptCall:", e);
-                }
-            }
-            iceCandidateBufferRef.current = [];
-
-            const answer = await pc.createAnswer();
-            await pc.setLocalDescription(answer);
-            
-            if (socketRef.current) {
-                socketRef.current.send(JSON.stringify({
-                    type: 'video_answer',
-                    data: answer,
-                    sender_id: user?.id
-                }));
-            }
-        } else {
-            console.warn("No pending offer found when accepting call.");
-            alert("Call connection error: missing signaling data.");
-            endCall();
-            return;
-        }
-
-    } catch (err: any) {
-        console.error("Error accepting call:", err);
-        let errorMsg = "Could not start video call.";
-        
-        if (err.message === "BrowserNotSupported") {
-            errorMsg = "Your browser does not support video calls on this connection. Ensure you use HTTPS or the chrome://flags workaround.";
-        } else if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-            errorMsg = "Camera or Microphone permission was denied. Please allow access in browser settings.";
-        } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-            errorMsg = "No camera or microphone found on your device.";
-        } else if (!window.isSecureContext && window.location.hostname !== 'localhost') {
-            errorMsg = "Video calls require a Secure Connection (HTTPS) or a special browser flag on mobile.";
-        }
-        
-        alert(errorMsg);
-        endCall();
+    if (selectedConversation && selected) {
+        initiateGlobalCall(selectedConversation, selected.userName);
     }
 };
 
 const endCall = (sendSignal = true) => {
-    setIsInCall(false);
-    setIsIncomingCall(false);
-    setCallStatus("");
-    
-    if (sendSignal && socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-        socketRef.current.send(JSON.stringify({
-            type: 'end_call'
-        }));
-    }
-    
-    if (localStreamRef.current) {
-        localStreamRef.current.getTracks().forEach(track => track.stop());
-        localStreamRef.current = null;
-    }
-
-    // Clear tracks from remote stream
-    if (remoteStream) {
-        remoteStream.getTracks().forEach(track => {
-            track.stop();
-        });
-        setRemoteStream(null);
-    }
-
-
-    if (peerConnectionRef.current) {
-        peerConnectionRef.current.close();
-        peerConnectionRef.current = null;
-    }
-
-    if (screenStreamRef.current) {
-        screenStreamRef.current.getTracks().forEach(t => t.stop());
-        screenStreamRef.current = null;
-    }
-    setIsScreenSharing(false);
-};
-
-const toggleMic = () => {
-    if (localStreamRef.current) {
-        localStreamRef.current.getAudioTracks().forEach(track => track.enabled = !micOn);
-        setMicOn(!micOn);
-    }
-};
-
-const toggleCamera = () => {
-    if (localStreamRef.current) {
-        localStreamRef.current.getVideoTracks().forEach(track => track.enabled = !cameraOn);
-        setCameraOn(!cameraOn);
-    }
-};
-
-const toggleScreenShare = async () => {
-    if (!isInCall || !peerConnectionRef.current) return;
-
-    if (!isScreenSharing) {
-        try {
-            const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-            screenStreamRef.current = screenStream;
-            const screenTrack = screenStream.getVideoTracks()[0];
-
-            // Get existing video sender and replace track
-            const senders = peerConnectionRef.current.getSenders();
-            const videoSender = senders.find(s => s.track?.kind === 'video');
-            
-            if (videoSender) {
-                videoSender.replaceTrack(screenTrack);
-            }
-
-            // Professional behavior: turn off camera if it was on
-            if (cameraOn) {
-                if (localStreamRef.current) {
-                    localStreamRef.current.getVideoTracks().forEach(t => t.enabled = false);
-                    setCameraOn(false);
-                }
-            }
-
-            setIsScreenSharing(true);
-
-            // Revert when screen share stopped by browser UI
-            screenTrack.onended = () => {
-                stopScreenShare();
-            };
-
-        } catch (err) {
-            console.error("Screen share error:", err);
-        }
-    } else {
-        stopScreenShare();
-    }
-};
-
-const stopScreenShare = () => {
-    if (screenStreamRef.current) {
-        screenStreamRef.current.getTracks().forEach(t => t.stop());
-        screenStreamRef.current = null;
-    }
-
-    // Revert to camera track in peer connection
-    if (localStreamRef.current && peerConnectionRef.current) {
-        const videoTrack = localStreamRef.current.getVideoTracks()[0];
-        const senders = peerConnectionRef.current.getSenders();
-        const videoSender = senders.find(s => s.track?.kind === 'video');
-        if (videoSender) {
-            videoSender.replaceTrack(videoTrack).catch(err => console.error("Error reverting camera:", err));
-        }
-    }
-    
-    setIsScreenSharing(false);
+    endGlobalCall(sendSignal);
 };
 
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -1261,152 +909,7 @@ const stopScreenShare = () => {
                     </div>
                   </div>
 
-                  {/* Video Call Overlay */}
-                  {isInCall && (
-                      <div className="absolute inset-0 bg-slate-950 z-50 flex flex-col md:rounded-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-500 shadow-[0_0_50px_rgba(0,0,0,0.5)]">
-                          <div className="relative flex-1 bg-slate-950 flex items-center justify-center group">
-                              {/* Remote Video Background (Blurred) */}
-                              <div className="absolute inset-0 opacity-30 blur-3xl scale-110 pointer-events-none overflow-hidden">
-                                  <video 
-                                      ref={remoteBackgroundVideoRef}
-                                      autoPlay 
-                                      muted 
-                                      className="w-full h-full object-cover"
-                                  />
-                              </div>
-
-                              {/* Remote Video */}
-                            <video 
-                                ref={remoteVideoRef}
-                                autoPlay 
-                                playsInline 
-                                muted={false}
-                                className="relative z-10 w-auto h-full max-h-screen max-w-full object-contain transition-all duration-700"
-                                onLoadedMetadata={() => {
-                                    console.log("📽️ Remote metadata loaded");
-                                    remoteVideoRef.current?.play().catch(() => {});
-                                }}
-                            />
-                              
-                              {/* Local Video (Floating) */}
-                              <div className="absolute top-6 right-6 w-32 h-44 md:w-56 md:h-72 z-30 bg-slate-800 rounded-3xl overflow-hidden border-2 border-white/20 shadow-2xl transition-all duration-500 hover:scale-105 hover:border-blue-500/50 group-hover:translate-x-0">
-                                  <video 
-                                      key={`local-video-${localStreamReady}`}
-                                      ref={(el) => {
-                                          if (el && localStreamRef.current) {
-                                              if (el.srcObject !== localStreamRef.current) {
-                                                  console.log("📹 Starting local camera view (Ready:", localStreamReady, ")");
-                                                  el.srcObject = localStreamRef.current;
-                                                  el.load();
-                                              }
-                                              el.play().catch(e => console.error("Local video error:", e));
-                                          }
-                                      }} 
-                                      autoPlay 
-                                      playsInline 
-                                      muted 
-                                      className="w-full h-full object-cover -scale-x-100"
-                                  />
-                                  <div className="absolute bottom-2 left-2 px-2 py-0.5 bg-black/40 backdrop-blur-md rounded-md">
-                                      <p className="text-[10px] text-white font-medium">You</p>
-                                  </div>
-                              </div>
-
-                              {/* Top Bar with Status */}
-                              <div className="absolute top-8 left-8 z-30 flex items-center space-x-4">
-                                  <div className="flex flex-col">
-                                      <h3 className="text-white font-bold text-lg md:text-xl drop-shadow-md">{selected?.userName || 'Participant'}</h3>
-                                      <div className="flex items-center space-x-2">
-                                          <div className={`w-2 h-2 rounded-full ${callStatus === 'Connected' ? 'bg-green-500 animate-pulse' : 'bg-yellow-500'}`} />
-                                          <p className="text-white/70 text-xs font-medium uppercase tracking-widest">{callStatus}</p>
-                                      </div>
-                                  </div>
-                              </div>
-
-                              {/* Session Timer in Video Call */}
-                              {activeSession?.status === 'ONGOING' && timeLeft !== null && (
-                                  <div className="absolute top-8 right-8 z-30">
-                                      <div className={`px-4 py-2 rounded-2xl backdrop-blur-2xl border font-mono font-bold text-sm flex items-center gap-2 shadow-lg transition-all ${
-                                          activeSession.is_paused
-                                              ? 'bg-yellow-500/20 border-yellow-400/30 text-yellow-300'
-                                              : timeLeft < 300
-                                              ? 'bg-red-500/20 border-red-400/30 text-red-300 animate-pulse'
-                                              : 'bg-white/10 border-white/10 text-white'
-                                      }`}>
-                                          <div className={`w-2 h-2 rounded-full ${
-                                              activeSession.is_paused ? 'bg-yellow-400' :
-                                              timeLeft < 300 ? 'bg-red-400' : 'bg-green-400 animate-pulse'
-                                          }`} />
-                                          {activeSession.is_paused && <span className="text-xs">PAUSED</span>}
-                                          <span>{Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}</span>
-                                      </div>
-                                  </div>
-                              )}
-
-                              {/* Floating Glass Controls */}
-                              <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-40 px-6 py-4 bg-white/10 backdrop-blur-2xl rounded-3xl border border-white/10 flex items-center space-x-6 transition-all duration-300 hover:bg-white/15 hover:scale-105 shadow-[0_20px_50px_rgba(0,0,0,0.3)]">
-                                  <button 
-                                      onClick={toggleMic}
-                                      className={`p-4 rounded-2xl transition-all duration-300 ${micOn ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-red-500 text-white hover:bg-red-600 shadow-lg shadow-red-500/20'}`}
-                                      title={micOn ? "Mute" : "Unmute"}
-                                  >
-                                      {micOn ? <Mic className="w-6 h-6" /> : <MicOff className="w-6 h-6" />}
-                                  </button>
-
-                                  <button 
-                                      onClick={() => endCall()}
-                                      className="p-5 rounded-2xl bg-red-600 text-white hover:bg-red-700 transition-all duration-300 shadow-xl shadow-red-600/30 hover:scale-110 active:scale-95 group-endcall"
-                                      title="End Call"
-                                  >
-                                      <Phone className="w-8 h-8 rotate-[135deg]" />
-                                  </button>
-
-                                  <button 
-                                      onClick={toggleScreenShare}
-                                      className={`p-4 rounded-2xl transition-all duration-300 ${isScreenSharing ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'bg-white/10 text-white hover:bg-white/20'}`}
-                                      title={isScreenSharing ? "Stop Screen Share" : "Share Screen"}
-                                  >
-                                      <Monitor className="w-6 h-6" />
-                                  </button>
-
-                                  <button 
-                                      onClick={toggleCamera}
-                                      className={`p-4 rounded-2xl transition-all duration-300 ${cameraOn ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-red-500 text-white hover:bg-red-600 shadow-lg shadow-red-500/20'}`}
-                                      title={cameraOn ? "Stop Video" : "Start Video"}
-                                  >
-                                      {cameraOn ? <VideoIcon className="w-6 h-6" /> : <VideoOff className="w-6 h-6" />}
-                                  </button>
-                              </div>
-                          </div>
-                      </div>
-                  )}
-
-                  {/* Incoming Call Modal */}
-                  {isIncomingCall && !isInCall && (
-                      <div className="absolute top-4 right-4 z-50 animate-bounce-in">
-                          <div className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-2xl border border-gray-200 dark:border-slate-700 flex flex-col items-center w-64">
-                               <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center mb-3 animate-pulse">
-                                   <VideoIcon className="w-8 h-8 text-blue-600" />
-                               </div>
-                               <h3 className="font-bold text-gray-900 dark:text-white mb-1">Incoming Call...</h3>
-                               <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{selected?.userName}</p>
-                               <div className="flex space-x-3 w-full">
-                                   <button 
-                                       onClick={() => endCall()}
-                                       className="flex-1 py-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 font-medium transition-colors"
-                                   >
-                                       Decline
-                                   </button>
-                                   <button 
-                                       onClick={acceptCall}
-                                       className="flex-1 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 font-medium transition-colors shadow-lg shadow-green-500/20"
-                                   >
-                                       Accept
-                                   </button>
-                               </div>
-                          </div>
-                      </div>
-                  )}
+                  {/* Removed local call modal - moved to GlobalCallOverlay */}
 
                   {/* Colors for my message */}
                   <div className="flex-1 overflow-y-auto p-4 bg-gray-50 dark:bg-slate-950 transition-colors space-y-4">

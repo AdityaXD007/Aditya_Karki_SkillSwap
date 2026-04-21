@@ -3,6 +3,8 @@ import { AuthProvider, useAuth } from '@/components/Context/AuthContext';
 import { Navbar } from '@/components/Navbar';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { AIChatBubble } from '@/components/AIChatBubble';
+import { CallProvider } from '@/components/Context/CallContext';
+import { GlobalCallOverlay } from '@/components/GlobalCallOverlay';
 
 // Pages
 import { Login } from '@/pages/Login';
@@ -39,8 +41,10 @@ export default function App() {
   return (
     <AuthProvider>
       <Router>
-        <div className="min-h-screen bg-gray-50 dark:bg-slate-950 text-gray-900 dark:text-slate-100 transition-colors duration-300">
-          <Navbar />
+        <CallProvider>
+          <div className="min-h-screen bg-gray-50 dark:bg-slate-950 text-gray-900 dark:text-slate-100 transition-colors duration-300">
+            <Navbar />
+            <GlobalCallOverlay />
           <Routes>
             {/* Public Routes */}
             <Route path="/landing" element={<Landing />} />
@@ -142,7 +146,8 @@ export default function App() {
             <Route path="*" element={<ErrorPage code={404} />} />
           </Routes>
           <AIChatBubble />
-        </div>
+          </div>
+        </CallProvider>
       </Router>
     </AuthProvider>
   );

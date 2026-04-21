@@ -15,7 +15,7 @@ def get_user(token_key):
         user_id = access_token['user_id']
         return User.objects.get(id=user_id)
     except Exception as e:
-        print(f"JWT Auth Error: {e}")
+        print(f" JWT Auth Error: {e} for token {token_key[:10]}...")
         return AnonymousUser()
 
 class TokenAuthMiddleware(BaseMiddleware):
@@ -26,6 +26,7 @@ class TokenAuthMiddleware(BaseMiddleware):
 
         if token_key:
             scope['user'] = await get_user(token_key)
+            print(f"🔌 WebSocket Auth: {scope['user']} via token")
         else:
             scope['user'] = AnonymousUser()
         

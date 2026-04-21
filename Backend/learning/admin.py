@@ -11,13 +11,60 @@ class SessionRequestAdmin(admin.ModelAdmin):
     list_filter = ('status',)
     search_fields = ('requester__username', 'partner__username', 'skill_to_learn__name')
 
+class BooleanFilter(admin.SimpleListFilter):
+    def lookups(self, request, model_admin):
+        return (
+            ('1', 'Yes'),
+            ('0', 'No'),
+        )
+
+class IsPaidFilter(BooleanFilter):
+    title = 'Is Paid'
+    parameter_name = 'is_paid_filter'
+    def queryset(self, request, queryset):
+        if self.value() == '1':
+            return queryset.filter(is_paid=True)
+        if self.value() == '0':
+            return queryset.filter(is_paid=False)
+        return queryset
+
+class AdminConfirmedFilter(BooleanFilter):
+    title = 'Admin Confirmed'
+    parameter_name = 'admin_confirmed_filter'
+    def queryset(self, request, queryset):
+        if self.value() == '1':
+            return queryset.filter(admin_confirmed=True)
+        if self.value() == '0':
+            return queryset.filter(admin_confirmed=False)
+        return queryset
+
+class PayoutCompletedFilter(BooleanFilter):
+    title = 'Payout Completed'
+    parameter_name = 'payout_completed_filter'
+    def queryset(self, request, queryset):
+        if self.value() == '1':
+            return queryset.filter(payout_completed=True)
+        if self.value() == '0':
+            return queryset.filter(payout_completed=False)
+        return queryset
+
+class IsFreeFilter(BooleanFilter):
+    title = 'Is Free'
+    parameter_name = 'is_free_filter'
+    def queryset(self, request, queryset):
+        if self.value() == '1':
+            return queryset.filter(is_free=True)
+        if self.value() == '0':
+            return queryset.filter(is_free=False)
+        return queryset
+
 @admin.register(LearningSession)
 class LearningSessionAdmin(admin.ModelAdmin):
     list_display = (
         'id', 'student', 'teacher', 'skill', 'total_price', 
         'status_badge', 'payment_status', 'is_paid', 'payout_status', 'quick_approve', 'scheduled_time'
     )
-    list_filter = ('status', 'is_paid', 'admin_confirmed', 'payout_completed', 'is_free')
+    list_filter = ('status', IsPaidFilter, AdminConfirmedFilter, PayoutCompletedFilter, IsFreeFilter)
     search_fields = ('student__username', 'teacher__username', 'skill__name')
     readonly_fields = ('created_at',)
     list_editable = ('is_paid',) # Allow manual marking as paid from list view
