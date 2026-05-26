@@ -5,6 +5,7 @@ import { useCall } from "@/components/Context/CallContext";
 import { Send, Search, Phone, X, Mic, MicOff, Video as VideoIcon, VideoOff, MoreVertical, Reply, Smile, Trash2, Image as ImageIcon, ShieldCheck, CheckCircle2, Monitor, Star, AlertCircle, Loader2, ArrowLeft } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { useLocation } from "react-router-dom";
 
 const ICE_SERVERS = {
   iceServers: [
@@ -48,6 +49,7 @@ const ICE_SERVERS = {
 
 export const Messages: React.FC = () => {
   const { user } = useAuth();
+  const location = useLocation();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [allSessions, setAllSessions] = useState<LearningSession[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<number | null>(() => {
@@ -132,13 +134,22 @@ export const Messages: React.FC = () => {
         setConversations(sortedData);
         
         if (sortedData.length > 0) {
+            const queryParams = new URLSearchParams(location.search);
+            const targetPartnerId = queryParams.get("partnerId");
+            let targetConvId = null;
+            if (targetPartnerId) {
+                 const targetConv = sortedData.find(c => Number(c.partnerId) === Number(targetPartnerId));
+                 if (targetConv) {
+                     targetConvId = targetConv.id;
+                 }
+            }
+
             const savedId = localStorage.getItem("selected_conversation_id");
-            if (savedId && sortedData.some(c => c.id === Number(savedId))) {
-               if (selectedConversation !== Number(savedId)) {
-                   setSelectedConversation(Number(savedId));
-               }
-            } else if (!selectedConversation) {
-                setSelectedConversation(sortedData[0].id);
+            const idToSelect = targetConvId || (savedId && sortedData.some(c => c.id === Number(savedId)) ? Number(savedId) : sortedData[0].id);
+            
+            if (selectedConversation !== idToSelect) {
+                setSelectedConversation(idToSelect);
+                localStorage.setItem("selected_conversation_id", idToSelect.toString());
             }
         }
       } catch (error) {
@@ -151,7 +162,7 @@ export const Messages: React.FC = () => {
     if (user) {
         fetchData();
     }
-  }, [user]);
+  }, [user, location.search]);
 
   // Session Management & Timing
   const currentPartnerId = conversations.find(c => c.id === selectedConversation)?.partnerId;

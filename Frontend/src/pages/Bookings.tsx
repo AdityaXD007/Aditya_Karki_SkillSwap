@@ -697,7 +697,7 @@ export const Bookings: React.FC = () => {
                               item.status === "PENDING") &&
                               item.partnerId && (
                                 <Link
-                                  to="/messages"
+                                  to={`/messages?partnerId=${item.partnerId}`}
                                   className="text-sm bg-blue-50 text-blue-600 px-3 py-1.5 rounded-md hover:bg-blue-100 transition-colors flex items-center gap-1.5 font-medium border border-blue-100 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-400 mt-2"
                                 >
                                   <ExternalLink className="w-3.5 h-3.5" />

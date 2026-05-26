@@ -4,16 +4,16 @@ SkillSwap is a comprehensive full-stack web application developed to facilitate 
 
 ## Project Overview
 
-The primary objective of SkillSwap is to create a decentralized learning ecosystem where users can both teach and learn various disciplines. By integrating real-time communication, automated scheduling, and AI-driven matching, the platform streamlines the process of peer-to-peer knowledge transfer.
+The primary objective of SkillSwap is to create a decentralized learning ecosystem where users can both teach and learn various disciplines. By integrating real-time communication, session coordination, and skill-based matching, the platform streamlines the process of peer-to-peer knowledge transfer.
 
 ## Key Features
 
 - Skill Management: Comprehensive system for creating, browsing, and searching skill categories.
-- AI Assistant Integration: Advanced matching algorithms to optimize user connections and learning paths.
-- Real-time Communication: Integrated messaging system for direct interaction between participants.
-- Session Management: Automated scheduling and tracking of one-on-one learning sessions.
+- User Matching: Custom algorithms to connect users based on complementary skill interests.
+- Real-time Communication: Integrated WebRTC video calls with screen-sharing and direct messaging.
+- Session Coordination: Facilitated system for users to arrange and manage one-on-one learning sessions.
 - Payment Processing: Secure transaction management for premium skill exchanges.
-- Notification System: Automated email and system alerts for account activities and session updates.
+- Notification System: Email and system alerts for account activities and session updates.
 - User Dashboard: Centralized interface for managing profiles, skills, and active learning sessions.
 
 ## Technical Specifications
@@ -60,7 +60,6 @@ SkillSwap/
 ## Installation and Configuration
 
 ### Prerequisites
-- Docker Desktop
 - Python 3.10+ (for local development)
 - Node.js 18+ (for local development)
 
